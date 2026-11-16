@@ -1,0 +1,115 @@
+{"lang": "hi", "wrong": "मांगते", "right": "माँगते", "n": 3, "safe": true, "source": "harvest", "reels": ["hi-5-prayer-blessing"]}
+{"lang": "hi", "wrong": "सकूंगा", "right": "सकूँगा", "n": 3, "safe": true, "source": "harvest", "reels": ["hi-1-main-kar-sakunga"]}
+{"lang": "hi", "wrong": "ज्यादा", "right": "ज़्यादा", "n": 2, "safe": true, "source": "harvest", "reels": ["hi-3-painter-part2", "hi-4-satan-defeated"]}
+{"lang": "hi", "wrong": "डट", "right": "डॉट", "n": 2, "safe": false, "source": "harvest", "reels": ["hi-3-painter-part2"]}
+{"lang": "hi", "wrong": "दिखाएं", "right": "दिखाएँ", "n": 2, "safe": true, "source": "harvest", "reels": ["hi-4-satan-defeated"]}
+{"lang": "hi", "wrong": "बच्चन", "right": "वचन", "n": 2, "safe": true, "source": "harvest", "reels": ["hi-4-satan-defeated", "hi-5-prayer-blessing"]}
+{"lang": "hi", "wrong": "में", "right": "मैं", "n": 2, "safe": false, "source": "harvest", "reels": ["hi-2-painter-part1", "hi-6-akele-nahi.jc"]}
+{"lang": "hi", "wrong": "यशु", "right": "यीशु", "n": 2, "safe": true, "source": "harvest", "reels": ["hi-4-satan-defeated", "hi-5-prayer-blessing"]}
+{"lang": "hi", "wrong": "वहां", "right": "वहाँ", "n": 2, "safe": true, "source": "harvest", "reels": ["hi-3-painter-part2"]}
+{"lang": "hi", "wrong": "है", "right": "हैं", "n": 2, "safe": false, "source": "harvest", "reels": ["hi-3-painter-part2"]}
+{"lang": "hi", "wrong": "अमेन", "right": "आमीन", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-5-prayer-blessing"]}
+{"lang": "hi", "wrong": "आए", "right": "आएँ", "n": 1, "safe": false, "source": "harvest", "reels": ["hi-4-satan-defeated"]}
+{"lang": "hi", "wrong": "आग के", "right": "आके", "n": 1, "safe": false, "source": "harvest", "reels": ["hi-2-painter-part1"]}
+{"lang": "hi", "wrong": "इंप्रेसिबल", "right": "इम्प्रेसिव", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-2-painter-part1"]}
+{"lang": "hi", "wrong": "उबचन", "right": "वो वचन", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-5-prayer-blessing"]}
+{"lang": "hi", "wrong": "कन", "right": "कौन", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-6-akele-nahi.jc"]}
+{"lang": "hi", "wrong": "काफी", "right": "काफ़ी", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "hi", "wrong": "कृषि", "right": "क्रूस", "n": 1, "safe": false, "source": "split", "reels": []}
+{"lang": "hi", "wrong": "कृषि मृत्यु", "right": "क्रूस की मृत्यु", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "hi", "wrong": "चीज", "right": "चीज़", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-1-main-kar-sakunga"]}
+{"lang": "hi", "wrong": "चैतान", "right": "शैतान", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-4-satan-defeated"]}
+{"lang": "hi", "wrong": "जरिए", "right": "ज़रिए", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-1-main-kar-sakunga"]}
+{"lang": "hi", "wrong": "जवान", "right": "ज़बान", "n": 1, "safe": false, "source": "split", "reels": []}
+{"lang": "hi", "wrong": "डाविनजी", "right": "दा विंची", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-3-painter-part2"]}
+{"lang": "hi", "wrong": "डिजाइनर", "right": "डिज़ाइनर", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "hi", "wrong": "ढूंढ", "right": "ढूँढ", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-4-satan-defeated"]}
+{"lang": "hi", "wrong": "पांच", "right": "पाँच", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-2-painter-part1"]}
+{"lang": "hi", "wrong": "पाऊंगा", "right": "पाऊँगा", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "hi", "wrong": "पिकासू", "right": "पिकासो", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-3-painter-part2"]}
+{"lang": "hi", "wrong": "पॉलुस", "right": "पौलुस", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-1-main-kar-sakunga"]}
+{"lang": "hi", "wrong": "प्रफु", "right": "प्रभु", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "hi", "wrong": "फायदा", "right": "फ़ायदा", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-3-painter-part2"]}
+{"lang": "hi", "wrong": "बेचान", "right": "बेचा", "n": 1, "safe": false, "source": "harvest", "reels": ["hi-3-painter-part2"]}
+{"lang": "hi", "wrong": "मार्क", "right": "मार्ग", "n": 1, "safe": false, "source": "harvest", "reels": ["hi-5-prayer-blessing"]}
+{"lang": "hi", "wrong": "मुख्य", "right": "मुँह", "n": 1, "safe": false, "source": "harvest", "reels": ["hi-6-akele-nahi.jc"]}
+{"lang": "hi", "wrong": "लुसिफोर", "right": "लूसिफर", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "hi", "wrong": "लूसीफर", "right": "लूसिफर", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-1-main-kar-sakunga"]}
+{"lang": "hi", "wrong": "सके", "right": "सकें", "n": 1, "safe": false, "source": "harvest", "reels": ["hi-5-prayer-blessing"]}
+{"lang": "hi", "wrong": "सिखाऊंगा", "right": "सिखाऊँगा", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-2-painter-part1"]}
+{"lang": "hi", "wrong": "हजार", "right": "हज़ार", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-2-painter-part1"]}
+{"lang": "hi", "wrong": "हमारा जवान", "right": "हमारी ज़बान", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "hi", "wrong": "हूं", "right": "हूँ", "n": 1, "safe": true, "source": "harvest", "reels": ["hi-6-akele-nahi.jc"]}
+{"lang": "or", "wrong": "ଅପୋଜିଟ", "right": "ଅପୋଜିଟ୍", "n": 2, "safe": true, "source": "harvest", "reels": ["5-share-the-gospel"]}
+{"lang": "or", "wrong": "ବରହା", "right": "ବାରାହ", "n": 2, "safe": true, "source": "harvest", "reels": ["1-made-beautiful", "1-perfect-creation"]}
+{"lang": "or", "wrong": "ବାରହା", "right": "ବାରାହ", "n": 2, "safe": true, "source": "harvest", "reels": ["1-made-beautiful", "1-perfect-creation"]}
+{"lang": "or", "wrong": "ବିଶ୍ୱ", "right": "ବିଷୟ", "n": 2, "safe": false, "source": "harvest", "reels": ["3-why-the-bible"]}
+{"lang": "or", "wrong": "ଆଡକୁ", "right": "ଆଡ଼କୁ", "n": 1, "safe": true, "source": "harvest", "reels": ["3-why-the-bible"]}
+{"lang": "or", "wrong": "ଆଲୁଆ", "right": "ହାଲେଲୁୟା", "n": 1, "safe": true, "source": "harvest", "reels": ["3-why-the-bible"]}
+{"lang": "or", "wrong": "ଆଲୁହ", "right": "ହାଲେଲୁୟା", "n": 1, "safe": true, "source": "harvest", "reels": ["3-why-the-bible"]}
+{"lang": "or", "wrong": "ଇମ୍ପୋର୍ଟେଣ୍ଟ", "right": "ଇମ୍ପୋର୍ଟାଣ୍ଟ", "n": 1, "safe": true, "source": "harvest", "reels": ["4-thief-on-the-cross"]}
+{"lang": "or", "wrong": "ଓପୋଜିଟ", "right": "ଅପୋଜିଟ୍", "n": 1, "safe": true, "source": "harvest", "reels": ["5-share-the-gospel"]}
+{"lang": "or", "wrong": "କରିଲା", "right": "କଲା", "n": 1, "safe": false, "source": "harvest", "reels": ["3-one-third-angels"]}
+{"lang": "or", "wrong": "କୃଷରେ", "right": "କ୍ରୁଶରେ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "କୃଷି", "right": "କ୍ରୁଶୀୟ", "n": 1, "safe": false, "source": "split", "reels": []}
+{"lang": "or", "wrong": "କୃଷି ମୃତ୍ୟୁ", "right": "କ୍ରୁଶୀୟ ମୃତ୍ୟୁ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "କୃଷିୟ", "right": "କ୍ରୁଶୀୟ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "କୋଠର", "right": "କଠୋର", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ଖସି ଯାଉ", "right": "ଖସିଯାଉ", "n": 1, "safe": true, "source": "harvest", "reels": ["4-dont-fall-down"]}
+{"lang": "or", "wrong": "ଚିରେ", "right": "ଚର୍ଚ୍ଚରେ", "n": 1, "safe": false, "source": "harvest", "reels": ["2-made-to-praise"]}
+{"lang": "or", "wrong": "ଚେଡ଼କୁ", "right": "ଚର୍ଚ୍ଚକୁ", "n": 1, "safe": true, "source": "harvest", "reels": ["1-not-by-works"]}
+{"lang": "or", "wrong": "ଠିକ", "right": "ଠିକ୍", "n": 1, "safe": true, "source": "harvest", "reels": ["1-not-by-works"]}
+{"lang": "or", "wrong": "ଡିସକରେଜ ର", "right": "ଡିସକରେଜର", "n": 1, "safe": true, "source": "harvest", "reels": ["6-satan-defeated.jc"]}
+{"lang": "or", "wrong": "ତ ପାରା ଦେଶକୁ", "right": "ପାରଦୀଶକୁ", "n": 1, "safe": false, "source": "harvest", "reels": ["4-thief-on-the-cross"]}
+{"lang": "or", "wrong": "ତବଳା", "right": "ତବଲା", "n": 1, "safe": true, "source": "harvest", "reels": ["2-made-to-praise"]}
+{"lang": "or", "wrong": "ତୃତୀୟଂଶ", "right": "ତୃତୀୟାଂଶ", "n": 1, "safe": true, "source": "harvest", "reels": ["3-one-third-angels"]}
+{"lang": "or", "wrong": "ଦଉ", "right": "ଦେଉ", "n": 1, "safe": true, "source": "harvest", "reels": ["5-share-the-gospel"]}
+{"lang": "or", "wrong": "ଦଉଛନ୍ତି", "right": "ଦେଉଛନ୍ତି", "n": 1, "safe": true, "source": "harvest", "reels": ["5-share-the-gospel"]}
+{"lang": "or", "wrong": "ଦଉନାହାନ୍ତି", "right": "ଦେଉନାହାନ୍ତି", "n": 1, "safe": true, "source": "harvest", "reels": ["5-share-the-gospel"]}
+{"lang": "or", "wrong": "ଦିନ ମାନଙ୍କରେ", "right": "ଦିନମାନଙ୍କରେ", "n": 1, "safe": true, "source": "harvest", "reels": ["2-made-to-praise"]}
+{"lang": "or", "wrong": "ଦିନ ସାରା ଝଗଡା", "right": "ଦିନସାରା ଝଗଡ଼ା", "n": 1, "safe": true, "source": "harvest", "reels": ["2-with-what-heart"]}
+{"lang": "or", "wrong": "ଦ୍ଵାରା", "right": "ଦ୍ୱାରା", "n": 1, "safe": true, "source": "harvest", "reels": ["1-not-by-works"]}
+{"lang": "or", "wrong": "ଦୟାକର", "right": "ଦୟା କର", "n": 1, "safe": false, "source": "harvest", "reels": ["2-with-what-heart"]}
+{"lang": "or", "wrong": "ନଉନାହିଁ", "right": "ନେଉନାହିଁ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ନଦେଲେ", "right": "ନ ଦେଲେ", "n": 1, "safe": true, "source": "harvest", "reels": ["5-share-the-gospel"]}
+{"lang": "or", "wrong": "ନାଇ", "right": "ନାଇଁ", "n": 1, "safe": true, "source": "harvest", "reels": ["3-why-the-bible"]}
+{"lang": "or", "wrong": "ପକେଇଦମା", "right": "ପକେଇଦେମା", "n": 1, "safe": true, "source": "harvest", "reels": ["2-with-what-heart"]}
+{"lang": "or", "wrong": "ପଚରା ଗଲେ", "right": "ପଚରାଗଲେ", "n": 1, "safe": true, "source": "harvest", "reels": ["5-hold-the-word"]}
+{"lang": "or", "wrong": "ପଢିଲେ", "right": "ପଢ଼ିଲେ", "n": 1, "safe": true, "source": "harvest", "reels": ["3-why-the-bible"]}
+{"lang": "or", "wrong": "ପରିଥ୍ରାଣ", "right": "ପରିତ୍ରାଣ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ପରିଦ୍ରାଣ", "right": "ପରିତ୍ରାଣ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ପହେଲା", "right": "ପହିଲା", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ପୁନରୁଥିତ", "right": "ପୁନରୁତ୍ଥିତ", "n": 1, "safe": true, "source": "harvest", "reels": ["4-dont-fall-down"]}
+{"lang": "or", "wrong": "ପ୍ରାକ୍ଟିକାଲ", "right": "ପ୍ରାକ୍ଟିକାଲ୍", "n": 1, "safe": true, "source": "harvest", "reels": ["5-hold-the-word"]}
+{"lang": "or", "wrong": "ପ୍ୟାଡ଼", "right": "ପ୍ୟାଡ୍", "n": 1, "safe": true, "source": "harvest", "reels": ["2-made-to-praise"]}
+{"lang": "or", "wrong": "ବଜଉଛନ୍ତି", "right": "ବଜାଉଛନ୍ତି", "n": 1, "safe": true, "source": "harvest", "reels": ["2-made-to-praise"]}
+{"lang": "or", "wrong": "ବଢିଆ", "right": "ବଢ଼ିଆ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ବିଝିପାରୁଛୁ", "right": "ବୁଝିପାରୁଛୁ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ବିଶ୍ବାସୀ", "right": "ବିଶ୍ୱାସୀ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ବିଶ୍ବାସୀ ମାନେ", "right": "ବିଶ୍ୱାସୀମାନେ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ବିଷ", "right": "ବିଷୟ", "n": 1, "safe": false, "source": "harvest", "reels": ["2-made-to-praise"]}
+{"lang": "or", "wrong": "ବିଷକୁ", "right": "ବିଷୟକୁ", "n": 1, "safe": true, "source": "harvest", "reels": ["6-satan-defeated.jc"]}
+{"lang": "or", "wrong": "ମାଇଣ୍ଡ ସେଟ୍", "right": "ମାଇଣ୍ଡସେଟ୍", "n": 1, "safe": true, "source": "harvest", "reels": ["1-not-by-works"]}
+{"lang": "or", "wrong": "ମୁଇଁ", "right": "ମୁଁ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ମୂଳ ଦୁଆ", "right": "ମୂଳଦୁଆ", "n": 1, "safe": true, "source": "harvest", "reels": ["1-made-beautiful"]}
+{"lang": "or", "wrong": "ଯିଶୁ", "right": "ଯୀଶୁ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ଯିଶୁ କୃଷରେ", "right": "ଯୀଶୁ କ୍ରୁଶରେ", "n": 1, "safe": true, "source": "harvest", "reels": ["4-dont-fall-down"]}
+{"lang": "or", "wrong": "ଯିଶୁଙ୍କର", "right": "ଯୀଶୁଙ୍କର", "n": 1, "safe": true, "source": "harvest", "reels": ["6-satan-defeated.jc"]}
+{"lang": "or", "wrong": "ଯିଶୁଙ୍କୁ", "right": "ଯୀଶୁଙ୍କୁ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ଯେ ମାନଙ୍କୁ", "right": "ଯେଉଁମାନଙ୍କୁ", "n": 1, "safe": false, "source": "harvest", "reels": ["5-share-the-gospel"]}
+{"lang": "or", "wrong": "ଲୁସିଫରରର", "right": "ଲୁସିଫରର", "n": 1, "safe": true, "source": "harvest", "reels": ["4-dont-fall-down"]}
+{"lang": "or", "wrong": "ଲେଖା ଯାଇଛି", "right": "ଲେଖାଯାଇଛି", "n": 1, "safe": true, "source": "harvest", "reels": ["1-perfect-creation"]}
+{"lang": "or", "wrong": "ଲେବଲ ରେ", "right": "ଲେଭେଲରେ", "n": 1, "safe": true, "source": "harvest", "reels": ["5-christ-in-me"]}
+{"lang": "or", "wrong": "ଶୃଙ୍ଘଳାରେ", "right": "ଶୃଙ୍ଖଳରେ", "n": 1, "safe": true, "source": "harvest", "reels": ["3-one-third-angels"]}
+{"lang": "or", "wrong": "ସମ୍ଭତ", "right": "ସମ୍ଭବ", "n": 1, "safe": true, "source": "harvest", "reels": ["6-satan-defeated.jc"]}
+{"lang": "or", "wrong": "ସିଙ୍ଗଲ ମୁମେଣ୍ଟ", "right": "ସିଙ୍ଗଲ୍ ମୋମେଣ୍ଟ", "n": 1, "safe": true, "source": "harvest", "reels": ["4-dont-fall-down"]}
+{"lang": "or", "wrong": "ସ୍ଵାମୀ", "right": "ସ୍ୱାମୀ", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ହଉ", "right": "ହେଉ", "n": 1, "safe": true, "source": "harvest", "reels": ["5-share-the-gospel"]}
+{"lang": "or", "wrong": "ହଉଛନ୍ତି", "right": "ହେଉଛନ୍ତି", "n": 1, "safe": true, "source": "harvest", "reels": ["3-one-third-angels"]}
+{"lang": "or", "wrong": "ହଉଛି", "right": "ହେଉଛି", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ହାରି ଲେଜ୍", "right": "ହମାରୀ ଲାଙ୍ଗୁଏଜ୍ ମେଁ", "n": 1, "safe": false, "source": "harvest", "reels": ["2-made-to-praise"]}
+{"lang": "or", "wrong": "ହି ନ", "right": "ହୀନ", "n": 1, "safe": true, "source": "harvest", "reels": ["5-share-the-gospel"]}
+{"lang": "or", "wrong": "ହେଇଛି", "right": "ହୋଇଛି", "n": 1, "safe": false, "source": "harvest", "reels": ["3-one-third-angels"]}
+{"lang": "or", "wrong": "ୱାର୍ଡସିପର୍", "right": "ୱର୍ସିପର୍", "n": 1, "safe": true, "source": "harvest", "reels": ["2-made-to-praise"]}
+{"lang": "or", "wrong": "ୱାର୍ସିପର୍", "right": "ୱର୍ସିପର୍", "n": 1, "safe": true, "source": "split", "reels": []}
+{"lang": "or", "wrong": "ୱିଥ ଆଉଟ", "right": "ୱିଦାଉଟ୍", "n": 1, "safe": true, "source": "harvest", "reels": ["1-perfect-creation"]}

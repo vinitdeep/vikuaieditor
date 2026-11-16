@@ -1,0 +1,532 @@
+[
+ {
+  "start": 2595.3,
+  "end": 2680.8,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "scripture",
+   "humor",
+   "odia"
+  ],
+  "reasons": [
+   "Hebrews 11 exposition",
+   "rhetorical questions to crowd",
+   "no clear encouragement"
+  ],
+  "summary": "Better resurrection; they chose suffering though deliverance was before them"
+ },
+ {
+  "start": 2680.8,
+  "end": 2719.7,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "crowd_qa",
+   "odia"
+  ],
+  "reasons": [
+   "army analogy loosely made",
+   "verse-reading instruction",
+   "low energy"
+  ],
+  "summary": "Giving life gladly for the Lord, read verse 36"
+ },
+ {
+  "start": 2719.7,
+  "end": 2835.0,
+  "score": 0.3,
+  "tags": [
+   "scripture",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "reads list of martyr sufferings",
+   "plain exposition",
+   "dwells on suffering"
+  ],
+  "summary": "Hebrews 11:36-38 stoned, sawn in two, homeless, persecuted"
+ },
+ {
+  "start": 2835.0,
+  "end": 2937.6,
+  "score": 0.3,
+  "tags": [
+   "story",
+   "humor",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "humorous 'but' marriage-inquiry illustration",
+   "point is they missed the promise",
+   "needs context"
+  ],
+  "summary": "Despite fame, 'but' they did not receive the promise"
+ },
+ {
+  "start": 2937.6,
+  "end": 3035.8,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "word_study",
+   "mixed",
+   "hindi"
+  ],
+  "reasons": [
+   "definition of faith exposition",
+   "Hindi/Odia switching",
+   "raise-your-hand aside"
+  ],
+  "summary": "Faith defined; God prepared something better for us"
+ },
+ {
+  "start": 3035.8,
+  "end": 3099.1,
+  "score": 0.6,
+  "tags": [
+   "direct_address",
+   "encouragement",
+   "scripture",
+   "mixed"
+  ],
+  "reasons": [
+   "identity: we are greater than OT heroes",
+   "encouraging contrast",
+   "some Hindi asides"
+  ],
+  "summary": "Abraham, Moses did great works but we are greater in Jesus"
+ },
+ {
+  "start": 3099.1,
+  "end": 3135.9,
+  "score": 0.6,
+  "tags": [
+   "humor",
+   "declaration",
+   "odia"
+  ],
+  "reasons": [
+   "playful 'will Moses come out of me?'",
+   "lands on Christ is in me today",
+   "builds to the reel"
+  ],
+  "summary": "Not Abraham or Daniel inside me; Christ is in me today"
+ },
+ {
+  "start": 3135.9,
+  "end": 3189.0,
+  "score": 0.9,
+  "tags": [
+   "direct_address",
+   "encouragement",
+   "declaration",
+   "scripture",
+   "odia"
+  ],
+  "reasons": [
+   "accepted reel 'Christ in me'",
+   "identity and greater works promise",
+   "ends on Christ present in me"
+  ],
+  "summary": "He lifted us; we will do greater works; Christ in me"
+ },
+ {
+  "start": 3189.0,
+  "end": 3270.3,
+  "score": 0.0,
+  "tags": [
+   "worship",
+   "hindi",
+   "mixed"
+  ],
+  "reasons": [
+   "quotes and explains song lyrics",
+   "Hindi aside",
+   "no standalone point"
+  ],
+  "summary": "Explaining song 'mera dil bane tera singhasan'"
+ },
+ {
+  "start": 3270.3,
+  "end": 3322.4,
+  "score": 0.6,
+  "tags": [
+   "scripture",
+   "encouragement",
+   "mixed"
+  ],
+  "reasons": [
+   "Hebrews 11:39-40 applied to us",
+   "God chose and anointed us",
+   "partly Hindi, noisy"
+  ],
+  "summary": "They didn't reach; we stand on first step, God chose us"
+ },
+ {
+  "start": 3322.4,
+  "end": 3366.0,
+  "score": 0.9,
+  "tags": [
+   "direct_address",
+   "declaration",
+   "victory",
+   "scripture",
+   "odia"
+  ],
+  "reasons": [
+   "we are royal chosen people, not ordinary",
+   "call to live it out",
+   "ends 'I won't fall back, go forward'"
+  ],
+  "summary": "Holding the only Son we are royal sons; go forward"
+ },
+ {
+  "start": 3366.0,
+  "end": 3486.5,
+  "score": 0.0,
+  "tags": [
+   "worship",
+   "prayer",
+   "hindi"
+  ],
+  "reasons": [
+   "worship song lyrics",
+   "closing prayer",
+   "no sermon content"
+  ],
+  "summary": "Worship song 'mera dil bane tera singhasan'"
+ },
+ {
+  "start": 3486.5,
+  "end": 3604.2,
+  "score": 0.0,
+  "tags": [
+   "worship",
+   "hindi"
+  ],
+  "reasons": [
+   "worship song repeated",
+   "ASR fragments",
+   "no content"
+  ],
+  "summary": "Worship song continues, Yeshua"
+ },
+ {
+  "start": 3604.2,
+  "end": 3688.5,
+  "score": 0.0,
+  "tags": [
+   "prayer",
+   "hindi",
+   "mixed"
+  ],
+  "reasons": [
+   "prayer over offering and month",
+   "addressed to God not listener",
+   "list-like blessings"
+  ],
+  "summary": "Prayer: accept offerings, bless this month"
+ },
+ {
+  "start": 3688.5,
+  "end": 3781.8,
+  "score": 0.0,
+  "tags": [
+   "prayer",
+   "hindi",
+   "mixed"
+  ],
+  "reasons": [
+   "prayer for sick and bondages",
+   "prayer list style",
+   "no teaching point"
+  ],
+  "summary": "Prayer for healing, every bondage breaks in Jesus' name"
+ },
+ {
+  "start": 3781.8,
+  "end": 3866.3,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "notice",
+   "odia"
+  ],
+  "reasons": [
+   "seating logistics",
+   "calling testimony giver",
+   "dead air"
+  ],
+  "summary": "Come forward; someone wrote a testimony, Rama Behera"
+ },
+ {
+  "start": 3866.3,
+  "end": 3934.2,
+  "score": 0.3,
+  "tags": [
+   "story",
+   "notice",
+   "odia"
+  ],
+  "reasons": [
+   "read-out third-party testimony",
+   "new life in Jesus mentioned",
+   "prayer request framing"
+  ],
+  "summary": "Testimony from Jharsuguda shop owner, Hindu neighbours, new life"
+ },
+ {
+  "start": 3934.2,
+  "end": 3988.5,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "prayer",
+   "odia"
+  ],
+  "reasons": [
+   "communion logistics",
+   "kneel/stand/sit instructions",
+   "worship team cue"
+  ],
+  "summary": "Pray for her; instructions before Lord's table"
+ },
+ {
+  "start": 3988.5,
+  "end": 4052.7,
+  "score": 0.6,
+  "tags": [
+   "scripture",
+   "encouragement",
+   "odia"
+  ],
+  "reasons": [
+   "by his stripes we are healed",
+   "vivid blood imagery",
+   "truth sets you free"
+  ],
+  "summary": "Lord's table not casual; his blood heals and frees"
+ },
+ {
+  "start": 4052.7,
+  "end": 4086.3,
+  "score": 0.6,
+  "tags": [
+   "scripture",
+   "declaration",
+   "direct_address",
+   "odia"
+  ],
+  "reasons": [
+   "John 8:32 to listener",
+   "blood as identity stamp",
+   "ends on we know Christ"
+  ],
+  "summary": "Truth will set you free; blood is our identity mark"
+ },
+ {
+  "start": 4086.3,
+  "end": 4101.7,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "worship",
+   "odia"
+  ],
+  "reasons": [
+   "stand, close eyes instructions",
+   "transition to worship",
+   "no content"
+  ],
+  "summary": "Let's stand and connect in worship"
+ },
+ {
+  "start": 4101.7,
+  "end": 4206.3,
+  "score": 0.0,
+  "tags": [
+   "worship",
+   "odia"
+  ],
+  "reasons": [
+   "communion song lyrics",
+   "ASR fragments",
+   "no sermon content"
+  ],
+  "summary": "Communion song, blood flowing for us"
+ },
+ {
+  "start": 4206.3,
+  "end": 4312.2,
+  "score": 0.0,
+  "tags": [
+   "worship",
+   "odia"
+  ],
+  "reasons": [
+   "song lyrics only",
+   "ASR fragments",
+   "no sermon content"
+  ],
+  "summary": "Song continues"
+ },
+ {
+  "start": 4312.2,
+  "end": 4419.0,
+  "score": 0.0,
+  "tags": [
+   "worship",
+   "odia"
+  ],
+  "reasons": [
+   "song lyrics only",
+   "brief remember-the-blood line",
+   "no standalone point"
+  ],
+  "summary": "Song continues; remember his blood"
+ },
+ {
+  "start": 4419.0,
+  "end": 4533.8,
+  "score": 0.0,
+  "tags": [
+   "worship",
+   "odia"
+  ],
+  "reasons": [
+   "song lyrics",
+   "ASR fragments",
+   "no content"
+  ],
+  "summary": "Song about his body and blood"
+ },
+ {
+  "start": 4533.8,
+  "end": 4600.4,
+  "score": 0.6,
+  "tags": [
+   "scripture",
+   "direct_address",
+   "encouragement",
+   "odia"
+  ],
+  "reasons": [
+   "Isaiah 53 read and applied",
+   "by his stripes we are healed",
+   "invites listener to come freely"
+  ],
+  "summary": "Isaiah 53; Jesus calls you today, say I love you Lord"
+ },
+ {
+  "start": 4600.4,
+  "end": 4671.7,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "prayer",
+   "odia"
+  ],
+  "reasons": [
+   "communion distribution logistics",
+   "prayer over bread",
+   "no listener message"
+  ],
+  "summary": "Servers distribute; prayer over the bread"
+ },
+ {
+  "start": 4671.7,
+  "end": 4768.5,
+  "score": 0.0,
+  "tags": [
+   "worship",
+   "odia"
+  ],
+  "reasons": [
+   "song lyrics",
+   "ASR fragments",
+   "no content"
+  ],
+  "summary": "Communion song"
+ },
+ {
+  "start": 4768.5,
+  "end": 4859.0,
+  "score": 0.0,
+  "tags": [
+   "worship",
+   "odia"
+  ],
+  "reasons": [
+   "song lyrics",
+   "ASR fragments",
+   "no content"
+  ],
+  "summary": "Song continues, thanks"
+ },
+ {
+  "start": 4859.0,
+  "end": 4943.2,
+  "score": 0.0,
+  "tags": [
+   "prayer",
+   "scripture",
+   "odia"
+  ],
+  "reasons": [
+   "liturgical words of institution",
+   "ritual reading",
+   "no application"
+  ],
+  "summary": "1 Corinthians 11 words over bread and cup"
+ },
+ {
+  "start": 4943.2,
+  "end": 5042.2,
+  "score": 0.3,
+  "tags": [
+   "prayer",
+   "encouragement",
+   "declaration",
+   "odia"
+  ],
+  "reasons": [
+   "encouraging but addressed to God",
+   "truth frees from trials",
+   "declares month of blessing"
+  ],
+  "summary": "Prayer: trials come but truth frees; we are blessed"
+ },
+ {
+  "start": 5042.2,
+  "end": 5138.1,
+  "score": 0.0,
+  "tags": [
+   "prayer",
+   "odia"
+  ],
+  "reasons": [
+   "closing prayer list",
+   "online viewers, sick, meetings",
+   "no listener address"
+  ],
+  "summary": "Prayer for online viewers, sick, upcoming meetings"
+ },
+ {
+  "start": 5138.1,
+  "end": 5237.5,
+  "score": 0.0,
+  "tags": [
+   "prayer",
+   "odia"
+  ],
+  "reasons": [
+   "closing prayer",
+   "Lord's Prayer",
+   "benediction"
+  ],
+  "summary": "Prayer for ministry, Lord's Prayer, benediction"
+ }
+]

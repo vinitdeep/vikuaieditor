@@ -1,0 +1,633 @@
+[
+ {
+  "start": 2881.7,
+  "end": 2958.4,
+  "score": 0.0,
+  "tags": [
+   "offering_list",
+   "notice",
+   "odia"
+  ],
+  "reasons": [
+   "donor/offering prayer list",
+   "service time notice",
+   "no message"
+  ],
+  "summary": "donor names, prayer for their families, church timing"
+ },
+ {
+  "start": 2958.4,
+  "end": 3098.8,
+  "score": 0.0,
+  "tags": [
+   "prayer",
+   "notice",
+   "mixed"
+  ],
+  "reasons": [
+   "welcome of guest preacher",
+   "opening prayer",
+   "no listener message"
+  ],
+  "summary": "welcome, eyes closed, opening prayer before the word"
+ },
+ {
+  "start": 3098.8,
+  "end": 3191.2,
+  "score": 0.0,
+  "tags": [
+   "crowd_qa",
+   "logistics",
+   "mixed"
+  ],
+  "reasons": [
+   "topic call-out to crowd",
+   "scolds people on mobiles",
+   "hallelujah call-and-response"
+  ],
+  "summary": "asks topic aloud, online greetings, phones, praise the Lord"
+ },
+ {
+  "start": 3191.2,
+  "end": 3277.8,
+  "score": 0.0,
+  "tags": [
+   "crowd_qa",
+   "logistics",
+   "hindi"
+  ],
+  "reasons": [
+   "recaps last week's question",
+   "crowd asked for answers",
+   "language-mix announcement"
+  ],
+  "summary": "last week's question on Bible's beginning, Odia-Hindi mix"
+ },
+ {
+  "start": 3277.8,
+  "end": 3332.7,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "sets up a teaching question",
+   "flood history backstory",
+   "no application"
+  ],
+  "summary": "was Noah's flood the first destruction of the world?"
+ },
+ {
+  "start": 3332.7,
+  "end": 3391.9,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "crowd_qa",
+   "odia"
+  ],
+  "reasons": [
+   "power cut on screen",
+   "asks someone to read Genesis 1:1",
+   "hand raising"
+  ],
+  "summary": "no power for slides, read Genesis 1:1 aloud"
+ },
+ {
+  "start": 3391.9,
+  "end": 3499.8,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "scripture",
+   "word_study",
+   "odia"
+  ],
+  "reasons": [
+   "Genesis 1:1-2 exposition",
+   "gap theory explanation",
+   "no direct encouragement"
+  ],
+  "summary": "heaven and earth created, gap between verse 1 and 2"
+ },
+ {
+  "start": 3499.8,
+  "end": 3590.1,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "hindi"
+  ],
+  "reasons": [
+   "reading Hindi Bible aloud",
+   "break while cable is connected",
+   "tech interruption"
+  ],
+  "summary": "Hindi Bible text, pause for cord, online viewers"
+ },
+ {
+  "start": 3590.1,
+  "end": 3639.8,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "hindi"
+  ],
+  "reasons": [
+   "recap of flood question",
+   "Genesis 1:2 terms",
+   "teaching hints only"
+  ],
+  "summary": "there was a flood before Noah's flood, hints"
+ },
+ {
+  "start": 3639.8,
+  "end": 3714.8,
+  "score": 0.3,
+  "tags": [
+   "word_study",
+   "story",
+   "mixed"
+  ],
+  "reasons": [
+   "word study of 'nirjan'",
+   "chairs-knocked-over analogy",
+   "exposition, low energy"
+  ],
+  "summary": "nirjan means empty of people, chairs upturned analogy"
+ },
+ {
+  "start": 3714.8,
+  "end": 3765.2,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "word_study",
+   "mixed"
+  ],
+  "reasons": [
+   "gap theory: millions of years",
+   "Lucifer's fall backstory",
+   "no listener application"
+  ],
+  "summary": "huge undated gap between Genesis 1:1 and 1:2"
+ },
+ {
+  "start": 3765.2,
+  "end": 3781.6,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "scripture",
+   "odia"
+  ],
+  "reasons": [
+   "God makes things beautiful",
+   "rhetorical question to crowd",
+   "creation exposition"
+  ],
+  "summary": "if God makes a world he makes it beautiful"
+ },
+ {
+  "start": 3781.6,
+  "end": 3862.3,
+  "score": 0.0,
+  "tags": [
+   "word_study",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "matches rejected 'perfect creation' draft",
+   "Hebrew word study (bara, tohu)",
+   "no encouragement for listener"
+  ],
+  "summary": "earth created perfect without stain, Hebrew bara, without form"
+ },
+ {
+  "start": 3862.3,
+  "end": 3912.8,
+  "score": 0.3,
+  "tags": [
+   "word_study",
+   "scripture",
+   "odia"
+  ],
+  "reasons": [
+   "Hebrew tohu va-bohu",
+   "prophets' usage",
+   "Jeremiah 4:23 reference"
+  ],
+  "summary": "tohu means ruined place, Jeremiah 4:23-26"
+ },
+ {
+  "start": 3912.8,
+  "end": 4066.8,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "odia"
+  ],
+  "reasons": [
+   "find-the-verse logistics",
+   "projector system problems",
+   "long silence"
+  ],
+  "summary": "take out Jeremiah, operating system issues, speaks without slides"
+ },
+ {
+  "start": 4066.8,
+  "end": 4137.7,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "word_study",
+   "mixed"
+  ],
+  "reasons": [
+   "recap of bara and tohu",
+   "asks was earth destroyed",
+   "repetition"
+  ],
+  "summary": "recap: creation spotless, then darkness; was earth destroyed?"
+ },
+ {
+  "start": 4137.7,
+  "end": 4217.3,
+  "score": 0.0,
+  "tags": [
+   "crowd_qa",
+   "humor",
+   "odia"
+  ],
+  "reasons": [
+   "scolds slow crowd response",
+   "'first class students' jibe",
+   "mic problem"
+  ],
+  "summary": "why so slow, I'm not a preacher who talks and runs"
+ },
+ {
+  "start": 4217.3,
+  "end": 4346.4,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "flood in Genesis 1:2 theory",
+   "Adam and Eve, creation order",
+   "evolution vs Bible aside"
+  ],
+  "summary": "what existed before Adam, science and monkey theory"
+ },
+ {
+  "start": 4346.4,
+  "end": 4444.0,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "mixed"
+  ],
+  "reasons": [
+   "earlier creation with angels",
+   "one angel given authority",
+   "crowd asked to respond"
+  ],
+  "summary": "first creation had angels; one angel given rule"
+ },
+ {
+  "start": 4444.0,
+  "end": 4494.4,
+  "score": 0.6,
+  "tags": [
+   "story",
+   "hindi"
+  ],
+  "reasons": [
+   "vivid pastor-away illustration",
+   "'my place now' usurper story",
+   "explains Lucifer's pride"
+  ],
+  "summary": "I leave someone in charge, return, he says it's his place now"
+ },
+ {
+  "start": 4494.4,
+  "end": 4528.3,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "mixed"
+  ],
+  "reasons": [
+   "Lucifer biography intro",
+   "mild jab: knowing names isn't enough",
+   "no encouragement"
+  ],
+  "summary": "knowing Lucifer's name isn't enough, how much you read matters"
+ },
+ {
+  "start": 4528.3,
+  "end": 4562.8,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "crowd_qa",
+   "odia"
+  ],
+  "reasons": [
+   "find Ezekiel 28 logistics",
+   "verse-number call-outs",
+   "no content"
+  ],
+  "summary": "take out Ezekiel 28, read from verse 12"
+ },
+ {
+  "start": 4562.8,
+  "end": 4683.4,
+  "score": 0.3,
+  "tags": [
+   "scripture",
+   "teaching",
+   "mixed"
+  ],
+  "reasons": [
+   "Ezekiel 28 read aloud",
+   "list of precious stones",
+   "crowd yes/no prompts"
+  ],
+  "summary": "king of Tyre lament, Eden, precious stones covering"
+ },
+ {
+  "start": 4683.4,
+  "end": 4734.4,
+  "score": 0.3,
+  "tags": [
+   "story",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "diamond colours aside",
+   "Lucifer made beautiful",
+   "backstory"
+  ],
+  "summary": "black diamonds cost more; Lucifer made beautiful, we from dust"
+ },
+ {
+  "start": 4734.4,
+  "end": 4801.1,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "notice",
+   "odia"
+  ],
+  "reasons": [
+   "instruments created for Lucifer",
+   "worship leader coming notice",
+   "made-but-not-liked reel range"
+  ],
+  "summary": "tabla, flute, keyboard made to praise God through Lucifer"
+ },
+ {
+  "start": 4801.1,
+  "end": 4888.7,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "first heaven/earth picture",
+   "angels filled first earth",
+   "exposition recap"
+  ],
+  "summary": "first earth full of angels, perfect creation, Revelation stones"
+ },
+ {
+  "start": 4888.7,
+  "end": 4961.7,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "word_study",
+   "odia"
+  ],
+  "reasons": [
+   "Lucifer as anointed cherub",
+   "four-point outline",
+   "ruler with full authority"
+  ],
+  "summary": "anointed cherub, ruler with access everywhere, wanted to be lord"
+ },
+ {
+  "start": 4961.7,
+  "end": 5029.9,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "church authority application",
+   "pastor/deacon structure",
+   "mild, not encouraging"
+  ],
+  "summary": "giving one person full authority can bring problems in church"
+ },
+ {
+  "start": 5029.9,
+  "end": 5095.8,
+  "score": 0.6,
+  "tags": [
+   "direct_address",
+   "humor",
+   "story",
+   "mixed"
+  ],
+  "reasons": [
+   "speaks to 'you' about pride",
+   "Lucifer boasting mimicry",
+   "warning, not victory"
+  ],
+  "summary": "if you become most beautiful you start boasting; pride stops growth"
+ },
+ {
+  "start": 5095.8,
+  "end": 5167.7,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "scripture",
+   "odia"
+  ],
+  "reasons": [
+   "cause of the fall",
+   "pride and rebellion",
+   "Isaiah 14 reference"
+  ],
+  "summary": "iniquity found in him, pride, rebellion, Isaiah 14"
+ },
+ {
+  "start": 5167.7,
+  "end": 5186.0,
+  "score": 0.9,
+  "tags": [
+   "direct_address",
+   "encouragement",
+   "declaration",
+   "hindi"
+  ],
+  "reasons": [
+   "'I alone am enough' vs God",
+   "punchy Hindi declaration",
+   "needs God's help: strong hook"
+  ],
+  "summary": "when we say I alone am enough, God says go alone"
+ },
+ {
+  "start": 5186.0,
+  "end": 5202.5,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "fear_judgement",
+   "mixed"
+  ],
+  "reasons": [
+   "whoever relied on self fell",
+   "Old Testament recap",
+   "ends on downfall"
+  ],
+  "summary": "whoever thought I can alone has fallen"
+ },
+ {
+  "start": 5202.5,
+  "end": 5254.7,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "crowd_qa",
+   "scripture",
+   "mixed"
+  ],
+  "reasons": [
+   "Isaiah 14 step-by-step",
+   "crowd says points aloud",
+   "exposition"
+  ],
+  "summary": "first mistake: I will ascend to heaven, throne above stars"
+ },
+ {
+  "start": 5254.7,
+  "end": 5341.3,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "crowd_qa",
+   "odia"
+  ],
+  "reasons": [
+   "Lucifer's 'I will' steps",
+   "mountain-name quiz",
+   "exposition"
+  ],
+  "summary": "stars are God's throne, mount of assembly, highest mountains"
+ },
+ {
+  "start": 5341.3,
+  "end": 5412.0,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "above the clouds explanation",
+   "space aside",
+   "Lucifer's final rebellion"
+  ],
+  "summary": "ascend above clouds, be like the Most High"
+ },
+ {
+  "start": 5412.0,
+  "end": 5447.3,
+  "score": 0.9,
+  "tags": [
+   "direct_address",
+   "encouragement",
+   "hindi"
+  ],
+  "reasons": [
+   "about our tongue, applies to 'us'",
+   "names the enemy behind it",
+   "punchy, user-chosen segment"
+  ],
+  "summary": "our tongue says things; who makes us? Lucifer"
+ },
+ {
+  "start": 5447.3,
+  "end": 5474.9,
+  "score": 0.0,
+  "tags": [
+   "crowd_qa",
+   "humor",
+   "odia"
+  ],
+  "reasons": [
+   "banter about being late to church",
+   "crowd exchange",
+   "no message"
+  ],
+  "summary": "who came late to church today, why late"
+ },
+ {
+  "start": 5474.9,
+  "end": 5492.3,
+  "score": 0.6,
+  "tags": [
+   "direct_address",
+   "encouragement",
+   "hindi"
+  ],
+  "reasons": [
+   "'admitting mistake is greater'",
+   "short punchy line",
+   "then Lucifer recap"
+  ],
+  "summary": "admitting a mistake is bigger than making one"
+ },
+ {
+  "start": 5492.3,
+  "end": 5526.4,
+  "score": 0.0,
+  "tags": [
+   "crowd_qa",
+   "mixed"
+  ],
+  "reasons": [
+   "scolds congregation",
+   "'I've taught you for years'",
+   "negative tone"
+  ],
+  "summary": "Lucifer wanted competition; you knew nothing, I taught you"
+ },
+ {
+  "start": 5526.4,
+  "end": 5622.7,
+  "score": 0.3,
+  "tags": [
+   "story",
+   "hindi"
+  ],
+  "reasons": [
+   "painter story set-up",
+   "backstory, no payoff yet",
+   "low energy"
+  ],
+  "summary": "a painter sold sketches, teaches his son the craft"
+ }
+]

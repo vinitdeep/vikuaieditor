@@ -1,0 +1,66 @@
+{
+ "n_pos": 98,
+ "n_neg": 539,
+ "excluded_0.4": 25,
+ "l2=1.0": {
+  "random5": 0.935,
+  "blocked5": 0.666,
+  "blocked_folds": [
+   0.594,
+   0.671,
+   0.744,
+   0.965,
+   0.781
+  ],
+  "cross_sermon(test btf, test salvation)": [
+   0.693,
+   0.572
+  ]
+ },
+ "l2=10.0": {
+  "random5": 0.942,
+  "blocked5": 0.705,
+  "blocked_folds": [
+   0.691,
+   0.671,
+   0.745,
+   0.941,
+   0.871
+  ],
+  "cross_sermon(test btf, test salvation)": [
+   0.767,
+   0.661
+  ]
+ },
+ "l2=100.0": {
+  "random5": 0.937,
+  "blocked5": 0.723,
+  "blocked_folds": [
+   0.703,
+   0.729,
+   0.73,
+   0.933,
+   0.908
+  ],
+  "cross_sermon(test btf, test salvation)": [
+   0.793,
+   0.702
+  ]
+ },
+ "l2=1000.0": {
+  "random5": 0.538,
+  "blocked5": 0.486,
+  "blocked_folds": [
+   0.576,
+   0.54,
+   0.573,
+   0.181,
+   0.505
+  ],
+  "cross_sermon(test btf, test salvation)": [
+   0.408,
+   0.246
+  ]
+ },
+ "centroid_cosine_blocked5": 0.76
+}

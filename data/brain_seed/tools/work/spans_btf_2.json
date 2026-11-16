@@ -1,0 +1,913 @@
+[
+ {
+  "start": 5623.0,
+  "end": 5673.4,
+  "score": 0.3,
+  "tags": [
+   "story",
+   "hindi",
+   "humor"
+  ],
+  "reasons": [
+   "backstory of illustration",
+   "aside about first salary",
+   "no direct encouragement"
+  ],
+  "summary": "Painter boy sells first painting; who gives first salary to God"
+ },
+ {
+  "start": 5673.4,
+  "end": 5739.1,
+  "score": 0.3,
+  "tags": [
+   "story",
+   "hindi"
+  ],
+  "reasons": [
+   "story build-up, point not yet made",
+   "narration of prices"
+  ],
+  "summary": "Painting price rises from 300 to 15,000 as father teaches"
+ },
+ {
+  "start": 5739.1,
+  "end": 5831.9,
+  "score": 0.3,
+  "tags": [
+   "story",
+   "hindi"
+  ],
+  "reasons": [
+   "story continues",
+   "son rejects father's teaching",
+   "no application yet"
+  ],
+  "summary": "Son says he needs no more teaching; father is hurt"
+ },
+ {
+  "start": 5831.9,
+  "end": 5887.3,
+  "score": 0.3,
+  "tags": [
+   "story",
+   "hindi"
+  ],
+  "reasons": [
+   "story twist",
+   "sets up point",
+   "needs context"
+  ],
+  "summary": "Paintings stop selling once he signs his own name"
+ },
+ {
+  "start": 5887.3,
+  "end": 5943.7,
+  "score": 0.6,
+  "tags": [
+   "story",
+   "hindi"
+  ],
+  "reasons": [
+   "illustration lands its point",
+   "Father's name gives value",
+   "no direct call to listener"
+  ],
+  "summary": "Without the father's name the art has no value, like Picasso"
+ },
+ {
+  "start": 5943.7,
+  "end": 6034.4,
+  "score": 0.3,
+  "tags": [
+   "scripture",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "reading Isaiah 14:12-14",
+   "Lucifer backstory",
+   "exposition"
+  ],
+  "summary": "Isaiah 14: how you are fallen, Lucifer, I will be like God"
+ },
+ {
+  "start": 6034.4,
+  "end": 6122.5,
+  "score": 0.3,
+  "tags": [
+   "scripture",
+   "teaching",
+   "mixed"
+  ],
+  "reasons": [
+   "verse-by-verse reading",
+   "Lucifer made earth a wilderness",
+   "no application"
+  ],
+  "summary": "Isaiah 14:15-17 read and explained in Odia and Hindi"
+ },
+ {
+  "start": 6122.5,
+  "end": 6193.5,
+  "score": 0.3,
+  "tags": [
+   "scripture",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "continued Isaiah reading",
+   "exposition of cities destroyed",
+   "no listener focus"
+  ],
+  "summary": "Lucifer destroyed cities, did not free prisoners; cast out"
+ },
+ {
+  "start": 6193.5,
+  "end": 6265.0,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "fear_judgement",
+   "mixed"
+  ],
+  "reasons": [
+   "Lucifer kept in a special place",
+   "sin and destruction enter",
+   "ends on destruction"
+  ],
+  "summary": "Lucifer's mistake brought sin and destruction into the world"
+ },
+ {
+  "start": 6265.0,
+  "end": 6329.6,
+  "score": 0.3,
+  "tags": [
+   "scripture",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "Revelation 12:3 dragon",
+   "recap of five points",
+   "teaching recap"
+  ],
+  "summary": "Red dragon in Revelation; recap of Lucifer's five steps"
+ },
+ {
+  "start": 6329.6,
+  "end": 6403.2,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "pride grew slowly, not in one day",
+   "flood and darkness backstory",
+   "mild application"
+  ],
+  "summary": "Pride grew gradually over ages; God removed light, flood came"
+ },
+ {
+  "start": 6403.2,
+  "end": 6437.3,
+  "score": 0.3,
+  "tags": [
+   "crowd_qa",
+   "teaching",
+   "mixed"
+  ],
+  "reasons": [
+   "crowd prompted to answer",
+   "days of creation recap",
+   "some things not in Bible"
+  ],
+  "summary": "Not Genesis 1:1 then days 2-5; why some things are omitted"
+ },
+ {
+  "start": 6437.3,
+  "end": 6469.6,
+  "score": 0.6,
+  "tags": [
+   "encouragement",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "Bible given to centre us on God's love",
+   "grace, mercy, glory",
+   "mildly encouraging, made-not-liked range"
+  ],
+  "summary": "Bible given so we stay centred on God's love and grace"
+ },
+ {
+  "start": 6469.6,
+  "end": 6488.4,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "crowd_qa",
+   "mixed"
+  ],
+  "reasons": [
+   "asks if people have Bibles",
+   "crowd banter",
+   "no content"
+  ],
+  "summary": "Do you have your Bible? crowd answers"
+ },
+ {
+  "start": 6488.4,
+  "end": 6557.9,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "flood bigger than Noah's",
+   "ancient earth destroyed",
+   "backstory"
+  ],
+  "summary": "God destroyed ancient earth by flood; angels walked on jewels"
+ },
+ {
+  "start": 6557.9,
+  "end": 6575.5,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "description of jewelled earth",
+   "then disobedience came",
+   "backstory"
+  ],
+  "summary": "Earth made with gold, diamonds, pearls; then disobedience came"
+ },
+ {
+  "start": 6575.5,
+  "end": 6609.6,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "fear_judgement",
+   "odia"
+  ],
+  "reasons": [
+   "refers to on-screen picture",
+   "bones and destruction",
+   "ends on destruction"
+  ],
+  "summary": "Picture: bright earth became dark, people sank down"
+ },
+ {
+  "start": 6609.6,
+  "end": 6664.2,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "mixed"
+  ],
+  "reasons": [
+   "science can't reach ocean depths",
+   "God hid secrets under the sea",
+   "curiosity, no application"
+  ],
+  "summary": "Science goes up, never down: God's secrets under the sea"
+ },
+ {
+  "start": 6664.2,
+  "end": 6708.6,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "mixed"
+  ],
+  "reasons": [
+   "three parts water",
+   "creation not ordinary",
+   "speculative teaching"
+  ],
+  "summary": "Three quarters water; first creation covered by the sea"
+ },
+ {
+  "start": 6708.6,
+  "end": 6756.1,
+  "score": 0.3,
+  "tags": [
+   "scripture",
+   "teaching",
+   "mixed"
+  ],
+  "reasons": [
+   "Genesis 1:2-3 recap",
+   "let there be light",
+   "exposition"
+  ],
+  "summary": "God began rewriting Genesis 1:2; light, separation of days"
+ },
+ {
+  "start": 6756.1,
+  "end": 6790.3,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "scripture",
+   "odia"
+  ],
+  "reasons": [
+   "read Jude 1:6 logistics",
+   "long pauses",
+   "no content"
+  ],
+  "summary": "Read Jude chapter 1 verse 6"
+ },
+ {
+  "start": 6790.3,
+  "end": 6860.2,
+  "score": 0.0,
+  "tags": [
+   "teaching",
+   "fear_judgement",
+   "odia"
+  ],
+  "reasons": [
+   "one-third angels followed Lucifer",
+   "chains until judgement",
+   "user rejected this range"
+  ],
+  "summary": "One third of angels fell with Lucifer, bound in darkness"
+ },
+ {
+  "start": 6860.2,
+  "end": 6908.9,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia",
+   "humor"
+  ],
+  "reasons": [
+   "God doesn't destroy even an enemy rashly",
+   "bound until set time",
+   "God as a good player aside"
+  ],
+  "summary": "They are bound until a time; God keeps even Lucifer bound"
+ },
+ {
+  "start": 6908.9,
+  "end": 6943.0,
+  "score": 0.0,
+  "tags": [
+   "teaching",
+   "fear_judgement",
+   "odia"
+  ],
+  "reasons": [
+   "a terrible war will come",
+   "special chains",
+   "ends on fear"
+  ],
+  "summary": "A day comes with a terrible war; special chains hold them"
+ },
+ {
+  "start": 6943.0,
+  "end": 7006.3,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "Eden backstory",
+   "Adam and Eve corrupted",
+   "exposition"
+  ],
+  "summary": "Eden: who was in the garden, responsibility given to Adam"
+ },
+ {
+  "start": 7006.3,
+  "end": 7061.4,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "Lucifer's authority transferred to Adam",
+   "temptation story",
+   "backstory"
+  ],
+  "summary": "Lucifer sought his lost authority and tempted Adam and Eve"
+ },
+ {
+  "start": 7061.4,
+  "end": 7111.3,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "first bloodshed",
+   "Satan tried to stop the Saviour",
+   "backstory"
+  ],
+  "summary": "First murder; Satan learns of the heel prophecy"
+ },
+ {
+  "start": 7111.3,
+  "end": 7160.6,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "Satan attacked Israel",
+   "history narration",
+   "no listener focus"
+  ],
+  "summary": "Satan tried to stop Jesus coming, attacked Israel and Jews"
+ },
+ {
+  "start": 7160.6,
+  "end": 7178.4,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "hindi"
+  ],
+  "reasons": [
+   "behind every wrong is one hand",
+   "energetic but backstory",
+   "no turn yet"
+  ],
+  "summary": "Something goes wrong: behind it is the enemy's hand"
+ },
+ {
+  "start": 7178.4,
+  "end": 7193.8,
+  "score": 0.9,
+  "tags": [
+   "victory",
+   "declaration",
+   "odia"
+  ],
+  "reasons": [
+   "cross and resurrection = Satan's final defeat",
+   "victory declaration",
+   "used in positive jump-cut reel"
+  ],
+  "summary": "On the cross and resurrection Satan was finally defeated"
+ },
+ {
+  "start": 7193.8,
+  "end": 7218.0,
+  "score": 0.3,
+  "tags": [
+   "scripture",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "Matthew 4 temptation",
+   "Satan still thinks he owns world",
+   "setup"
+  ],
+  "summary": "Matthew 4: bow to me and I'll give you the world"
+ },
+ {
+  "start": 7218.0,
+  "end": 7239.5,
+  "score": 0.9,
+  "tags": [
+   "direct_address",
+   "encouragement",
+   "mixed"
+  ],
+  "reasons": [
+   "even today Lucifer wants to defeat you",
+   "names discouragement and depression",
+   "positive jump-cut segment"
+  ],
+  "summary": "Even today Lucifer wants to defeat you with discouragement"
+ },
+ {
+  "start": 7239.5,
+  "end": 7283.9,
+  "score": 0.9,
+  "tags": [
+   "direct_address",
+   "victory",
+   "scripture",
+   "hindi"
+  ],
+  "reasons": [
+   "'you can't' is the enemy's voice",
+   "I can do all things through Christ",
+   "user liked"
+  ],
+  "summary": "Lucifer says you can't; Paul said I can through my God"
+ },
+ {
+  "start": 7283.9,
+  "end": 7333.1,
+  "score": 0.9,
+  "tags": [
+   "direct_address",
+   "encouragement",
+   "declaration",
+   "odia"
+  ],
+  "reasons": [
+   "don't fall down when problems come",
+   "nothing impossible; God lifts you high",
+   "user liked"
+  ],
+  "summary": "Every moment problems come, don't fall; God will raise you"
+ },
+ {
+  "start": 7333.1,
+  "end": 7350.9,
+  "score": 0.6,
+  "tags": [
+   "victory",
+   "encouragement",
+   "odia"
+  ],
+  "reasons": [
+   "resurrection is good news for us",
+   "hope after defeat of Satan",
+   "continues liked reel"
+  ],
+  "summary": "Satan grieved at resurrection; today it is good news for us"
+ },
+ {
+  "start": 7350.9,
+  "end": 7366.9,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "mixed"
+  ],
+  "reasons": [
+   "garbled Hindi",
+   "creation restarts",
+   "transition"
+  ],
+  "summary": "We received the gospel; let there be light, creation restarts"
+ },
+ {
+  "start": 7366.9,
+  "end": 7384.0,
+  "score": 0.6,
+  "tags": [
+   "victory",
+   "scripture",
+   "odia"
+  ],
+  "reasons": [
+   "Jesus refuted Satan with the Word",
+   "Satan's attempt failed",
+   "victory without direct address"
+  ],
+  "summary": "Satan's temptation failed: Jesus answered with the Word"
+ },
+ {
+  "start": 7384.0,
+  "end": 7425.2,
+  "score": 0.0,
+  "tags": [
+   "logistics",
+   "scripture",
+   "odia"
+  ],
+  "reasons": [
+   "read 2 Corinthians 4:4 logistics",
+   "pauses",
+   "no content"
+  ],
+  "summary": "Read 2 Corinthians chapter 4 verse 4"
+ },
+ {
+  "start": 7425.2,
+  "end": 7456.1,
+  "score": 0.3,
+  "tags": [
+   "scripture",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "god of this world blinds unbelievers",
+   "read carefully again",
+   "exposition"
+  ],
+  "summary": "Read carefully: the god of this world blinded unbelievers"
+ },
+ {
+  "start": 7456.1,
+  "end": 7522.8,
+  "score": 0.6,
+  "tags": [
+   "direct_address",
+   "encouragement",
+   "scripture",
+   "odia"
+  ],
+  "reasons": [
+   "if you share the gospel you glorify God",
+   "challenge to listener",
+   "made-not-liked range, humor about hospitality"
+  ],
+  "summary": "Sharing the gospel glorifies God; not sharing dishonours Him"
+ },
+ {
+  "start": 7522.8,
+  "end": 7580.0,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "mixed"
+  ],
+  "reasons": [
+   "believers' eyes may be shut too",
+   "judgmental mind",
+   "scolding tone"
+  ],
+  "summary": "Even believers may be blind; name already cut from heaven"
+ },
+ {
+  "start": 7580.0,
+  "end": 7599.0,
+  "score": 0.3,
+  "tags": [
+   "story",
+   "crowd_qa",
+   "mixed"
+  ],
+  "reasons": [
+   "blind man illustration setup",
+   "asks crowd",
+   "needs context"
+  ],
+  "summary": "What do we do for a blind man? lead him across the road"
+ },
+ {
+  "start": 7599.0,
+  "end": 7615.8,
+  "score": 0.0,
+  "tags": [
+   "crowd_qa",
+   "humor",
+   "mixed"
+  ],
+  "reasons": [
+   "counting hands in crowd",
+   "who has done it",
+   "no message"
+  ],
+  "summary": "Who has helped a blind man cross? counting one to ten"
+ },
+ {
+  "start": 7615.8,
+  "end": 7648.2,
+  "score": 0.6,
+  "tags": [
+   "direct_address",
+   "encouragement",
+   "story",
+   "hindi"
+  ],
+  "reasons": [
+   "leading a blind person stirs love in you",
+   "people outside the Lord are blind",
+   "God will show us how to guide them"
+  ],
+  "summary": "Leading the blind across brings love; unbelievers are blind too"
+ },
+ {
+  "start": 7648.2,
+  "end": 7700.7,
+  "score": 0.0,
+  "tags": [
+   "crowd_qa",
+   "humor",
+   "odia"
+  ],
+  "reasons": [
+   "can believers be blind? banter",
+   "watch-reading joke",
+   "crowd Q&A"
+  ],
+  "summary": "Who is blind? one who can read a watch - banter"
+ },
+ {
+  "start": 7700.7,
+  "end": 7749.2,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "notice",
+   "mixed"
+  ],
+  "reasons": [
+   "Adam's eyes opened",
+   "20-day prayer reference",
+   "mild warning"
+  ],
+  "summary": "Adam and Eve fine until eyes opened; 20 days of prayer"
+ },
+ {
+  "start": 7749.2,
+  "end": 7789.6,
+  "score": 0.0,
+  "tags": [
+   "fear_judgement",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "you tend to become blind",
+   "scolding the crowd",
+   "'what was preached?' jab"
+  ],
+  "summary": "The world's god will blind you; some sit blind in church"
+ },
+ {
+  "start": 7789.6,
+  "end": 7838.3,
+  "score": 0.0,
+  "tags": [
+   "fear_judgement",
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "chain: no Word, no fear, disobedience, fall",
+   "ends on downfall",
+   "user rejected range"
+  ],
+  "summary": "If we don't hold the Word our eyes stay shut and we fall"
+ },
+ {
+  "start": 7838.3,
+  "end": 7856.9,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "Word opens eyes, not surgery",
+   "how Satan captures the world",
+   "setup"
+  ],
+  "summary": "Eye surgery can't open this eye; we need the Word"
+ },
+ {
+  "start": 7856.9,
+  "end": 7909.2,
+  "score": 0.9,
+  "tags": [
+   "victory",
+   "direct_address",
+   "hindi"
+  ],
+  "reasons": [
+   "Satan lost to the Father, angels and Jesus",
+   "now targets sons and daughters",
+   "user liked"
+  ],
+  "summary": "Satan lost every war; now he targets God's children"
+ },
+ {
+  "start": 7909.2,
+  "end": 7925.9,
+  "score": 0.6,
+  "tags": [
+   "encouragement",
+   "direct_address",
+   "hindi"
+  ],
+  "reasons": [
+   "our job is to show them the right way",
+   "purpose call",
+   "end of liked range"
+  ],
+  "summary": "Our job: show them the right path so they come to God"
+ },
+ {
+  "start": 7925.9,
+  "end": 7977.8,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "diagram recap",
+   "creation, fall, flood, re-creation",
+   "teaching recap"
+  ],
+  "summary": "Recap diagram: perfect creation, Lucifer's rule, flood, new man"
+ },
+ {
+  "start": 7977.8,
+  "end": 8028.0,
+  "score": 0.3,
+  "tags": [
+   "teaching",
+   "odia"
+  ],
+  "reasons": [
+   "recap continues",
+   "mysteries left out",
+   "no application"
+  ],
+  "summary": "Final defeat at cross; many mysteries about Cain and Seth"
+ },
+ {
+  "start": 8028.0,
+  "end": 8045.1,
+  "score": 0.3,
+  "tags": [
+   "fear_judgement",
+   "teaching",
+   "mixed"
+  ],
+  "reasons": [
+   "Satan breaks the body temple",
+   "we are heading into a fallen state",
+   "warning tone"
+  ],
+  "summary": "Satan attacks the body temple; we are going into a fall"
+ },
+ {
+  "start": 8045.1,
+  "end": 8079.9,
+  "score": 0.9,
+  "tags": [
+   "victory",
+   "scripture",
+   "declaration",
+   "odia"
+  ],
+  "reasons": [
+   "Satan prowls like a lion BUT if we hold the Word",
+   "we can defeat everything",
+   "positive jump-cut segment"
+  ],
+  "summary": "Satan roars like a lion, but holding the Word we win"
+ },
+ {
+  "start": 8079.9,
+  "end": 8097.9,
+  "score": 0.0,
+  "tags": [
+   "prayer",
+   "odia"
+  ],
+  "reasons": [
+   "call to show the blind the way",
+   "then close eyes for prayer",
+   "service transition"
+  ],
+  "summary": "Decide to show the blind the way; close eyes, thank you Lord"
+ },
+ {
+  "start": 8097.9,
+  "end": 8165.7,
+  "score": 0.3,
+  "tags": [
+   "prayer",
+   "hindi"
+  ],
+  "reasons": [
+   "closing prayer blessing",
+   "made-not-liked range",
+   "no direct address"
+  ],
+  "summary": "Closing prayer: bless the word sown, give us a holy fear"
+ },
+ {
+  "start": 8165.7,
+  "end": 8196.9,
+  "score": 0.0,
+  "tags": [
+   "worship",
+   "offering_list",
+   "mixed"
+  ],
+  "reasons": [
+   "offering announcement",
+   "song begins",
+   "no content"
+  ],
+  "summary": "Let's sing and gather our offering"
+ }
+]
