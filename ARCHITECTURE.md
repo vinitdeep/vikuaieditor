@@ -77,6 +77,19 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
    "status":"draft|built|rendered","exports":[]}]}
 ```
 
+### Engine implementation notes (Phase 1, additive to the contract above)
+- **Data dir**: everything the engine writes lives in `%APPDATA%\Viku` (env `VIKU_DATA` overrides), not in the repo's
+  `data/` / `models/`: `settings.json`, `projects/<id>/`, `fonts/`, `bible/<code>.sqlite`, `library/`, `music/`, `sfx/`,
+  `models/brain/{ranker,corrections}.json`, `feedback.jsonl`. `settings.projects_dir` / `exports_dir` can move projects/exports.
+- **Reel ids** are `<project id>~<n>`; exports go to `<project>/exports/<n>-<slug>.mp4` (+ `.jpg`).
+- **Extra endpoints**: `GET /jobs`, `GET /jobs/{id}`, `POST /jobs/{id}/cancel`, `GET /reels/{id}`, `POST /music/seed`.
+- **Request options**: analyze `{range:[s,e], steps:{proxy,shots,asr}}`; suggest `{count, range}`; autobuild `{steps:{captions,cutaways,music}}`;
+  automate `{video_path | project_id, language, count, range, render}`; library import `{paths, tags, seed}`; bible download `{langs}`.
+- **Project JSON additions**: `width, height, proxy_offset` (proxy of a range starts at that source second), `proxies[]`, `peaks` (npy path),
+  `analyzed[[s,e]]`, `suggestions[]`; transcript items carry `alt` (CTC text); reels carry `duration, jumps, src, voice, enhance`,
+  captions `{flags, alt, conf}`, cutaways `{lib_id, why}`, verses `{attribution}`, exports `{path, thumbnail, width, height, duration, lufs, true_peak}`.
+- **Thumbnail** (Phase 1): a frame grab at `pose_t`; style templates come with the Phase 2 designer. `/auth/status.gemini_web` is `null` (owned by the app's sign-in window).
+
 ## Offline AI (clip finder + caption fixer) — "Viku Brain"
 - Signals per transcript window (sentence-ish chunks joined at pauses, 20–60 s): voice energy & variance, speech rate, pitch variance (excitement), direct address ("ଆପଣ/ତୁମେ", "आप/तुम", "you"), encouragement/victory lexicon (or/hi/en, `engine/viku/brain/lexicon.json`), scripture mention regex (book names in 3 languages + "ଅଧ୍ୟାୟ/अध्याय/chapter"), ends-on-hope check (last 2 sentences), Hindi/Odia language id.
 - Semantic score: multilingual sentence embedding (`intfloat/multilingual-e5-small`, ONNX/CPU) similarity to the user's favourite reels vs rejected ones.

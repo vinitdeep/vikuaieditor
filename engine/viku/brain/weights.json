@@ -1,0 +1,19 @@
+{
+ "_doc": "Hand-set clip-finder weights over z-scored window features (used until /learn has >= 10 labels). Positive = more like the user's favourite reels (high energy, 'you', victory over the enemy, scripture, ends on a punchline of hope).",
+ "bias": 0.0,
+ "weights": {
+  "energy": 0.6,
+  "energy_var": 0.35,
+  "speech_rate": 0.25,
+  "direct_address": 0.7,
+  "victory": 0.9,
+  "enemy": 0.35,
+  "scripture": 0.4,
+  "ends_on_hope": 1.0,
+  "ends_negative": -0.9,
+  "call_response": -0.6,
+  "asr_conf": 0.3,
+  "duration_fit": 0.5,
+  "semantic": 0.0
+ }
+}

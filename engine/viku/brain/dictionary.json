@@ -1,0 +1,13 @@
+{
+ "_doc": "fixes = safe ASR spelling fixes (applied, flagged 'corrected'); vocab = Bible/church words - a caption word one edit away from one is flagged 'near_vocab' with it as the suggestion (never auto-applied).",
+ "fixes": {
+  "or": {"ଜିଶୁ": "ଯୀଶୁ", "ଯିଶୁ": "ଯୀଶୁ", "ଜୀଶୁ": "ଯୀଶୁ", "ଖ୍ରିଷ୍ଟ": "ଖ୍ରୀଷ୍ଟ", "ହାଲିଲୁୟା": "ହାଲେଲୁୟା"},
+  "hi": {"यिशु": "यीशु", "यीशू": "यीशु", "मशीह": "मसीह", "परमेश्र्वर": "परमेश्वर"},
+  "en": {"jesus": "Jesus", "holy spirit": "Holy Spirit", "hallelujah": "Hallelujah"}
+ },
+ "vocab": {
+  "or": ["ଯୀଶୁ", "ଖ୍ରୀଷ୍ଟ", "ଈଶ୍ବର", "ପ୍ରଭୁ", "ଆତ୍ମା", "ବାଇବଲ", "ଶୟତାନ", "ଲୁସିଫର", "ପରିତ୍ରାଣ", "ଅନୁଗ୍ରହ", "ମଣ୍ଡଳୀ", "ପ୍ରାର୍ଥନା", "ଆରାଧନା", "ସ୍ୱର୍ଗ", "ହାଲେଲୁୟା", "ଆମେନ", "କ୍ରୁଶ", "ପାଉଲ", "ମୋଶା", "ଦାଉଦ", "ଅବ୍ରାହାମ", "ପିତର", "ଯୋହନ", "ଇସ୍ରାଏଲ", "ଯିରୂଶାଲମ", "ଶିଷ୍ୟ", "ପ୍ରେରିତ", "ସୁସମାଚାର", "ବିଶ୍ୱାସ", "ଆଶୀର୍ବାଦ"],
+  "hi": ["यीशु", "मसीह", "परमेश्वर", "प्रभु", "आत्मा", "बाइबल", "शैतान", "लूसिफर", "उद्धार", "अनुग्रह", "कलीसिया", "प्रार्थना", "आराधना", "स्वर्ग", "हालेलूय्याह", "आमीन", "क्रूस", "पौलुस", "मूसा", "दाऊद", "अब्राहम", "पतरस", "यूहन्ना", "इस्राएल", "यरूशलेम", "चेले", "प्रेरित", "सुसमाचार", "विश्वास", "आशीष"],
+  "en": ["Jesus", "Christ", "God", "Lord", "Spirit", "Bible", "Satan", "Lucifer", "salvation", "grace", "church", "prayer", "worship", "heaven", "Hallelujah", "Amen", "cross", "Paul", "Moses", "David", "Abraham", "Peter", "John", "Israel", "Jerusalem", "disciples", "apostle", "gospel", "faith", "blessing"]
+ }
+}
