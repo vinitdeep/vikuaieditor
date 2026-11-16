@@ -33,29 +33,44 @@ def concepts() -> list[dict]:
     return json.loads((HERE / "concepts.json").read_text(encoding="utf-8"))["concepts"]
 
 
+@functools.lru_cache(maxsize=256)
+def _norm_words(words: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    """-> (phrases, short exact words, prefix words), normalised once."""
+    ws = [norm(w) for w in words if w and norm(w)]
+    return (tuple(w for w in ws if " " in w), tuple(w for w in ws if " " not in w and len(w) <= 2),
+            tuple(w for w in ws if " " not in w and len(w) > 2))
+
+
 def count_hits(text: str, words: list[str]) -> int:
+    phr, short, pre = _norm_words(tuple(words))
     t = norm(text)
     toks = tokens(text)
-    n = 0
-    for w in words:
-        w = norm(w)
-        if " " in w:
-            n += t.count(w)
-        elif len(w) <= 2:
-            n += sum(1 for k in toks if k == w)
-        else:
-            n += sum(1 for k in toks if k.startswith(w))
+    n = sum(t.count(w) for w in phr)
+    n += sum(1 for k in toks if k in short)
+    for k in toks:
+        n += sum(1 for w in pre if k.startswith(w))
     return n
 
 
+@functools.lru_cache(maxsize=1)
+def _lex_words() -> dict:
+    out = {}
+    for group, lx in lexicon().items():
+        if not isinstance(lx, dict):
+            continue
+        for lang in ("or", "hi", "en"):
+            langs = [lang] if lang in lx else list(lx)
+            words = [w for L in langs for w in lx.get(L, [])]
+            if lang != "en":
+                words += lx.get("en", [])  # sermons code-switch: English loanwords always count
+            out[(group, lang)] = tuple(dict.fromkeys(words))
+    return out
+
+
+@functools.lru_cache(maxsize=200000)
 def lex_hits(text: str, group: str, lang: str) -> int:
-    lx = lexicon().get(group, {})
-    langs = [lang] if lang in lx else list(lx)
-    words = [w for L in langs for w in lx.get(L, [])]
-    # sermons code-switch: always also try English loanwords
-    if lang != "en":
-        words += lx.get("en", [])
-    return count_hits(text, words)
+    words = _lex_words().get((group, lang if lang in ("or", "hi", "en") else "or"), ())
+    return count_hits(text, list(words)) if words else 0
 
 
 def script_of(text: str) -> str:

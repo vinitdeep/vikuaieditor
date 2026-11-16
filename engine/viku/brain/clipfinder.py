@@ -23,7 +23,7 @@ import numpy as np
 
 from .. import config
 from ..media import audio
-from . import embed, planner, text as T
+from . import embed, planner, ranker, text as T
 
 FEATURES = ["energy", "energy_var", "speech_rate", "direct_address", "victory", "enemy", "scripture",
             "ends_on_hope", "ends_negative", "call_response", "asr_conf", "duration_fit", "semantic"]
@@ -78,7 +78,8 @@ def build_windows(items: list[dict], min_len=20.0, max_len=60.0, end_gap=0.4) ->
     return out
 
 
-def features(items: list[dict], lang: str, db: np.ndarray, med: float, thr: float) -> dict:
+def features_v1(items: list[dict], lang: str, db: np.ndarray, med: float, thr: float) -> dict:
+    """v1 features (hand-weight baseline, weights.json) - kept for train_seed's baseline comparison."""
     s, e = items[0]["start"], items[-1]["end"]
     dur = max(e - s, 1e-3)
     mins = dur / 60
@@ -127,37 +128,37 @@ def is_filler(text: str, lang: str) -> bool:
     return len(rest) <= max(0, phr * 2) or (len(rest) <= 1 and len(toks) <= 3)
 
 
-def load_model() -> dict:
-    f = brain_dir() / "ranker.json"
-    if f.exists():
-        m = json.loads(f.read_text(encoding="utf-8"))
-        if m.get("n_labels", 0) >= 10:
-            return m | {"kind": "learned"}
-    w = json.loads((Path(__file__).parent / "weights.json").read_text(encoding="utf-8"))
-    return {"kind": "hand", "bias": w["bias"], "weights": w["weights"]}
+def sermon_audio(p: dict):
+    db = framedb(p) if p.get("wav16") and Path(p["wav16"]).exists() else np.zeros(0, np.float32)
+    med = float(np.median(db)) if len(db) else -40.0
+    return db, med, float(audio.threshold(db)) if len(db) else -99.0
 
 
-def zscore(rows: list[dict]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    X = np.array([[r[f] for f in FEATURES] for r in rows], float)
-    mu, sd = X.mean(0), X.std(0)
-    sd[sd < 1e-6] = 1.0
-    return (X - mu) / sd, mu, sd
+def window_text(items: list[dict]) -> str:
+    return " ".join(it["text"] for it in items)
 
 
-def score_rows(rows: list[dict], model: dict) -> tuple[np.ndarray, np.ndarray]:
-    """-> (scores 0..1, per-feature contributions)."""
-    if not rows:
-        return np.zeros(0), np.zeros((0, len(FEATURES)))
-    if model["kind"] == "learned":
-        X = np.array([[r[f] for f in FEATURES] for r in rows], float)
-        mu, sd = np.array(model["mean"]), np.array(model["std"])
-        Z = (X - mu) / sd
-    else:
-        Z, _, _ = zscore(rows)
-    w = np.array([model["weights"].get(f, 0.0) for f in FEATURES])
-    contrib = Z * w
-    s = model.get("bias", 0.0) + contrib.sum(1)
-    return 1 / (1 + np.exp(-s / 2)), contrib
+def score_windows(p: dict, wins: list[list[dict]], lang_default: str, job=None) -> tuple[np.ndarray, np.ndarray, list[dict], dict]:
+    """Raw features + embeddings for every window -> ranker scores (z-scored within this sermon)."""
+    db, med, thr = sermon_audio(p)
+    rows = []
+    for k, its in enumerate(wins):
+        rows.append(ranker.raw_features(its, lang_default, db if len(db) else None, med, thr, audio.FRAME))
+        if job is not None and k % 200 == 0:
+            job.check()
+            job.update(0.1 + 0.4 * k / max(len(wins), 1), f"window features {k}/{len(wins)}")
+    R = np.array([[r[f] for f in ranker.RAW] for r in rows], float)
+    m = ranker.load_model()
+    if not m:
+        raise RuntimeError("no ranker model (ranker_seed.json missing)")
+    texts = [window_text(its) for its in wins]
+    if job is not None:
+        job.update(0.5, f"embedding {len(texts)} windows")
+    E = embed.embed_texts(texts, "passage: ",
+                          progress=(lambda d, n: job.update(0.5 + 0.35 * d / max(n, 1), f"embedding windows {d}/{n}"))
+                          if job is not None else None)
+    sc, contrib = ranker.score(R, E, m)
+    return sc, contrib, rows, m
 
 
 def suggest(p: dict, count: int = 8, rng: list | None = None, job=None) -> list[dict]:
@@ -167,50 +168,39 @@ def suggest(p: dict, count: int = 8, rng: list | None = None, job=None) -> list[
     if len(items) < 3:
         return []
     lang_default = p["language"] if p["language"] != "auto" else "or"
-    db = framedb(p)
-    med = float(np.median(db)) if len(db) else -40.0
-    thr = audio.threshold(db)
+    if p["language"] != "auto":
+        items = [dict(t, lang=p["language"]) for t in items]
     wins = build_windows(items)
     if not wins:
         wins = [(0, len(items) - 1)]
-    rows, meta = [], []
-    for k, (i, j) in enumerate(wins):
-        its = items[i:j + 1]
-        langs = {}
-        for it in its:
-            langs[it.get("lang", lang_default)] = langs.get(it.get("lang", lang_default), 0) + it["end"] - it["start"]
-        lang = max(langs, key=langs.get)
-        if p["language"] != "auto":
-            lang = p["language"]
-        rows.append(features(its, lang, db, med, thr))
-        meta.append((i, j, lang))
-        if job is not None and k % 200 == 0:
-            job.check()
-            job.update(0.1 + 0.6 * k / len(wins), f"scoring windows {k}/{len(wins)}")
-    model = load_model()
-    sc, contrib = score_rows(rows, model)
+    sc, contrib, rows, model = score_windows(p, [items[i:j + 1] for i, j in wins], lang_default, job)
     order = np.argsort(-sc)
     picked: list[int] = []
     for k in order:
-        i, j, _ = meta[k]
+        i, j = wins[k]
         s, e = items[i]["start"], items[j]["end"]
-        if any(min(e, items[meta[q][1]]["end"]) - max(s, items[meta[q][0]]["start"]) > 0.25 * (e - s) for q in picked):
+        if any(min(e, items[wins[q][1]]["end"]) - max(s, items[wins[q][0]]["start"]) > 0.25 * (e - s) for q in picked):
             continue
         picked.append(int(k))
         if len(picked) >= count:
             break
     out = []
     for rank, k in enumerate(picked):
-        i, j, lang = meta[k]
+        i, j = wins[k]
         its = items[i:j + 1]
+        langs: dict[str, float] = {}
+        for it in its:
+            L = it.get("lang", lang_default)
+            langs[L] = langs.get(L, 0) + it["end"] - it["start"]
+        lang = max(langs, key=langs.get)
         segs = planner.plan(its, p.get("pauses", []), lang)
-        c = contrib[k]
-        top = [FEATURES[q] for q in np.argsort(-c) if c[q] > 0.15 and FEATURES[q] in REASONS][:4]
+        rs = ranker.reasons(contrib[k], model)
         out.append({"id": f"s{rank + 1}", "score": round(float(sc[k]), 4), "title": pick_title(its, lang),
                     "segments": segs, "window": [items[i]["start"], items[j]["end"]],
-                    "duration": round(sum(b - a for a, b in segs), 2), "reasons": [REASONS[f] for f in top],
-                    "language": lang, "features": {f: round(float(rows[k][f]), 4) for f in FEATURES},
-                    "model": model["kind"]})
+                    "duration": round(sum(b - a for a, b in segs), 2), "reasons": [r["why"] for r in rs],
+                    "reason_details": rs, "language": lang,
+                    "features": {f: (None if np.isnan(rows[k][f]) else round(float(rows[k][f]), 4)) for f in ranker.RAW},
+                    "model": model.get("kind")})
     return out
 
 
@@ -223,42 +213,11 @@ def pick_title(items: list[dict], lang: str) -> str:
 
 
 def window_features(p: dict, segments: list, lang: str) -> dict:
-    """Features for an arbitrary reel (its segments' transcript) - used to label feedback."""
+    """Raw ranker features + text for an arbitrary reel (its segments' transcript) - used to label feedback."""
     items = sorted([t for t in p.get("transcript", []) if any(t["start"] < e and t["end"] > s for s, e in segments)],
                    key=lambda t: t["start"])
     if not items:
         return {}
-    db = framedb(p) if p.get("wav16") else np.zeros(0)
-    med = float(np.median(db)) if len(db) else -40.0
-    return features(items, lang, db, med, audio.threshold(db))
-
-
-def fit_logreg(X: np.ndarray, y: np.ndarray, l2: float = 1.0, iters: int = 3000, lr: float = 0.1) -> tuple[np.ndarray, float]:
-    """Plain numpy logistic regression (gradient descent, L2)."""
-    n, d = X.shape
-    w, b = np.zeros(d), 0.0
-    for _ in range(iters):
-        z = X @ w + b
-        pr = 1 / (1 + np.exp(-z))
-        g = pr - y
-        w -= lr * (X.T @ g / n + l2 * w / n)
-        b -= lr * g.mean()
-    return w, float(b)
-
-
-def learn(rows: list[dict], labels: list[int]) -> dict:
-    X = np.array([[r.get(f, 0.0) for f in FEATURES] for r in rows], float)
-    y = np.array(labels, float)
-    mu, sd = X.mean(0), X.std(0)
-    sd[sd < 1e-6] = 1.0
-    w, b = fit_logreg((X - mu) / sd, y)
-    # scale to the same "2x" logit convention as score_rows
-    m = {"bias": b * 2, "weights": {f: float(v * 2) for f, v in zip(FEATURES, w)}, "mean": mu.tolist(),
-         "std": sd.tolist(), "n_labels": int(len(y)), "positives": int(y.sum())}
-    pred = 1 / (1 + np.exp(-(((X - mu) / sd) @ w + b)))
-    m["train_accuracy"] = float(((pred > 0.5) == (y > 0.5)).mean())
-    d = brain_dir()
-    d.mkdir(parents=True, exist_ok=True)
-    (d / "ranker.json").write_text(json.dumps(m, indent=1), encoding="utf-8")
-    return m
-
+    db, med, thr = sermon_audio(p)
+    f = ranker.raw_features(items, lang, db if len(db) else None, med, thr, audio.FRAME)
+    return {k: (None if np.isnan(v) else v) for k, v in f.items()} | {"_text": window_text(items)}
