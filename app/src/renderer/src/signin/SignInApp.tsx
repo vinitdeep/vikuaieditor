@@ -1,0 +1,395 @@
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  Check,
+  Copy,
+  Download,
+  ExternalLink,
+  FolderOpen,
+  House,
+  Image as ImageIcon,
+  KeyRound,
+  ListPlus,
+  Loader2,
+  Music2,
+  RotateCw,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+  X
+} from 'lucide-react'
+import type { CaptureEvent, GeminiViewState, PromptItem, SignInCard } from '@shared/ipc'
+import { api, initApi } from '@/api'
+import type { AuthStatus } from '@/api/types'
+import { isRec, str } from '@/api/normalize'
+import { toast, useApp } from '@/state/app'
+import { useJobs } from '@/state/jobs'
+import { Logo } from '@/components/TopBar'
+import { Button, IconButton, Progress } from '@/components/ui'
+import { Toasts } from '@/components/shell/Shell'
+
+const bridge = window.viku
+
+function Card({ id, active, onClick, icon: Icon, title, sub, status, tone }: { id: SignInCard; active: boolean; onClick: (id: SignInCard) => void; icon: typeof Music2; title: string; sub: string; status: string; tone: 'on' | 'off' | 'warn' }) {
+  return (
+    <button type="button" className={`si-card${active ? ' on' : ''}`} onClick={() => onClick(id)} aria-pressed={active}>
+      <span className={`si-icon si-${id}`}>
+        <Icon size={18} aria-hidden />
+      </span>
+      <span className="si-card-body">
+        <span className="si-card-title">{title}</span>
+        <span className="si-card-sub">{sub}</span>
+      </span>
+      <span className={`si-status s-${tone}`}>
+        <span className="dot" aria-hidden />
+        {status}
+      </span>
+    </button>
+  )
+}
+
+export function SignInApp() {
+  const [ready, setReady] = useState(false)
+  const [card, setCard] = useState<SignInCard>('gemini')
+  const [auth, setAuth] = useState<AuthStatus | null>(null)
+  const [gem, setGem] = useState<GeminiViewState | null>(null)
+  const [queue, setQueue] = useState<PromptItem[]>([])
+  const [captures, setCaptures] = useState<CaptureEvent[]>([])
+
+  useEffect(() => {
+    void (async () => {
+      const a = await initApi()
+      useApp.getState().set({ apiKind: a.kind })
+      a.subscribe((ev) => useJobs.getState().ingest(ev))
+      setAuth(await a.authStatus().catch(() => null))
+      setReady(true)
+    })()
+    if (!bridge) return
+    const offs = [
+      bridge.signin.onFocusCard((c) => setCard(c)),
+      bridge.signin.onQueue((q) => setQueue([...q])),
+      bridge.signin.onCapture((c) => setCaptures((x) => [c, ...x].slice(0, 24))),
+      bridge.signin.onToast((t) => toast(t.kind, t.text)),
+      bridge.signin.onGeminiState((s) => setGem(s))
+    ]
+    void bridge.signin.list().then((q) => setQueue([...q]))
+    void bridge.signin.geminiState().then(setGem)
+    return () => offs.forEach((o) => o())
+  }, [])
+
+  const refreshAuth = (): void => {
+    void api()
+      .authStatus()
+      .then(setAuth)
+      .catch(() => undefined)
+  }
+
+  return (
+    <div className="si-app">
+      <header className="si-top">
+        <Logo size={20} />
+        <span className="tb-app">Viku</span>
+        <span className="muted">Sign in &amp; connections</span>
+        <span className="grow" />
+        <span className="si-privacy">
+          <ShieldCheck size={13} aria-hidden /> You sign in yourself — Viku never sees or stores passwords
+        </span>
+      </header>
+      <div className="si-main">
+        <aside className="si-side">
+          <Card
+            id="gemini"
+            active={card === 'gemini'}
+            onClick={setCard}
+            icon={Sparkles}
+            title="Google AI Studio"
+            sub="Free illustrations with Gemini, in your own browser session"
+            status={gem?.signedIn ? 'Signed in' : 'Not signed in'}
+            tone={gem?.signedIn ? 'on' : 'off'}
+          />
+          <Card id="heygen" active={card === 'heygen'} onClick={setCard} icon={Music2} title="HeyGen" sub="Royalty-free music beds for reels" status={auth?.heygen ? 'Connected' : 'Not connected'} tone={auth?.heygen ? 'on' : 'off'} />
+          <Card
+            id="ebible"
+            active={card === 'ebible'}
+            onClick={setCard}
+            icon={BookOpen}
+            title="eBible"
+            sub="Download IRV Odia, IRV Hindi and WEB once, then fully offline"
+            status={auth?.ebible === 'downloaded' ? 'Downloaded' : 'Missing'}
+            tone={auth?.ebible === 'downloaded' ? 'on' : 'warn'}
+          />
+          <div className="si-note small muted">Everything here is optional. Viku works offline with your local library, music and models.</div>
+        </aside>
+        <section className="si-content">
+          {card === 'gemini' && <GeminiPane gem={gem} queue={queue} captures={captures} />}
+          {card === 'heygen' && ready && <HeygenPane connected={Boolean(auth?.heygen)} onChange={refreshAuth} />}
+          {card === 'ebible' && ready && <EbiblePane status={auth?.ebible ?? 'missing'} onChange={refreshAuth} />}
+        </section>
+      </div>
+      <Toasts />
+    </div>
+  )
+}
+
+function GeminiPane({ gem, queue, captures }: { gem: GeminiViewState | null; queue: PromptItem[]; captures: CaptureEvent[] }) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const [prompt, setPrompt] = useState('')
+  const [name, setName] = useState('')
+
+  // keep the AI Studio view glued to the placeholder rect
+  useLayoutEffect(() => {
+    const el = hostRef.current
+    if (!el || !bridge) return
+    const send = (): void => {
+      const r = el.getBoundingClientRect()
+      void bridge.signin.setGeminiBounds({ x: r.left, y: r.top, width: r.width, height: r.height })
+    }
+    const ro = new ResizeObserver(send)
+    ro.observe(el)
+    window.addEventListener('resize', send)
+    send()
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', send)
+      void bridge.signin.setGeminiBounds(null)
+    }
+  }, [])
+
+  const add = async (): Promise<void> => {
+    const p = prompt.trim()
+    if (!p || !bridge) return
+    const n = name.trim() || `illustration-${String(queue.length + 1).padStart(2, '0')}`
+    await bridge.signin.queue([{ prompt: p, name: n }])
+    setPrompt('')
+    setName('')
+  }
+
+  const waiting = queue.filter((q) => q.status === 'queued').length
+  const sent = queue.filter((q) => q.status === 'sent').length
+
+  return (
+    <div className="gem">
+      <div className="gem-bar">
+        <IconButton icon={ArrowLeft} label="Back" onClick={() => void bridge?.signin.geminiNav('back')} />
+        <IconButton icon={ArrowRight} label="Forward" onClick={() => void bridge?.signin.geminiNav('forward')} />
+        <IconButton icon={gem?.loading ? Loader2 : RotateCw} className={gem?.loading ? 'spin-icon' : ''} label="Reload" onClick={() => void bridge?.signin.geminiNav('reload')} />
+        <IconButton icon={House} label="AI Studio home" onClick={() => void bridge?.signin.geminiNav('home')} />
+        <span className="gem-url ellipsis" title={gem?.url}>
+          {gem?.url || 'https://aistudio.google.com/'}
+        </span>
+        <span className={`si-status s-${gem?.signedIn ? 'on' : 'off'}`}>
+          <span className="dot" aria-hidden />
+          {gem?.signedIn ? 'Google session active' : 'Sign in inside the page'}
+        </span>
+      </div>
+      <div className="gem-split">
+        <div className="gem-host" ref={hostRef}>
+          {!bridge && <div className="gem-placeholder">AI Studio opens here in the desktop app.</div>}
+          {bridge && <div className="gem-placeholder"><Loader2 size={18} className="spin" /> Loading Google AI Studio…</div>}
+        </div>
+        <aside className="gem-queue">
+          <div className="gq-head">
+            <span>Prompt queue</span>
+            <span className="muted small num">
+              {waiting} waiting · {sent} sent
+            </span>
+          </div>
+          <div className="gq-add">
+            <textarea className="input area" rows={3} placeholder="Describe an illustration…" value={prompt} onChange={(e) => setPrompt(e.target.value)} aria-label="Prompt" />
+            <div className="row gap">
+              <input className="input grow" placeholder="file name (optional)" value={name} onChange={(e) => setName(e.target.value)} aria-label="File name" />
+              <IconButton icon={ListPlus} label="Add to queue" onClick={() => void add()} />
+            </div>
+          </div>
+          <div className="gq-list">
+            {!queue.length && <div className="muted small pad">Prompts queued from a reel’s Cutaway inspector appear here.</div>}
+            {queue.map((q, i) => (
+              <div key={q.id} className={`gq-item gs-${q.status}`}>
+                <span className="gq-n num">{i + 1}</span>
+                <div className="grow gq-body">
+                  <div className="gq-name ellipsis">{q.name}</div>
+                  <div className="gq-prompt small">{q.prompt}</div>
+                  {q.file && (
+                    <div className="small gq-file ellipsis">
+                      <Check size={11} aria-hidden /> {q.file.split(/[\\/]/).pop()} · via {q.via}
+                    </div>
+                  )}
+                </div>
+                <span className={`gq-status num`}>{q.status}</span>
+                <IconButton icon={X} label="Remove" size={12} onClick={() => void bridge?.signin.remove(q.id)} />
+              </div>
+            ))}
+          </div>
+          <div className="gq-actions">
+            <Button variant="primary" icon={Send} disabled={!waiting} onClick={() => void bridge?.signin.sendNext()}>
+              Send next
+            </Button>
+            <IconButton icon={Trash2} label="Clear captured" onClick={() => void bridge?.signin.clearDone()} />
+          </div>
+          {captures.length > 0 && (
+            <div className="gq-caps">
+              <div className="small muted">Captured</div>
+              <div className="caps-grid">
+                {captures.slice(0, 8).map((c) => (
+                  <button key={c.file} type="button" className="cap-tile" title={`${c.file}\n${c.width}×${c.height} via ${c.via}`} onClick={() => void bridge?.shell.reveal(c.file)}>
+                    <ImageIcon size={14} aria-hidden />
+                    <span className="ellipsis small">{c.file.split(/[\\/]/).pop()}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="gq-help small muted">
+            Images are captured from downloads or from the page’s own network responses (≥ 1024 px) and filed under the planned name, in order.
+            <button type="button" className="linkish" onClick={async () => void bridge?.shell.reveal((await bridge.prefs.get()).capturesDir)}>
+              <FolderOpen size={11} aria-hidden /> Captures folder
+            </button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  )
+}
+
+function HeygenPane({ connected, onChange }: { connected: boolean; onChange: () => void }) {
+  const [jobId, setJobId] = useState<string | null>(null)
+  const job = useJobs((s) => (jobId ? s.jobs[jobId] : undefined))
+  const [code, setCode] = useState<{ code: string; url: string } | null>(null)
+
+  useEffect(() => {
+    if (!job) return
+    const r = job.result
+    if (isRec(r) && str(r.code)) setCode({ code: str(r.code), url: str(r.url, 'https://app.heygen.com/') })
+    else {
+      const m = /([A-Z0-9]{4}-[A-Z0-9]{4})/.exec(job.message)
+      const u = /(https?:\/\/\S+)/.exec(job.message)
+      if (m) setCode({ code: m[1], url: u?.[1] ?? 'https://app.heygen.com/' })
+    }
+  }, [job])
+
+  const start = async (): Promise<void> => {
+    try {
+      const ref = await api().heygenLogin()
+      setJobId(ref.job)
+      useJobs.getState().track(ref, 'HeyGen sign-in', {
+        onDone: () => {
+          toast('success', 'HeyGen connected')
+          setCode(null)
+          onChange()
+        }
+      })
+    } catch (e) {
+      toast('error', `HeyGen sign-in failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  return (
+    <div className="si-pane">
+      <div className="si-hero">
+        <span className="si-icon si-heygen big">
+          <Music2 size={26} />
+        </span>
+        <div>
+          <h2>HeyGen music</h2>
+          <p className="muted">Generate music beds by intent (“hopeful worship piano, gentle build”). Sign-in uses a device code — you approve it in your own browser.</p>
+        </div>
+      </div>
+      {connected ? (
+        <div className="si-ok">
+          <Check size={16} /> Connected. Generate tracks from Library → Music.
+        </div>
+      ) : code ? (
+        <div className="device">
+          <div className="small muted">Enter this code on the HeyGen page:</div>
+          <div className="device-code num">{code.code}</div>
+          <div className="row gap center">
+            <Button icon={Copy} onClick={() => void navigator.clipboard.writeText(code.code)}>
+              Copy code
+            </Button>
+            <Button variant="primary" icon={ExternalLink} onClick={() => void bridge?.shell.openExternal(code.url)}>
+              Open sign-in page
+            </Button>
+          </div>
+          {job && (job.state === 'running' || job.state === 'queued') && (
+            <div className="small muted row gap center">
+              <Loader2 size={12} className="spin" /> Waiting for approval…
+            </div>
+          )}
+        </div>
+      ) : (
+        <Button variant="primary" icon={KeyRound} onClick={() => void start()} disabled={Boolean(job && job.state === 'running')}>
+          Sign in with a device code
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function EbiblePane({ status, onChange }: { status: 'downloaded' | 'missing'; onChange: () => void }) {
+  const [jobId, setJobId] = useState<string | null>(null)
+  const job = useJobs((s) => (jobId ? s.jobs[jobId] : undefined))
+  const start = async (): Promise<void> => {
+    const ref = await api().bibleDownload()
+    setJobId(ref.job)
+    useJobs.getState().track(ref, 'Download Bibles', {
+      onDone: () => {
+        toast('success', 'Bibles downloaded — verse lookup is offline now')
+        onChange()
+      }
+    })
+  }
+  const busy = job && (job.state === 'running' || job.state === 'queued')
+  return (
+    <div className="si-pane">
+      <div className="si-hero">
+        <span className="si-icon si-ebible big">
+          <BookOpen size={26} />
+        </span>
+        <div>
+          <h2>eBible</h2>
+          <p className="muted">One-time download of public-domain / open-licence translations from eBible.org, parsed for fast offline lookup. No account needed.</p>
+        </div>
+      </div>
+      <div className="bibles">
+        {[
+          ['ory', 'ଓଡ଼ିଆ', 'Indian Revised Version (IRV) Odia'],
+          ['hin2017', 'हिन्दी', 'Indian Revised Version (IRV) Hindi 2017'],
+          ['eng-web', 'English', 'World English Bible (WEB)']
+        ].map(([code, native, name]) => (
+          <div key={code} className="bible-row">
+            <span className="bible-native">{native}</span>
+            <span className="grow">
+              <span>{name}</span>
+              <span className="muted small"> · {code}</span>
+            </span>
+            {status === 'downloaded' ? <Check size={14} className="ok" /> : <Download size={14} className="muted" />}
+          </div>
+        ))}
+      </div>
+      {busy && job ? (
+        <div className="dl-progress">
+          <div className="row gap">
+            <Loader2 size={13} className="spin" />
+            <span className="grow small">{job.message}</span>
+            <span className="num small">{Math.round(job.progress * 100)}%</span>
+          </div>
+          <Progress value={job.progress} />
+        </div>
+      ) : status === 'downloaded' ? (
+        <div className="si-ok">
+          <Check size={16} /> Downloaded — lookups work offline.
+          <Button size="sm" variant="ghost" icon={RotateCw} onClick={() => void start()}>
+            Re-download
+          </Button>
+        </div>
+      ) : (
+        <Button variant="primary" icon={Download} onClick={() => void start()}>
+          Download Bibles
+        </Button>
+      )}
+    </div>
+  )
+}

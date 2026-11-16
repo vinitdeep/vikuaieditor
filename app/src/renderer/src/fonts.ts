@@ -1,0 +1,13 @@
+// Bundled, redistributable (OFL) fonts — no CDN. Inter for UI, Noto for Odia / Devanagari script text.
+import '@fontsource/inter/400.css'
+import '@fontsource/inter/500.css'
+import '@fontsource/inter/600.css'
+import '@fontsource/inter/700.css'
+import '@fontsource/noto-sans-oriya/400.css'
+import '@fontsource/noto-sans-oriya/600.css'
+import '@fontsource/noto-sans-oriya/700.css'
+import '@fontsource/noto-sans-oriya/800.css'
+import '@fontsource/noto-sans-devanagari/400.css'
+import '@fontsource/noto-sans-devanagari/600.css'
+import '@fontsource/noto-sans-devanagari/700.css'
+import '@fontsource/noto-sans-devanagari/800.css'
