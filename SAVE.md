@@ -22,8 +22,9 @@ Details: `engine/README.md`.
 - Cutaway auto-pick is keyword-only (concepts.json → library tags): 3–4 cutaways per reel, below the 50–60 % target; needs the
   Phase 3 embedding model (`brain/embed.py` hook) and new images per reel (Gemini/AI Studio capture is the app's job).
 - Verse cards only for explicit references ("Romans 10:10", "ରୋମୀୟ ୧୦ ଅଧ୍ୟାୟ ୧୦"); paraphrased verses need the editor / semantic match.
-- Clip-finder weights are hand-set; `/learn` switches to the logistic-regression ranker after ≥ 10 keep/reject labels (none seeded yet).
-  No pitch-variance feature yet.
+- Clip-finder weights are hand-set; `/learn` switches to the logistic-regression ranker after ≥ 10 keep/reject labels.
+  The 662 labelled windows + e5 embeddings in `data/brain_seed/` (another agent, commit cdeddc9) are NOT yet fed to the ranker
+  (needs audio features for those windows + the e5 ONNX model behind `brain/embed.py`); its caption corrections ARE used. No pitch-variance feature yet.
 - Thumbnail = frame grab only (style templates + cut-out = Phase 2 designer). `/auth/heygen/login` is implemented but untested
   (the user was already signed in). No local LLM titles.
 - Wide-crop decision follows static_tracks.py (2–98 % spread > 250 px); a stray second face can widen a still shot.

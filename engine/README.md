@@ -52,7 +52,8 @@ or poll `GET /jobs/{id}`; cancel with `POST /jobs/{id}/cancel` (kills its ffmpeg
   direct address, victory/enemy lexicon, scripture, ends-on-hope / negative, call-and-response share, ASR confidence, duration fit,
   semantic=0), z-scored, weighted by `weights.json`, non-max suppression; reasons + title per candidate.
 - `planner.py` jump-cut planner (drops filler / repeats / call-and-response, cuts only in pauses >= 0.25 s, caps 60 s).
-- `captions.py` dictionary fixes + learned correction memory + RNNT/CTC disagreement + near-vocabulary flags.
+- `captions.py` dictionary fixes (+ `data/brain_seed/caption_corrections.jsonl`: safe pairs applied, unsafe ones flagged
+  `seed_suggest`) + learned correction memory + RNNT/CTC disagreement + near-vocabulary flags.
 - `cutaways.py` concept map (`concepts.json`, or/hi/en words -> English tags) + library search; `scripture.py` explicit
   references -> offline Bible -> cards during cutaways only.
 - `feedback.py` `/feedback` JSONL; `/learn` = numpy logistic regression once >= 10 keep/reject labels exist

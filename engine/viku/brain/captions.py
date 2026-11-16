@@ -23,8 +23,28 @@ HERE = Path(__file__).parent
 _lock = threading.Lock()
 
 
+SEED = HERE.parents[2] / "data" / "brain_seed" / "caption_corrections.jsonl"  # repo seed (see its README)
+
+
 def _dict() -> dict:
-    return json.loads((HERE / "dictionary.json").read_text(encoding="utf-8"))
+    """dictionary.json + the brain_seed corrections: safe pairs become fixes, unsafe ones (the wrong form is
+    also a real word, e.g. में->मैं) only suggestions."""
+    d = json.loads((HERE / "dictionary.json").read_text(encoding="utf-8"))
+    d.setdefault("suggest", {})
+    if SEED.exists():
+        for line in SEED.read_text(encoding="utf-8").splitlines():
+            try:
+                c = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            L, w, r = c.get("lang"), c.get("wrong"), c.get("right")
+            if not (L and w and r):
+                continue
+            if c.get("safe"):
+                d.setdefault("fixes", {}).setdefault(L, {}).setdefault(w, r)
+            else:
+                d["suggest"].setdefault(L, {})[w] = r
+    return d
 
 
 def memory_path() -> Path:
@@ -119,6 +139,10 @@ def fix(text: str, lang: str, alt: str | None = None) -> dict:
                 s = words[i1][0] if i1 < len(words) else len(new)
                 e = s
             flags.append({"start": s, "end": e, "reason": "rnnt_ctc_disagree", "suggest": " ".join(B[j1:j2])})
+    sug = d.get("suggest", {}).get(lang, {})
+    for s, e, w in words:
+        if w in sug and not any(f["start"] <= s < f["end"] for f in flags):
+            flags.append({"start": s, "end": e, "reason": "seed_suggest", "suggest": sug[w]})
     vocab = d.get("vocab", {}).get(lang, [])
     if vocab:
         nv = [T.norm(v) for v in vocab]
