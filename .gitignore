@@ -1,0 +1,14 @@
+node_modules/
+dist/
+out/
+release/
+.venv/
+__pycache__/
+*.pyc
+models/
+data/bible/
+data/library/
+data/music/
+data/projects/
+*.log
+.env

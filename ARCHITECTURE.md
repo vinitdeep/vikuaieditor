@@ -1,0 +1,97 @@
+# Viku — Sermon Reel Studio
+
+Desktop app (Windows first) that turns a long sermon video into vertical reels (1080×1920) for church editors.
+Languages: **Odia, Hindi, English**. Works **offline**; online features sit behind a Sign-in window.
+Two modes: **Automate** (one click: sermon → finished reels + thumbnails) and **Manual** (Final-Cut-style editor).
+
+Reference pipeline (proven, reuse its logic): `Documents\Claude\Projects\AI Video Editing\` and the skill
+`~/.claude/skills/illustrating-sermon-reels` (SKILL.md + `scripts/` + `scripts/pipeline/`). Read SKILL.md first.
+
+## Layout
+```
+Sermon Reel Studio/
+  ARCHITECTURE.md   this file (the contract)
+  SAVE.md           current state / how to run / what's next (update every session)
+  app/              Electron + React + TypeScript + Vite UI ("Viku")
+  engine/           Python 3.11 FastAPI engine (uv project), all media/AI work
+  models/           downloaded models (gitignored) - see engine/viku/models.py
+  data/             Bibles, illustration library, music library, sfx, fonts (gitignored where large)
+```
+Dev run: `engine`: `uv run viku-engine` (serves http://127.0.0.1:8765). `app`: `npm run dev` (Electron starts the engine itself if not running).
+
+## House rules baked into the engine (from the user)
+- Framing = **scale + crop only**, one fixed crop per camera shot (no auto-framing / tracking motion). Speaker walking across a wide shot → wider fixed crop scaled to width over a blurred fill. Jump-cut segments alternate a static punch-in z = 1.0 / 1.12.
+- Speech enhancement (DeepFilterNet3) on every reel.
+- Cutaway transitions: cross-zoom dissolve 0.7 s (outgoing pushes in + blurs, incoming settles). No slide/push.
+- SFX: low impact under the title, soft air swell into cuts. **Never bell / chime / shimmer sounds.**
+- Every reel ends on an encouraging line. Reels ≤ 60 s; shorter is fine.
+- Captions: lower third (400 px from bottom), white bold with black outline; title hook 0.2–4.2 s top; verse cards upper half on cutaways only; credit line at bottom.
+- Loudness −14 LUFS, true peak −1.5 dBTP. 1080×1920, 30 fps, H.264 CRF 18, AAC 192k.
+- Fonts must be redistributable: **Noto Sans Oriya / Noto Sans Devanagari / Noto Sans** (OFL) shipped in `data/fonts` — never Nirmala UI.
+
+## Engine HTTP API (JSON, base http://127.0.0.1:8765, all paths absolute Windows paths)
+Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"job":id,"kind","progress":0..1,"message","state":"running|done|error","result"}`).
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | /health | `{ok, version, gpu, offline_ready:{asr,denoise,embed,bible,library}}` |
+| GET/POST | /settings | app settings (data dirs, credit line, default language, church name, export presets) |
+| POST | /projects | create `{name, video_path, language: "or"\|"hi"\|"en"\|"auto"}` → project |
+| GET | /projects, /projects/{id} | list / full project JSON |
+| PUT | /projects/{id} | save edited project (whole JSON; engine validates) |
+| POST | /projects/{id}/analyze | job: proxy (540p) + 16 kHz wav + waveform peaks + pauses + shot cuts + transcription (per-language) |
+| GET | /projects/{id}/waveform?start&end&px | peaks for the timeline |
+| GET | /media?path= | stream a local file (video proxy / images / audio) with Range support |
+| POST | /projects/{id}/suggest | job: clip finder → ranked candidate reels `[{id,score,title,segments:[[s,e]],reasons[],language}]` |
+| POST | /projects/{id}/reels | create reel from `{segments:[[s,e],...], title, sub}` (jump cut if >1 segment) |
+| POST | /reels/{id}/autobuild | job: captions (re-ASR on joined audio), verse detection, cutaway plan + library picks, music pick, sfx |
+| POST | /reels/{id}/render | job: final mp4 (and thumbnail) → `exports/` |
+| POST | /reels/{id}/thumbnail | job: thumbnail jpg from a style template + pose frame time |
+| POST | /automate | job: `{video_path, language, count}` → analyze → suggest → build → render N reels |
+| POST | /captions/fix | `{text, lang}` → `{text, flags:[{start,end,reason,suggest}]}` (dictionary + learned corrections) |
+| POST | /feedback | `{reel_id, kind:"keep"\|"reject"\|"caption_edit", before, after}` → stored for learning |
+| POST | /learn | job: retrain clip-finder ranker + correction memory from feedback |
+| GET | /bible/search?q=&lang= ; /bible/verse?ref=&lang= | offline verse lookup (IRV ory, IRV hin2017, WEB eng) |
+| POST | /bible/download | job: fetch eBible USFM zips once (online) |
+| GET | /library/search?q= | illustration library search (tags + filename + embedding) |
+| POST | /library/import | add images (folder/files) with tags |
+| GET | /music | local music library list; POST /music/heygen {intent} → job (online, via `npx hyperframes media-use`) |
+| GET | /auth/status | `{gemini_web:bool, heygen:bool, ebible:"downloaded"\|"missing"}` |
+| POST | /auth/heygen/login | job: device-code login (returns code + URL to show) |
+
+## Project JSON (single source of truth, saved in `<projects dir>/<id>/project.json`)
+```json
+{"id","name","video_path","duration","fps","language",
+ "proxy","wav16","shots":[t,...],"pauses":[[s,e],...],
+ "transcript":[{"start","end","text","lang","conf"}],
+ "reels":[{"id","title","sub","language",
+   "segments":[[s,e],...],                       // absolute source seconds, in play order
+   "crops":[{"t0","t1","cx","cw","z"}],          // reel seconds, fixed per shot/segment
+   "captions":[{"t0","t1","text","flags":[]}],   // reel seconds
+   "verses":[{"t0","t1","text","ref","top_y"}],
+   "cutaways":[{"t0","t1","img","z0","z1","pan":[x,y]}],
+   "music":{"path","gain_db":-19,"start":0},
+   "sfx":[{"name","t","gain_db"}],
+   "style":{"caption_font","caption_size","title_style"},
+   "thumbnail":{"style","pose_t","title","sub","verse"},
+   "status":"draft|built|rendered","exports":[]}]}
+```
+
+## Offline AI (clip finder + caption fixer) — "Viku Brain"
+- Signals per transcript window (sentence-ish chunks joined at pauses, 20–60 s): voice energy & variance, speech rate, pitch variance (excitement), direct address ("ଆପଣ/ତୁମେ", "आप/तुम", "you"), encouragement/victory lexicon (or/hi/en, `engine/viku/brain/lexicon.json`), scripture mention regex (book names in 3 languages + "ଅଧ୍ୟାୟ/अध्याय/chapter"), ends-on-hope check (last 2 sentences), Hindi/Odia language id.
+- Semantic score: multilingual sentence embedding (`intfloat/multilingual-e5-small`, ONNX/CPU) similarity to the user's favourite reels vs rejected ones.
+- Ranker: logistic regression over the features, trained from labelled windows (seed data = the two Pastor Jacob sermons, labels from the reels the user kept/rejected + hand labels), retrained by `/learn` from editor feedback. Stored in `models/brain/ranker.json`.
+- Jump-cut planner: inside a chosen window drop fillers/repeats/crowd call-and-response (short low-content segments, repeated n-grams), cut only in pauses ≥ 0.25 s.
+- Caption fixer: RNNT vs CTC disagreement flags, Bible/church vocabulary per language, learned correction memory (`before→after` pairs from edits, applied when seen again).
+- Optional: local LLM via Ollama (if installed) for titles/descriptions; never required.
+
+## Online (Sign-in window, all optional)
+- **Gemini / AI Studio (free, web)**: Electron `BrowserView` with a persistent partition; user signs in to Google themselves. Robust capture that does not depend on Google's page layout: (1) `session.on('will-download')` saves every downloaded image into the reel's folder; (2) a CDP `Network` listener on that view captures any image response ≥ 1024 px from `*.googleusercontent.com` / blob data as a fallback; (3) prompt injection uses a generic heuristic (largest visible textarea/contenteditable, `insertText`, then Ctrl+Enter) and, if that fails, the prompt is copied to the clipboard with a toast "paste & send". Each captured image is matched to the pending prompt in order and filed under its planned name.
+- **HeyGen music**: device-code login through `npx hyperframes auth login --device`; music via `npx hyperframes media-use resolve --type bgm --intent ...`.
+- **eBible**: no login; one-time download of USFM zips (`ory`, `hin2017`, `eng-web`), parsed into `data/bible/<code>.sqlite`.
+
+## Phases
+1. Engine core + UI shell: projects, analyze (proxy/wav/peaks/pauses/shots/ASR), transcript panel, select→reel, timeline display, render of a reel (jump cuts, fixed crops, enhancement, captions, verse cards, cutaways, music/sfx, loudness).
+2. Library (illustrations/music/sfx), Bible offline, Sign-in window (AI Studio capture, HeyGen, eBible), thumbnail designer.
+3. Viku Brain: features, embeddings, ranker trained on seed data, caption fixer, feedback/learn loop; Automate mode end-to-end.
+4. Packaging: embedded Python runtime + models downloader on first run, electron-builder NSIS installer, licences screen.
