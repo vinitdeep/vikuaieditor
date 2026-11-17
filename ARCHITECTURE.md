@@ -34,7 +34,11 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | /health | `{ok, version, gpu, offline_ready:{asr,denoise,embed,bible,library}}` |
+| GET | /health | `{ok, version, gpu, setup_needed, setup_missing[], offline_ready:{asr,denoise,embed,bible,library,ffmpeg}, models:{id:{installed,source,required}}, llm:{ollama,models,model}, details}` |
+| GET | /models | tools + models `[{id, name, purpose, size_mb, licence, licence_url, required, installed, source, path, gated, partial_mb}]` |
+| POST | /models/install | job: `{ids?, source_dir?}` (default = missing required) - pinned URLs, resumable Range downloads, SHA-256 verify, atomic move |
+| POST | /models/remove | `{ids}` → deletes the managed copies |
+| POST | /reels/{id}/describe | `{use_llm}` → `{title, sub, description, hashtags, source, llm_error?}` (offline draft; local Ollama when running) |
 | GET/POST | /settings | app settings (data dirs, credit line, default language, church name, export presets) |
 | POST | /projects | create `{name, video_path, language: "or"\|"hi"\|"en"\|"auto"}` → project |
 | GET | /projects, /projects/{id} | list / full project JSON |
@@ -99,6 +103,24 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
   exports add `cutaway_coverage` (filled share), `cutaway_needs`, `tp_fix_db` (when AAC overshoot forced an audio re-encode).
   Suggestions carry `reason_details [{feature, why, contribution}]` and `model: "seed"|"learned"`. Library import takes
   `desc` and `set`. Settings: `cutaway_match_threshold` (1.3).
+
+### Session 3 additions (2026-11-17): self-contained install
+- **Model & tool manager** (`engine/viku/models.py`, manifests in `engine/viku/manifests/`): ffmpeg 9.0.2 (gyan.dev
+  essentials, GPL-3.0), deep-filter CLI 0.5.6 (DeepFilterNet3, MIT/Apache), IndicConformer 600M (MIT, gated HF repo:
+  settings `hf_token` / `model_mirrors` / `source_dir`), e5-small, Noto fonts (required); Whisper base.en / small,
+  U-2-Net (optional); YuNet bundled. Installs into `<data>/tools` and `<data>/models`; the engine finds ffmpeg only
+  through the manager (settings path -> managed -> suitable PATH build if `allow_system_tools`). `legacy_tools`
+  (default off) re-enables the dev machine's old venvs.
+- **ASR in the engine env**: `uv` dependency group `asr` (torch CPU via the PyTorch CPU index, faster-whisper);
+  IndicConformer inference code vendored (`runners/indic_model.py`, MIT); English = faster-whisper (ffmpeg-whisper
+  fallback). Speech enhancement = deep-filter CLI (venv, then afftdn fallbacks).
+- **Bootstrap** `engine/scripts/bootstrap.ps1 -Uv <uv.exe> -InstallDir <dir>`: uv-managed Python 3.11 + `uv sync --frozen
+  --no-dev --group asr` inside the install dir, then starts the engine; `PROGRESS <0-100> <msg>` / `READY <url>` /
+  `ERROR <msg>` lines for the app.
+- **Titles**: hook writer (`brain/hooks.py`): title <= 6 words + !/?, sub = theme gist / verse ref; reels carry
+  `title_auto`, `sub_auto` (PUT with a changed title clears them) and `describe` (last draft). Settings added:
+  `allow_system_tools`, `legacy_tools`, `hf_token`, `model_mirrors`, `ollama_url`, `ollama_model`,
+  `paths.{deep_filter, faster_whisper_model}`; `credit_line` / `church_name` default to empty.
 
 ## Offline AI (clip finder + caption fixer) — "Viku Brain"
 - Signals per transcript window (sentence-ish chunks joined at pauses, 20–60 s): voice energy & variance, speech rate, pitch variance (excitement), direct address ("ଆପଣ/ତୁମେ", "आप/तुम", "you"), encouragement/victory lexicon (or/hi/en, `engine/viku/brain/lexicon.json`), scripture mention regex (book names in 3 languages + "ଅଧ୍ୟାୟ/अध्याय/chapter"), ends-on-hope check (last 2 sentences), Hindi/Odia language id.

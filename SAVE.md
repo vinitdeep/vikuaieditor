@@ -3,7 +3,30 @@
 Contract: `ARCHITECTURE.md`. Update this file every session.
 
 ## Engine
-**State (2026-11-17, session 2): Phases 1-3 engine work done and verified on the real sermon** (`Downloads\ମୂଳଦୁଆ ପୂର୍ବରୁ _ Before the Foundation ... .mp4`,
+**State (2026-11-17, session 3): engine is self-contained - no dependence on personal folders.** Commits 14c921a
+(manager, ASR/denoise in engine env, bootstrap, hook titles), 019a97f (Odia/Hindi concept matching), + docs.
+- `GET /models`, `POST /models/install {ids, source_dir}`, `POST /models/remove`; `/health.setup_needed`. Tested here:
+  ffmpeg + deep-filter + whisper-base.en downloaded (289 MB in 27 s), whisper-small cancelled at 185 MB and resumed
+  (then removed), IndicConformer installed from the old folder via `source_dir` (2.56 GB, SHA-verified).
+- On THIS PC settings now have `legacy_tools: false`, `allow_system_tools: false` (so only manager tools are used) and
+  the credit line saved explicitly (defaults are empty now). Old venvs are no longer used.
+- Re-render of reel `~2` with only manager tools (deep-filter CLI, managed ffmpeg, IndicConformer in engine env):
+  1080x1920, 30 fps, 1319 frames, 43.97 s, -13.9 LUFS / -1.9 dBTP, 52.9 % cutaways, final-defeat line -> angels battle.
+- Bootstrap verified into a fresh `%TEMP%\viku-bootstrap-test` (46 packages ~1 min, rerun 4 s, engine came up on
+  :8799 with an empty data dir and installed deep-filter + fonts from there); test dir removed.
+- Hook titles: reel ~5 "मैं क्या कर सकूँगा?" (Phil 4:13 gist), ~4 "ନିଜକୁ ବିଜୟୀ ମନେ କରିଥିଲା!"; manual titles kept.
+
+**Gaps / next (session 3)**
+- IndicConformer is gated on HF: a clean install needs an HF token, a mirror (`model_mirrors`) or `source_dir`. Decide on
+  hosting a mirror (MIT permits) before shipping; the app needs a Models/first-run screen calling `/models/install`.
+- `allow_system_tools` defaults to true (a good PATH ffmpeg is used if present); the bundled uv.exe must ship with the
+  installer (Phase 4); bootstrap downloads ~350 MB of wheels (torch CPU is most of it).
+- Hook titles are heuristic: lexically "victorious" lines can be spoken by the enemy (~2/~4 pick Satan's "considered
+  himself victorious"); English gist is a theme table (`hooks.json`), not a translation. Ollama path untested (not
+  installed here).
+- Whisper small forced to English dropped a sentence on a TTS clip, so base.en is preferred.
+
+**Earlier state (2026-11-17, session 2): Phases 1-3 engine work done and verified on the real sermon** (`Downloads\ମୂଳଦୁଆ ପୂର୍ବରୁ _ Before the Foundation ... .mp4`,
 project `20261117-045435-6d0d` in `%APPDATA%\Viku\projects`, ranges 7150-7300 + 5160-5480 analysed). Commits 16c8c3b, 841e572, fd6d726.
 - **Embeddings live** (`brain/embed.py`): multilingual-e5-small ONNX on CPU, model copied into `%APPDATA%\Viku\models\embed` (HF download
   fallback), sqlite cache by text hash; load 1.4 s.
