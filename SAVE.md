@@ -3,32 +3,42 @@
 Contract: `ARCHITECTURE.md`. Update this file every session.
 
 ## Engine
-**State (2026-11-17): Phase 1 working end-to-end through the HTTP API, plus the cheap parts of Phases 2/3.**
-Verified on the real sermon (`Downloads\ମୂଳଦୁଆ ପୂର୍ବରୁ _ Before the Foundation ... .mp4`, project `20261117-045435-6d0d`
-in `%APPDATA%\Viku\projects`, language `auto`):
-- analyze ranges 7150–7300 and 5160–5480: wav16 + peaks + 2042 pauses (whole file), 540p proxies (1 s keyframes), shot cuts,
-  IndicConformer transcript with Odia/Hindi auto language switching (RNNT + CTC alt + confidence).
-- Hindi reel `~1` (known-good segments 5167.70–5185.50, 5415.45–5442.55, 5444.20–5447.25, 5474.90–5478.60) and Odia reel `~2`
-  (7224.65–7239.45, 7182.55–7195.90, 8055.40–8071.20) rendered via `POST /reels/{id}/render`: 1080×1920, 51.6 s / 44.0 s,
-  −14.2 / −13.9 LUFS, true peak −1.4 (before the TP-margin fix) / −1.8 dBTP; frames checked (captions in Noto, punch-ins, cutaways, dissolves).
-- `/automate` on 7150–7300 (count 1) → reel `~3` 40.6 s, −14.0 LUFS, −1.9 dBTP. `/suggest` top-5 overlaps the known-good reels.
-- Bible (ory / hin2017 / eng-web) downloaded + FTS; 119 seed illustrations imported; 8 seed bgm + 1 HeyGen track; feedback/learn,
-  captions/fix, waveform, /media Range (206), SSE events and job cancel all exercised.
+**State (2026-11-17, session 2): Phases 1-3 engine work done and verified on the real sermon** (`Downloads\ମୂଳଦୁଆ ପୂର୍ବରୁ _ Before the Foundation ... .mp4`,
+project `20261117-045435-6d0d` in `%APPDATA%\Viku\projects`, ranges 7150-7300 + 5160-5480 analysed). Commits 16c8c3b, 841e572, fd6d726.
+- **Embeddings live** (`brain/embed.py`): multilingual-e5-small ONNX on CPU, model copied into `%APPDATA%\Viku\models\embed` (HF download
+  fallback), sqlite cache by text hash; load 1.4 s.
+- **Seed-trained ranker** (`brain/ranker.py`, `ranker_seed.json`, `python -m viku.brain.train_seed`): engineered features + e5 centroid
+  contrast + 8-d PCA. Blocked 5-min-block CV **AUC 0.858** (cross-sermon 0.80 / 0.82) vs hand-weight baseline **0.661**. `/learn` = seed +
+  feedback (x5). `/suggest` reasons = top contributions; windows ending on a fragment / reference announcement are demoted. Top pick for
+  7150-7300 = the Hindi "मेरे परमेश्वर के जरिए से सब कुछ कर सकूँगा" window (the user's favourite hi-1 passage).
+- **Cutaway planner** (`brain/cutaways.py`): 50-60 % coverage target, house rules checked by `cutaways.check()`; image by hub-corrected e5
+  similarity + concept words + same set; no match -> `need` generation request (`GET /reels/{id}/needs`, `POST /reels/{id}/cutaways/{i}/image`).
+- **Verses by meaning** (`bible.py` emb index ~7-8 min per translation, `brain/scripture.py`): John 15:5 (reel ~1), Romans 10:10 (~2),
+  Philippians 4:13 (~5), none on ~3, no false hits over 2,981 caption windows. Cards on cutaways, `top_y` moved off YuNet faces.
+- **Thumbnails** (`media/thumbs.py`, 12 styles; `cutout.py` U-2-Net human seg ONNX, Apache-2.0, in `%APPDATA%\Viku\models\cutout`):
+  Chrome headless works here; Pillow+libass fallback tested (Pillow has no raqm on this PC). Auto pose + auto style.
+- **Re-rendered** (all 1080x1920): ~1 Hindi 51.6 s: 7 cutaways planned = 54.8 %, 4 library + 1 attached via the endpoint = 37.6 % filled,
+  2 open generation requests; -14.3 LUFS / -1.8 dBTP. ~2 Odia 44.0 s: 6 cutaways, 52.9 % filled, Romans 10:10 card; -13.9 / -1.8.
+  `/automate` 7150-7300 -> reel ~5 (22.6 s, Phil 4:13 card, 43 % coverage, -14.5 / -1.9, 169 s end to end); reel ~4 = an earlier automate run
+  before the dangling-end filter (ended on "ତାହେଲେ ମୁଁ"). Frames checked (captions single-line, cards clear of faces, dissolves).
+  A true-peak safeguard re-encodes the audio if AAC overshoots -1.5 dBTP (not triggered in these renders).
 
-**Run**: `cd engine && uv sync && uv run viku-engine` → http://127.0.0.1:8765 (data in `%APPDATA%\Viku`, `VIKU_DATA` overrides).
+**Run**: `cd engine && uv sync && uv run viku-engine` → http://127.0.0.1:8765 (`VIKU_PORT` overrides; data in `%APPDATA%\Viku`, `VIKU_DATA` overrides).
 Details: `engine/README.md`.
 
 **Known gaps / next**
-- Cutaway auto-pick is keyword-only (concepts.json → library tags): 3–4 cutaways per reel, below the 50–60 % target; needs the
-  Phase 3 embedding model (`brain/embed.py` hook) and new images per reel (Gemini/AI Studio capture is the app's job).
-- Verse cards only for explicit references ("Romans 10:10", "ରୋମୀୟ ୧୦ ଅଧ୍ୟାୟ ୧୦"); paraphrased verses need the editor / semantic match.
-- Clip-finder weights are hand-set; `/learn` switches to the logistic-regression ranker after ≥ 10 keep/reject labels.
-  The 662 labelled windows + e5 embeddings in `data/brain_seed/` (another agent, commit cdeddc9) are NOT yet fed to the ranker
-  (needs audio features for those windows + the e5 ONNX model behind `brain/embed.py`); its caption corrections ARE used. No pitch-variance feature yet.
-- Thumbnail = frame grab only (style templates + cut-out = Phase 2 designer). `/auth/heygen/login` is implemented but untested
-  (the user was already signed in). No local LLM titles.
-- Wide-crop decision follows static_tracks.py (2–98 % spread > 250 px); a stray second face can widen a still shot.
-- Full-sermon analyze (2h26m) not timed yet; ASR is CPU-only (~1 s per 6 s chunk → roughly 25–40 min for a full sermon).
+- Odia caption->image matching is weaker than Hindi (e5's Odia; ASR code-mixing): some Odia picks are loose (e.g. "kids on phones" for
+  "final defeat"); Odia threshold is +0.4 stricter. Library descriptions are slug words only - richer `desc` (e.g. the generation prompt's
+  SCENE, which attach stores) improves matching. Short reels (< 25 s) land at ~43 % coverage because hook + closing line are protected.
+- Generation requests embed the caption in its own language in the SCENE (no offline translation); the app's AI Studio window must fill them.
+- Seed ranker: audio features exist only for the btf sermon (Salvation has no audio), so energy weights are ~0; the merged lexicon came from
+  reading these same sermons, so the engineered-feature CV is somewhat optimistic. More `/learn` labels from other sermons will help.
+- Paraphrase cards only for ~210 commonly preached verses; uncommon paraphrases (e.g. Matthew 4:9) need the editor. Spoken refs with number
+  words ("ମାଥ ଚାର ଅଧ୍ୟ ଚାର") are not parsed.
+- Titles are still caption fragments (`pick_title`); thumbnails transliterate them (Hinglish) - the editor should shorten titles.
+- Thumbnail cut-out: wide gestures get clipped by the crop edge; background people in the illustration can sit behind his head.
+- Bible index takes ~7-8 min per translation the first time (download job shows progress); the first /bible/similar on a fresh install waits for it.
+- Full-sermon analyze (2h26m) still not timed; ASR CPU-only.
 
 ## App
 **State (2026-11-17): desktop UI complete for Phases 1–2 screens; tested with mock data AND against the live engine.**
