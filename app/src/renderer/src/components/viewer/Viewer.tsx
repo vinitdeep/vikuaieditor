@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clapperboard,
+  Film,
   Layers,
   MonitorPlay,
   Pause,
@@ -15,6 +16,7 @@ import {
   Smartphone
 } from 'lucide-react'
 import type { Project, Reel } from '@/api/types'
+import { api } from '@/api'
 import { useApp } from '@/state/app'
 import { useEditor, useReel } from '@/state/editor'
 import { usePlayback } from '@/state/playback'
@@ -236,7 +238,10 @@ export function Viewer() {
     return () => ro.disconnect()
   }, [])
 
-  const isReel = viewer === 'reel'
+  const rendered = usePlayback((s) => s.rendered)
+  const lastExport = reel?.exports[reel.exports.length - 1]?.path
+  const showRendered = viewer === 'rendered'
+  const isReel = viewer === 'reel' || showRendered
   const aspect = isReel ? 9 / 16 : 16 / 9
   const pad = 28
   let fh = Math.max(50, box.h - pad)
@@ -257,10 +262,18 @@ export function Viewer() {
           size="sm"
           ariaLabel="Viewer"
           value={viewer}
-          onChange={(v) => set({ viewer: v, playing: false, preview: null })}
+          onChange={(v) =>
+            set({
+              viewer: v,
+              playing: false,
+              preview: null,
+              ...(v === 'rendered' && lastExport && rendered?.path !== lastExport ? { rendered: { path: lastExport, v: Date.now() } } : {})
+            })
+          }
           options={[
             { id: 'reel', label: 'Reel 9:16', icon: Smartphone },
-            { id: 'source', label: 'Source 16:9', icon: MonitorPlay }
+            { id: 'source', label: 'Source 16:9', icon: MonitorPlay },
+            ...(lastExport || rendered ? [{ id: 'rendered' as const, label: 'Rendered', icon: Film }] : [])
           ]}
         />
         <span className="grow" />
@@ -281,7 +294,17 @@ export function Viewer() {
       </div>
       <div className="viewer-area" ref={areaRef} onDoubleClick={() => setZoom('fit')}>
         <div className={`stage ${isReel ? 'stage-reel' : 'stage-src'}`} style={{ width: fw, height: fh }}>
-          {isReel && !reel ? (
+          {showRendered && (rendered?.path || lastExport) ? (
+            <video
+              key={`${rendered?.path ?? lastExport}-${rendered?.v ?? 0}`}
+              className="rendered-video"
+              src={`${api().mediaUrl(rendered?.path ?? (lastExport as string))}&v=${rendered?.v ?? 0}`}
+              controls
+              autoPlay
+              playsInline
+              aria-label="Rendered reel"
+            />
+          ) : isReel && !reel ? (
             <Empty icon={Clapperboard} title="No reel open">
               Make a reel from the Transcript, keep a Suggestion, or run Automate.
             </Empty>

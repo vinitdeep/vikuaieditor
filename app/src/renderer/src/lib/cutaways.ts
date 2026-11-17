@@ -79,3 +79,21 @@ export function cutawayPrompt(c: Cutaway, captionText: string): string {
   const scene = captionText.trim() || 'a quiet hopeful scene that fits a sermon moment'
   return `VERTICAL 9:16 portrait. Warm cinematic illustration, no text, no logos: ${scene}`
 }
+
+/** Put a library / file image on an existing cutaway (keeps its timing and motion). */
+export function setCutawayImage(c: Cutaway, path: string, lib?: Pick<LibraryImage, 'id' | 'name'>): void {
+  c.img = path
+  if (lib?.id) c.lib_id = lib.id
+  else delete c.lib_id
+  // the editor chose this picture: drop the planner's match details
+  c.why = lib?.name ? { desc: readableName(lib.name), pick: 'editor' } : { pick: 'editor' }
+  if (c.need) {
+    c.need_done = c.need
+    delete c.need
+  }
+}
+
+/** index of the cutaway under reel time t (or -1) */
+export function cutawayAt(cutaways: Cutaway[], t: number): number {
+  return cutaways.findIndex((c) => t >= c.t0 - 1e-3 && t < c.t1)
+}

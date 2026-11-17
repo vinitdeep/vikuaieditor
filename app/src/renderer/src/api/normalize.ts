@@ -340,7 +340,7 @@ export function modelList(x: unknown): ModelItem[] {
 
 export function licenceList(x: unknown): LicenceItem[] {
   const r = rec(x)
-  const list: unknown[] = Array.isArray(x) ? x : arr(r.items ?? r.licences ?? r.licenses)
+  const list: unknown[] = Array.isArray(x) ? x : arr(r.components ?? r.items ?? r.licences ?? r.licenses)
   // also accept {group: [...]} maps (e.g. {"python": [...], "models": [...]})
   const flat: { item: unknown; kind?: string }[] = list.length
     ? list.map((item) => ({ item }))
@@ -355,7 +355,7 @@ export function licenceList(x: unknown): LicenceItem[] {
         url: o.url ?? o.licence_url ?? o.license_url ?? o.homepage ? str(o.url ?? o.licence_url ?? o.license_url ?? o.homepage) : undefined,
         version: o.version ? str(o.version) : undefined,
         kind: o.kind ?? o.type ?? kind ? str(o.kind ?? o.type ?? kind) : undefined,
-        text: o.text ? str(o.text) : undefined
+        text: o.text || o.notice ? str(o.text ?? o.notice) : undefined
       }
     })
     .filter((l) => l.name)

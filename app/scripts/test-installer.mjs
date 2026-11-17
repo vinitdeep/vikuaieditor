@@ -58,6 +58,8 @@ const shot = async (name) => {
   log('screenshot', `installer-${name}.png`)
 }
 
+let failure = null
+try {
 // 3. setup screen (bootstrap)
 await page.waitForSelector('.setup, .ob, .topbar', { timeout: 120000 })
 if (await page.$('.setup')) {
@@ -86,8 +88,24 @@ if (await page.$('.setup')) {
   log('setup screen gone')
 } else log('no setup screen (environment already present?)')
 
-// 4. engine + onboarding
-const health = await (await fetch(`http://127.0.0.1:${PORT}/health`)).json()
+// 4. engine + onboarding (the app starts engine-env's viku-engine.exe after the setup)
+let health = null
+for (let i = 0; i < 120 && !health; i++) {
+  try {
+    const res = await fetch(`http://127.0.0.1:${PORT}/health`, { signal: AbortSignal.timeout(2000) })
+    if (res.ok) health = await res.json()
+  } catch {
+    await sleep(1500)
+  }
+}
+if (!health) {
+  const st = await page.evaluate(() => window.viku.engine.status())
+  log('engine status:', st.state, st.message)
+  console.log(st.log.slice(-25).join('\n'))
+  await shot('03x-no-engine')
+  throw new Error('the engine did not answer /health')
+}
+log('engine up after', ((Date.now() - t0) / 1000).toFixed(0), 's')
 log('/health ok:', health.ok, 'version', health.version, 'setup_needed', health.setup_needed, 'missing', (health.setup_missing ?? []).join(','))
 await page.waitForSelector('.ob', { timeout: 60000 })
 await page.waitForTimeout(800)
@@ -119,6 +137,11 @@ await page.waitForSelector('.about-row', { timeout: 20000 })
 await page.waitForTimeout(800)
 await shot('06-about')
 
+} catch (e) {
+  failure = e
+  log('FAILED:', e instanceof Error ? e.message : String(e))
+  await page.screenshot({ path: join(shots, 'installer-zz-failure.png') }).catch(() => undefined)
+}
 // 5. quit: the app kills the engine it started
 await app.close()
 await sleep(2500)
@@ -134,15 +157,16 @@ log('processes left under the install dir:', ps)
 const envSize = execFileSync('powershell', ['-NoProfile', '-Command', `"{0:N0}" -f ((Get-ChildItem -LiteralPath '${join(installDir, 'engine-env')}' -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)`]).toString().trim()
 log('engine-env size MB:', envSize)
 
-if (keep) {
-  log('--keep: leaving', installDir, dataDir)
-  process.exit(0)
+if (keep || failure) {
+  log(failure ? 'failure: leaving the install for inspection' : '--keep: leaving', installDir, dataDir)
+  process.exit(failure ? 1 : 0)
 }
 
 // 6. silent uninstall (keeps user data: VIKU_DATA here is a temp dir we delete ourselves)
 const uninst = join(installDir, 'Uninstall Viku.exe')
 spawnSync(uninst, ['/S', '/currentuser'], { stdio: 'inherit' })
 for (let i = 0; i < 120 && existsSync(exe); i++) await sleep(1000)
+for (let i = 0; i < 30 && lnk.some((p) => existsSync(p)); i++) await sleep(1000)
 log('after uninstall: Viku.exe exists =', existsSync(exe), '| install dir exists =', existsSync(installDir), '| shortcuts =', lnk.map((p) => existsSync(p)).join('/'))
 for (const d of [installDir, dataDir]) rmSync(d, { recursive: true, force: true })
 log('temp dirs removed:', !existsSync(installDir) && !existsSync(dataDir))

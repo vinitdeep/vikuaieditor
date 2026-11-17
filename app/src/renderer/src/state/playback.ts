@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type ViewerMode = 'reel' | 'source'
+export type ViewerMode = 'reel' | 'source' | 'rendered'
 
 interface PlaybackState {
   /** reel time (s) */
@@ -17,6 +17,8 @@ interface PlaybackState {
   showOverlays: boolean
   /** source-viewer preview of a range list (suggestion preview) */
   preview: [number, number][] | null
+  /** the rendered MP4 shown in the 'rendered' viewer (+ a cache-buster so a re-render reloads) */
+  rendered: { path: string; v: number } | null
   set: (p: Partial<PlaybackState>) => void
   seek: (t: number) => void
   seekSource: (t: number) => void
@@ -33,6 +35,7 @@ export const usePlayback = create<PlaybackState>((set, get) => ({
   safeZone: false,
   showOverlays: true,
   preview: null,
+  rendered: null,
   set: (p) => set(p),
   seek: (t) => set({ t: Math.max(0, t) }),
   seekSource: (t) => set({ srcT: Math.max(0, t) }),

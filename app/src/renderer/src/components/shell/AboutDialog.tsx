@@ -22,7 +22,9 @@ const GROUP_LABEL: Record<string, string> = {
   font: 'Fonts',
   fonts: 'Fonts',
   data: 'Data',
-  bible: 'Bibles'
+  bible: 'Bibles',
+  runtime: 'Engine runtime',
+  library: 'Libraries'
 }
 
 /** About Viku: version + every third-party licence (GET /licences for the engine, the app shell's own list). */

@@ -347,6 +347,10 @@ export interface AutomateRequest {
   illustrations: 'library' | 'gemini' | 'none'
   music: 'library' | 'heygen' | 'none'
   thumbnails: boolean
+  /** only this part of the sermon (source seconds) is analysed and searched */
+  range?: [number, number]
+  /** reuse the project of this video (its analysis is kept) instead of starting a new one */
+  project_id?: string
 }
 
 export interface AutomateResultReel {

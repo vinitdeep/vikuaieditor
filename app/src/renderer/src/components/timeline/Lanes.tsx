@@ -10,7 +10,7 @@ import { clock } from '@/lib/time'
 import { dragging, readDrop, type DragPayload } from '@/lib/dnd'
 import { insertVerse } from '../browser/BibleTab'
 import { Thumb } from '../ui'
-import { cutawayName, useLibraryIndex } from '@/lib/cutaways'
+import { cutawayAt, cutawayName, setCutawayImage, useLibraryIndex } from '@/lib/cutaways'
 import { generateForCutaway, genKey, useGen } from '@/lib/gemini'
 import type { Geo } from './Timeline'
 
@@ -181,6 +181,14 @@ export function CutawayLane({ reel, geo, h }: { reel: Reel; geo: Geo; h: number 
     ['image'],
     (p, t) => {
       if (p.kind !== 'image') return
+      // dropped onto an existing cutaway: swap its picture (timing and motion stay)
+      const hit = cutawayAt(reel.cutaways, t)
+      if (hit >= 0) {
+        const lib = useLibraryIndex.getState().byPath[p.path.toLowerCase()]
+        useEditor.getState().edit('Swap cutaway image', (r) => setCutawayImage(r.cutaways[hit], p.path, lib ?? { name: p.name }))
+        useEditor.getState().select({ kind: 'cutaway', index: hit })
+        return
+      }
       useEditor.getState().edit('Add cutaway', (r) => {
         const t0 = Math.max(0, Math.min(t, geo.dur - 1))
         r.cutaways.push({ t0, t1: Math.min(geo.dur, t0 + 4), img: p.path, z0: 1, z1: 1.1, pan: [0, 0] })

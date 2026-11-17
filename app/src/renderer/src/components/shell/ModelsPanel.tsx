@@ -155,6 +155,8 @@ export function errorText(code: string, raw: string, item?: ModelItem, short?: b
         title: 'The downloaded file was damaged',
         body: 'Its fingerprint (SHA-256) did not match, so Viku threw it away to keep your install safe. Press Install to download it again. If it keeps failing, use a mirror or install from a folder.'
       }
+    case 'bad_request':
+      return { title: 'Check the mirror address or folder', body: `${raw}. Fix it in Settings → Models (mirror) or pick the folder again.` }
     case 'request':
       return { title: 'The engine did not accept the request', body: raw }
     default:
@@ -378,8 +380,8 @@ function ModelRow({
           <ol className="mdl-steps">
             <li>Open the model page, sign in (or sign up — it is free) and press “Agree and access repository”.</li>
             <li>
-              On Hugging Face go to Settings → Access Tokens, create a <b>Read</b> token and paste it here. Viku hands it to the engine once for this download
-              and does not keep it.
+              On Hugging Face go to Settings → Access Tokens, create a <b>Read</b> token and paste it here. It goes straight to the Viku engine on this PC
+              (kept encrypted for later downloads) — the app window does not store it.
             </li>
           </ol>
           <div className="mdl-gate-row">

@@ -26,7 +26,7 @@ import { isRec, num, str } from '@/api/normalize'
 import { toast, useApp } from '@/state/app'
 import { useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
-import { duration } from '@/lib/time'
+import { clock, duration, parseTime } from '@/lib/time'
 import { reelDuration } from '@/lib/reel'
 import { Button, IconButton, LangBadge, Progress, Segmented, Toggle } from '../ui'
 import { ThumbPreview } from '../ThumbPreview'
@@ -258,6 +258,14 @@ export function AutomateView() {
     if (settings && form.language === 'auto' && settings.default_language !== 'auto') setForm({ language: settings.default_language })
   }, [settings]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // optional "Sermon part": from / to as 2:10:50, 130:50 or seconds
+  const [partFrom, setPartFrom] = useState(form.range ? clock(form.range[0]) : '')
+  const [partTo, setPartTo] = useState(form.range ? clock(form.range[1]) : '')
+  const fromS = partFrom.trim() ? parseTime(partFrom) : null
+  const toS = partTo.trim() ? parseTime(partTo) : null
+  const partBad = (partFrom.trim() !== '' && fromS === null) || (partTo.trim() !== '' && toS === null) || (fromS !== null && toS !== null && toS - fromS < 20)
+  const sameVideo = projects.find((p) => p.video_path && p.video_path === form.video_path)
+
   const pick = async (): Promise<void> => {
     const files = (await window.viku?.dialog.openFile({ title: 'Choose a sermon video', filters: [{ name: 'Video', extensions: ['mp4', 'mov', 'mkv', 'm4v', 'webm'] }] })) ?? []
     if (files[0]) setForm({ video_path: files[0] })
@@ -265,8 +273,16 @@ export function AutomateView() {
 
   const run = async (): Promise<void> => {
     if (!form.video_path) return toast('warn', 'Choose a sermon video first')
+    if (partBad) return toast('warn', 'Sermon part: use times like 2:10:50 or seconds, at least 20 s apart')
+    const body: AutomateRequest = { ...form }
+    delete body.range
+    delete body.project_id
+    if (fromS !== null || toS !== null) body.range = [fromS ?? 0, toS ?? 1e9]
+    // the same video was analysed before: continue in its project (keeps the transcript and earlier reels)
+    if (sameVideo) body.project_id = sameVideo.id
+    setForm({ range: body.range })
     try {
-      const ref = await api().automate(form)
+      const ref = await api().automate(body)
       set({ jobId: ref.job, results: [], reels: {} })
       useJobs.getState().track(ref, `Automate · ${form.video_path.split(/[\\/]/).pop()}`, {
         onDone: async (ev) => {
@@ -409,6 +425,36 @@ export function AutomateView() {
                     onChange={(e) => setForm({ max_seconds: Number(e.target.value) })}
                   />
                   <span className="num cap-val">≤ {form.max_seconds} s</span>
+                </div>
+                <div className="auto-row part-row">
+                  <span className="muted">Sermon part</span>
+                  <input
+                    className={`input part-in${partFrom.trim() && fromS === null ? ' bad' : ''}`}
+                    value={partFrom}
+                    placeholder="from (start)"
+                    aria-label="Sermon part from"
+                    onChange={(e) => setPartFrom(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    spellCheck={false}
+                  />
+                  <span className="muted">–</span>
+                  <input
+                    className={`input part-in${partTo.trim() && toS === null ? ' bad' : ''}`}
+                    value={partTo}
+                    placeholder="to (end)"
+                    aria-label="Sermon part to"
+                    onChange={(e) => setPartTo(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    spellCheck={false}
+                  />
+                </div>
+                <div className="part-hint muted small">
+                  {partBad
+                    ? 'Use times like 2:10:50 (h:mm:ss), 45:30 or seconds — at least 20 s apart.'
+                    : fromS !== null || toS !== null
+                      ? `Only ${fromS !== null ? clock(fromS) : 'the start'} – ${toS !== null ? clock(toS) : 'the end'} is listened to — faster for long sermons.`
+                      : 'Optional: leave empty for the whole sermon.'}
+                  {sameVideo && ` Continues in “${sameVideo.name}” (already analysed parts are reused).`}
                 </div>
               </div>
             </div>

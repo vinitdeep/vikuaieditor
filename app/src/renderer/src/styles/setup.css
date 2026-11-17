@@ -464,7 +464,8 @@
 }
 .about-list {
   max-height: 46vh;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--bg-1);
@@ -489,7 +490,7 @@
   border-bottom: 1px solid var(--line-soft);
 }
 .about-main {
-  flex: 1;
+  flex: 1 1 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -538,4 +539,27 @@
   color: var(--text-2);
   background: var(--bg-input);
   white-space: pre-wrap;
+}
+
+/* automate: sermon part */
+.part-row .part-in {
+  width: 104px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.part-row .part-in.bad {
+  border-color: var(--red);
+}
+.part-hint {
+  margin: -2px 0 2px;
+  line-height: 1.45;
+}
+
+/* viewer: rendered MP4 */
+.rendered-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  border-radius: inherit;
 }

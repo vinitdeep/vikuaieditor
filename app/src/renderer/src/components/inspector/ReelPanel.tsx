@@ -4,6 +4,7 @@ import { api } from '@/api'
 import type { Lang, Reel } from '@/api/types'
 import { toast, useApp } from '@/state/app'
 import { useEditor } from '@/state/editor'
+import { usePlayback } from '@/state/playback'
 import { useJobs } from '@/state/jobs'
 import { reelDuration } from '@/lib/reel'
 import { duration } from '@/lib/time'
@@ -28,6 +29,8 @@ export async function renderReel(reel: Reel, preset?: string): Promise<void> {
       onDone: (ev) => {
         const out = resultPath(ev.result) ?? ''
         void useEditor.getState().refresh()
+        // a re-render overwrites the same file: reload the rendered viewer
+        if (out) usePlayback.getState().set({ rendered: { path: out, v: Date.now() } })
         toast('success', `Rendered ${reel.title}`, out && window.viku ? { label: 'Show file', run: () => void window.viku?.shell.reveal(out) } : undefined)
       }
     })
@@ -130,6 +133,9 @@ export function ReelPanel({ reel }: { reel: Reel }) {
                 <span className="grow ellipsis" title={e.path}>
                   {e.path.split(/[\\/]/).pop()}
                 </span>
+                <Button size="sm" variant="ghost" icon={Play} onClick={() => usePlayback.getState().set({ viewer: 'rendered', playing: false, rendered: { path: e.path, v: Date.now() } })}>
+                  Play
+                </Button>
                 <Button size="sm" variant="ghost" icon={FolderOpen} onClick={() => void window.viku?.shell.reveal(e.path)}>
                   Show
                 </Button>

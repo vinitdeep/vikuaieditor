@@ -7,7 +7,7 @@ import { useEditor } from '@/state/editor'
 import { usePlayback } from '@/state/playback'
 import { activeAt, reelDuration } from '@/lib/reel'
 import { generateForCutaway, genKey, useGen } from '@/lib/gemini'
-import { cutawayName, cutawayPrompt } from '@/lib/cutaways'
+import { cutawayName, cutawayPrompt, setCutawayImage } from '@/lib/cutaways'
 import { Button, Empty, IconButton, Section, Slider, TextInput, Thumb } from '../ui'
 import { Row, TimeField } from './common'
 
@@ -116,7 +116,7 @@ export function CutawayPanel({ reel }: { reel: Reel }) {
 
   const pick = async (): Promise<void> => {
     const files = (await window.viku?.dialog.openFile({ title: 'Choose an illustration', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] })) ?? []
-    if (files[0]) edit('Cutaway image', (r) => void (r.cutaways[idx].img = files[0]))
+    if (files[0]) edit('Cutaway image', (r) => setCutawayImage(r.cutaways[idx], files[0]))
   }
 
   const gen = (): void => void generateForCutaway(reel.id, idx, prompt.trim() || undefined)
@@ -142,8 +142,8 @@ export function CutawayPanel({ reel }: { reel: Reel }) {
           {cutawayName(c) || (c.img ? 'Illustration' : 'Waiting for an image')}
         </div>
         <div className="row gap">
-          <Button size="sm" icon={Images} onClick={() => useApp.getState().set({ browserTab: 'library', libraryTab: 'illustrations' })}>
-            Library
+          <Button size="sm" icon={Images} onClick={() => useApp.getState().set({ browserTab: 'library', libraryTab: 'illustrations' })} title="Open the Library: double-click an illustration (or drag it onto this clip) to swap">
+            Swap from Library
           </Button>
           <Button size="sm" icon={FolderOpen} onClick={() => void pick()}>
             File…

@@ -10,7 +10,7 @@ import { usePreview } from '@/lib/audio'
 import { endDrag, startDrag } from '@/lib/dnd'
 import { clock } from '@/lib/time'
 import { Button, Empty, IconButton, Segmented, Skeleton, SkeletonRows, Thumb, useVirtualGrid } from '../ui'
-import { readableName, useLibraryIndex } from '@/lib/cutaways'
+import { cutawayAt, readableName, setCutawayImage, useLibraryIndex } from '@/lib/cutaways'
 
 export function LibraryTab() {
   const tab = useApp((s) => s.libraryTab)
@@ -97,6 +97,14 @@ function Illustrations() {
     const reel = currentReel()
     if (!reel) return toast('warn', 'Open a reel first')
     const t = usePlayback.getState().t
+    // a selected cutaway (or the one under the playhead) gets this picture instead of a new clip
+    const sel = useEditor.getState().selection
+    const target = sel?.kind === 'cutaway' && reel.cutaways[sel.index] ? sel.index : cutawayAt(reel.cutaways, t)
+    if (target >= 0) {
+      useEditor.getState().edit('Swap cutaway image', (r) => setCutawayImage(r.cutaways[target], img.path, img))
+      toast('success', `Cutaway ${target + 1} now shows “${readableName(img.name)}”`)
+      return
+    }
     useEditor.getState().edit('Add cutaway', (r) => {
       r.cutaways.push({ t0: t, t1: t + 4, img: img.path, z0: 1, z1: 1.1, pan: [0, 0] })
       r.cutaways.sort((a, b) => a.t0 - b.t0)
@@ -180,7 +188,7 @@ function Illustrations() {
                     onDragStart={(e) => startDrag(e, { kind: 'image', path: it.path, name: it.name })}
                     onDragEnd={endDrag}
                     onDoubleClick={() => addAtPlayhead(it)}
-                    title={`${name}\n${it.tags.join(', ')}\nDrag onto the Cutaways track · double-click adds at playhead`}
+                    title={`${name}\n${it.tags.join(', ')}\nDrag onto the Cutaways track (onto a cutaway = swap) · double-click puts it on the selected cutaway, or adds one at the playhead`}
                   >
                     <Thumb src={api().thumbUrl(it.path, 320)} alt={name} seed={i} />
                     <figcaption>

@@ -16,11 +16,67 @@ npm run preview      # run the built app
 npm run mock:media   # optional: cut a 6-min 540p proxy, 12 illustrations and audio previews into public/mock/
 npm run screenshots  # build first; drives the app with Playwright, writes screenshots/*.png (add -- --live for the engine)
 node scripts/make-icons.mjs  # re-render build/icon.svg -> build/icon.ico (16-256), build/icons/*.png, resources/icon.png (needs Chrome/Edge)
+npm run fetch:uv     # download the pinned official uv 0.12.4 (Windows x86_64), verify SHA-256, keep its licences -> vendor/uv/
+npm run dist         # build + fetch:uv + electron-builder -> release/Viku-Setup-<version>.exe (NSIS, per-user)
+npm run dist:dir     # same, unpacked only -> release/win-unpacked/Viku.exe (faster for testing)
+node scripts/test-installer.mjs   # silent install into %TEMP%, first-run setup, /health, models, uninstall (screenshots/installer-*)
+node scripts/e2e-live.mjs         # built app vs the running engine + the user's data: Manual edits, render, play, Automate (screenshots/e2e-*)
 ```
 
 Engine start: the main process probes `/health`; when it fails it runs the configured command
 (default `uv run viku-engine` in `../engine`), waits up to 3 min, and kills the process tree on quit — only if it spawned it.
 Settings → Engine & models edits the command/folder/URL, toggles auto-start and the data source.
+
+## Installer (Phase 4)
+
+`electron-builder.yml` → **`release/Viku-Setup-<version>.exe`** (~149 MB): NSIS assisted installer, **per-user** (no admin,
+default `%LOCALAPPDATA%\Programs\Viku`, folder can be changed), desktop + start-menu shortcuts, icon `build/icon.ico`.
+Silent: `Viku-Setup-0.1.0.exe /S /currentuser /D=C:\path` (`/D` last, unquoted); uninstall
+`"Uninstall Viku.exe" /S /currentuser` (add `--delete-app-data` to also remove `%APPDATA%\Viku`).
+
+- **extraResources**: `resources/engine/` = the engine source (`../engine` without `.venv`, `__pycache__`, test caches,
+  `tests/`), with `uv.lock` and `scripts/bootstrap.ps1`; `resources/uv/` = the official **uv 0.12.4** `uv.exe`
+  (`scripts/fetch-uv.mjs`: release zip checked against the release's `.sha256` file AND a pinned hash, unpacked in an
+  empty temp folder) + `LICENSE-MIT`, `LICENSE-APACHE`, `VERSION.txt`. The app bundle itself has no `node_modules`
+  (electron-vite bundles everything; main only needs node builtins).
+- **First launch** (`src/main/bundle.ts`, `engine.ts`): when `<install>\engine-env\engine\.venv\Scripts\viku-engine.exe`
+  is missing, or the stamp `engine-env\viku-app.json` names another app version / uv.lock hash, the main process runs
+  `powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File bootstrap.ps1 -Uv <resources>\uv\uv.exe
+  -InstallDir <install>\engine-env -EngineSrc <resources>\engine -NoStart -CleanCache` and streams its
+  `PROGRESS <pct> <msg>` / `READY` / `ERROR` lines into `EngineStatus.setup` (state `setup`). The renderer shows the
+  full-window **Setting up Viku** screen (`shell/SetupScreen.tsx`: bar, stages, Details log, Try again →
+  `engine:setup-retry`). Then the app spawns `viku-engine.exe` itself (no shell; `VIKU_PORT` from the engine URL;
+  `VIKU_DATA` passes through) and owns it (killed on quit). A running engine on the port is reused instead.
+  Measured: ~1.5–3 min, `engine-env` ≈ 980 MB (Python 3.11 + 46 packages, uv cache removed).
+- `prefs.engineSource` = `bundled` (packaged default) | `custom` (dev default: `engineCommand` in `engineCwd`);
+  switchable in Settings → Engine. `VIKU_DATA` also moves Electron's userData (prefs, thumbs, gemini-queue.json), so a
+  test with a fresh `VIKU_DATA` is a true first run; `VIKU_ENGINE_ENV` overrides the env folder.
+- **Uninstaller** (`build/installer.nsh`): an extra page with an unticked box *"Also delete my projects, models and
+  settings (%APPDATA%\Viku)"*; stops processes running from the install dir (the engine) first; `engine-env` goes with
+  `$INSTDIR`. Silent uninstall keeps user data.
+- Not code-signed (SmartScreen asks once). No auto-update.
+
+## Models, licences, AI Studio queue
+
+- **Models** (`shell/ModelsPanel.tsx`, store `useModels`): onboarding step *Engine & models* and **Settings → Models**,
+  driven by `GET /models`. Required / optional groups, size, licence link, status (Installed / Built in / Paused · x of y
+  / Downloading / Not installed). **Install all required** (skips token-gated items) or per item; one install job at a
+  time; live byte progress from the job's `result.bytes_done/bytes_total` over SSE; **Pause** = `POST /jobs/{id}/cancel`,
+  **Resume** = install again (the engine resumes its `.part` files); **Remove** (managed copies only) with confirm.
+  Items with `needs_token`: inline *"This model needs a free Hugging Face account"* — **Open model page** (`accept_url`
+  in the default browser), a password field whose token is sent once in `POST /models/install {ids, hf_token}` and
+  cleared (the app never stores it; the engine keeps it DPAPI-encrypted), **Install from folder…** (`source_dir`).
+  `prefs.modelsMirror` (Settings → Models) is sent as `mirror_url` on every install. Error codes (`error_code` on the
+  job, or recognised wording) → plain text: `hf_auth_required`, `network` (Resume keeps the partial file), `checksum`,
+  `bad_request`.
+- **About & licences** (`shell/AboutDialog.tsx`, Settings → General): app / engine / Electron / Chromium / uv versions,
+  data folder, searchable list = the app shell's own components (`app:info` IPC, incl. uv's licence text) + `GET /licences`
+  (`{components:[{name, version, licence, url, kind, notice}]}`, grouped by kind; click a row for its notice text).
+- **AI Studio queue persistence**: the Sign-in window's prompt queue (`main/signin.ts`) is written to
+  `%APPDATA%\Viku\gemini-queue.json` on every change (atomic tmp + rename) with `meta {reelId, index, t0, slug,
+  attached}`. After a reload or restart `lib/gemini.ts resumeQueue()` restores the *queued* badges and attaches captures
+  that arrived while the editor was not listening (by cutaway start time, falling back to the index while that cutaway
+  is still empty; through the engine even when the reel's project is not open), then marks them `attached`.
 
 ## Data source (live vs mock)
 
@@ -89,7 +145,8 @@ build/           icon.svg (+ icon-small.svg) → icon.ico, icon.png, icons/NxN.p
   Suggestions (score bar, reason chips, preview, Keep/Reject → `/feedback`, Learn), Library (virtualised illustrations grid with
   cached thumbnails — only visible rows mount,
   music with preview + HeyGen generate, SFX — all draggable onto tracks), Bible (IRV ory / hin2017 / WEB search, insert).
-- **Viewer**: 9:16 reel with fixed crop + punch-in, blurred fill for wide crops, cutaway cross-zoom dissolve (0.7 s),
+- **Viewer**: *Reel 9:16* / *Source 16:9* / *Rendered* (plays the reel's latest export MP4; the export rows' **Play** and a
+  finished render switch to it, cache-busted so a re-render reloads). 9:16 reel with fixed crop + punch-in, blurred fill for wide crops, cutaway cross-zoom dissolve (0.7 s),
   title hook (0.2–4.2 s), lower-third captions (400 px from bottom), verse cards (upper half), credit line, safe zones;
   Source 16:9 with the draggable (horizontal-only) crop box; J/K/L shuttle, frame step, timecode, zoom.
 - **Inspector**: Reel, Clip (in/out, crop cx/cw, punch-in), Caption (flagged words from `/captions/fix`, one-click fixes,
@@ -98,8 +155,11 @@ build/           icon.svg (+ icon-small.svg) → icon.ico, icon.png, icons/NxN.p
 - **Timeline**: Verse / Cutaways (thumbnail + readable name; empty = dashed gold "Needs image" clip with a one-click ✦ Generate)
   / Captions / Video / Voice (engine waveform) / Music (ducking line) / SFX. Ruler + scrub,
   zoom slider + Ctrl+wheel, snapping, skimming, jump-cut markers, 60 s marker. Tools: Select (A), Blade (B), Trim (T).
-  Drag to move/trim items, drag segments to reorder, ripple delete, drop library items onto lanes.
-- **Automate**: wizard (video, language, count, ≤ 60 s cap, illustrations/music/thumbnails) → per-stage progress (sticky card)
+  Drag to move/trim items, drag segments to reorder, ripple delete, drop library items onto lanes (an image dropped **onto an
+  existing cutaway swaps its picture**, keeping timing and motion; Library double-click / + swaps the selected cutaway or the
+  one under the playhead, otherwise adds one; Cutaway inspector → **Swap from Library**).
+- **Automate**: wizard (video, language, count, ≤ 60 s cap, optional **Sermon part from/to** (`2:10:50`, `45:30` or seconds →
+  `range`), illustrations/music/thumbnails; a video that already has a project continues in it via `project_id`) → per-stage progress (sticky card)
   mapped to the engine's job scopes → a finished run collapses into a summary bar and the results gallery sits on top: responsive
   grid of 9:16 cards (engine thumbnail JPG filling the card, or the HTML template preview), language badge, Brain score, duration,
   hover Play = inline preview of the rendered MP4, Open in Manual, Re-render (per-card progress), Export…, Reveal file.
@@ -125,6 +185,7 @@ Shift+Z fit · S skimming · N snapping · Shift+S safe zones · 1 / 2 reel / so
 - Thumbnail styles other than `frame` are UI previews only until the engine's thumbnail designer lands (Phase 2).
 - The AI Studio → attach path is verified with a simulated capture event (mock) and the engine route exists; a real signed-in
   capture → `/cutaways/{i}/image` round trip on the live engine has not been run (it writes into the user's library).
-- Generation requests queued in a session are remembered in memory only (a reload forgets which prompt fills which cutaway).
 - `music.duck_db` and `style.voice_gain_db` are UI fields the engine may ignore.
-- No installer yet (Phase 4: electron-builder NSIS) — `build/icon.ico` is ready for it.
+- The installer is not code-signed and has no auto-update; the bootstrap needs internet (~350 MB of wheels) on first launch.
+- The library / music *seed* imports still read the original dev folders (engine `library.seed`, `music.seed`); a fresh
+  install starts with an empty illustration library until images are imported or generated.
