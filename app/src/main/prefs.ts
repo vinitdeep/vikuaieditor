@@ -20,7 +20,9 @@ function defaults(): Stored {
     capturesDir: join(app.getPath('userData'), 'captures', 'pending'),
     onboarded: false,
     engineSource: app.isPackaged ? 'bundled' : 'custom',
-    modelsMirror: ''
+    modelsMirror: '',
+    geminiMode: 'browser',
+    downloadsDir: app.getPath('downloads')
   }
 }
 
@@ -72,6 +74,6 @@ export function savePrefs(patch: Partial<Stored>): Stored {
 }
 
 export function publicPrefs(): Prefs {
-  const { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir, onboarded, engineSource, modelsMirror } = loadPrefs()
-  return { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir, onboarded, engineSource, modelsMirror }
+  const { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir, onboarded, engineSource, modelsMirror, geminiMode, downloadsDir } = loadPrefs()
+  return { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir, onboarded, engineSource, modelsMirror, geminiMode, downloadsDir }
 }

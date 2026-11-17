@@ -274,7 +274,7 @@ function SignIns() {
   const auth = useApp((s) => s.auth)
   const gemini = useApp((s) => s.gemini)
   const [dl, setDl] = useState(false)
-  const geminiOn = Boolean(gemini?.signedIn || auth?.gemini_web)
+  const geminiOn = Boolean(gemini?.signedIn || (gemini?.mode === 'browser' && gemini.watching) || auth?.gemini_web)
   const download = async (): Promise<void> => {
     try {
       setDl(true)

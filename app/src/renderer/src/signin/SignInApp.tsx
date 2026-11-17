@@ -4,6 +4,8 @@ import {
   ArrowRight,
   BookOpen,
   Check,
+  ClipboardPaste,
+  Globe,
   Copy,
   Download,
   ExternalLink,
@@ -21,7 +23,7 @@ import {
   Trash2,
   X
 } from 'lucide-react'
-import type { CaptureEvent, GeminiViewState, PromptItem, SignInCard } from '@shared/ipc'
+import type { CaptureEvent, GeminiMode, GeminiViewState, PromptItem, SignInCard } from '@shared/ipc'
 import { api, initApi } from '@/api'
 import type { AuthStatus } from '@/api/types'
 import { isRec, str } from '@/api/normalize'
@@ -107,8 +109,8 @@ export function SignInApp() {
             icon={Sparkles}
             title="Google AI Studio"
             sub="Free illustrations with Gemini, in your own browser session"
-            status={gem?.signedIn ? 'Signed in' : 'Not signed in'}
-            tone={gem?.signedIn ? 'on' : 'off'}
+            status={gem?.mode === 'browser' ? (gem.watching ? 'Uses your browser' : 'Downloads not watched') : gem?.signedIn ? 'Signed in' : 'Not signed in'}
+            tone={gem?.mode === 'browser' ? (gem.watching ? 'on' : 'warn') : gem?.signedIn ? 'on' : 'off'}
           />
           <Card id="heygen" active={card === 'heygen'} onClick={setCard} icon={Music2} title="HeyGen" sub="Royalty-free music beds for reels" status={auth?.heygen ? 'Connected' : 'Not connected'} tone={auth?.heygen ? 'on' : 'off'} />
           <Card
@@ -134,11 +136,71 @@ export function SignInApp() {
   )
 }
 
-function GeminiPane({ gem, queue, captures }: { gem: GeminiViewState | null; queue: PromptItem[]; captures: CaptureEvent[] }) {
-  const hostRef = useRef<HTMLDivElement>(null)
-  const [prompt, setPrompt] = useState('')
-  const [name, setName] = useState('')
+function ModeSwitch({ mode }: { mode: GeminiMode }) {
+  const set = (m: GeminiMode): void => void bridge?.signin.setMode(m)
+  return (
+    <div className="gem-mode" role="radiogroup" aria-label="Where AI Studio runs">
+      <button type="button" role="radio" aria-checked={mode === 'browser'} className={mode === 'browser' ? 'on' : ''} onClick={() => set('browser')}>
+        <Globe size={12} aria-hidden /> Your browser
+      </button>
+      <button type="button" role="radio" aria-checked={mode === 'embedded'} className={mode === 'embedded' ? 'on' : ''} onClick={() => set('embedded')}>
+        <Sparkles size={12} aria-hidden /> Inside Viku
+      </button>
+    </div>
+  )
+}
 
+function BrowserGuide({ gem }: { gem: GeminiViewState | null }) {
+  const changeFolder = async (): Promise<void> => {
+    const dir = await bridge?.dialog.openFolder('Folder your browser saves downloads to')
+    if (dir) await bridge?.prefs.set({ downloadsDir: dir })
+  }
+  const steps: { icon: typeof Globe; title: string; body: string }[] = [
+    { icon: Globe, title: 'Open AI Studio in your browser', body: 'Sign in there with your Google account, as you normally would. Choose a Gemini model that makes images.' },
+    { icon: ClipboardPaste, title: 'Send next, then paste', body: 'Viku copies the next prompt. Click the AI Studio prompt box, press Ctrl+V and run it.' },
+    { icon: Download, title: 'Download the image', body: 'Use the download button on the picture. Viku sees it arrive in your Downloads folder and files it under the planned name.' }
+  ]
+  return (
+    <div className="gem-guide">
+      <div className="gem-guide-in">
+        <h2>Use AI Studio in your own browser</h2>
+        <p className="muted">Google only allows sign-in from a normal browser like Chrome or Edge, so AI Studio opens there. Viku never sees your password.</p>
+        <ol className="gem-steps">
+          {steps.map((st, i) => (
+            <li key={st.title}>
+              <span className="gem-step-n num">{i + 1}</span>
+              <span className="grow">
+                <span className="gem-step-title">
+                  <st.icon size={13} aria-hidden /> {st.title}
+                </span>
+                <span className="small muted">{st.body}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+        <Button variant="primary" icon={ExternalLink} onClick={() => void bridge?.signin.openBrowser()}>
+          Open AI Studio in your browser
+        </Button>
+        <div className={`gem-watch small ${gem?.watching ? 'ok' : 'warn'}`}>
+          <span className="dot" aria-hidden />
+          <span className="grow ellipsis" title={gem?.watchDir}>
+            {gem?.watching ? 'Watching ' : 'Cannot watch '}
+            <b>{gem?.watchDir || 'Downloads'}</b>
+          </span>
+          <button type="button" className="linkish" onClick={() => void changeFolder()}>
+            <FolderOpen size={11} aria-hidden /> Change
+          </button>
+        </div>
+        <div className="small muted">
+          Only images that arrive while a prompt is waiting are picked up (at least 1024 px). They are copied; your Downloads folder is left as it is.
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function EmbeddedHost() {
+  const hostRef = useRef<HTMLDivElement>(null)
   // keep the AI Studio view glued to the placeholder rect
   useLayoutEffect(() => {
     const el = hostRef.current
@@ -157,6 +219,22 @@ function GeminiPane({ gem, queue, captures }: { gem: GeminiViewState | null; que
       void bridge.signin.setGeminiBounds(null)
     }
   }, [])
+  return (
+    <div className="gem-host" ref={hostRef}>
+      {!bridge && <div className="gem-placeholder">AI Studio opens here in the desktop app.</div>}
+      {bridge && (
+        <div className="gem-placeholder">
+          <Loader2 size={18} className="spin" /> Loading Google AI Studio…
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GeminiPane({ gem, queue, captures }: { gem: GeminiViewState | null; queue: PromptItem[]; captures: CaptureEvent[] }) {
+  const [prompt, setPrompt] = useState('')
+  const [name, setName] = useState('')
+  const mode: GeminiMode = gem?.mode ?? 'browser'
 
   const add = async (): Promise<void> => {
     const p = prompt.trim()
@@ -173,6 +251,17 @@ function GeminiPane({ gem, queue, captures }: { gem: GeminiViewState | null; que
   return (
     <div className="gem">
       <div className="gem-bar">
+        <ModeSwitch mode={mode} />
+        {mode === 'browser' ? (
+          <>
+            <span className="grow" />
+            <span className={`si-status s-${gem?.watching ? 'on' : 'warn'}`}>
+              <span className="dot" aria-hidden />
+              {gem?.watching ? 'Watching Downloads' : 'Downloads folder not found'}
+            </span>
+          </>
+        ) : (
+          <>
         <IconButton icon={ArrowLeft} label="Back" onClick={() => void bridge?.signin.geminiNav('back')} />
         <IconButton icon={ArrowRight} label="Forward" onClick={() => void bridge?.signin.geminiNav('forward')} />
         <IconButton icon={gem?.loading ? Loader2 : RotateCw} className={gem?.loading ? 'spin-icon' : ''} label="Reload" onClick={() => void bridge?.signin.geminiNav('reload')} />
@@ -184,12 +273,16 @@ function GeminiPane({ gem, queue, captures }: { gem: GeminiViewState | null; que
           <span className="dot" aria-hidden />
           {gem?.signedIn ? 'Google session active' : 'Sign in inside the page'}
         </span>
+          </>
+        )}
       </div>
-      <div className="gem-split">
-        <div className="gem-host" ref={hostRef}>
-          {!bridge && <div className="gem-placeholder">AI Studio opens here in the desktop app.</div>}
-          {bridge && <div className="gem-placeholder"><Loader2 size={18} className="spin" /> Loading Google AI Studio…</div>}
+      {mode === 'embedded' && !gem?.signedIn && (
+        <div className="gem-warn small">
+          If Google says “This browser or app may not be secure”, switch to <b>Your browser</b>. Google blocks sign-in inside apps for many accounts.
         </div>
+      )}
+      <div className="gem-split">
+        {mode === 'browser' ? <BrowserGuide gem={gem} /> : <EmbeddedHost />}
         <aside className="gem-queue">
           <div className="gq-head">
             <span>Prompt queue</span>
@@ -243,7 +336,9 @@ function GeminiPane({ gem, queue, captures }: { gem: GeminiViewState | null; que
             </div>
           )}
           <div className="gq-help small muted">
-            Images are captured from downloads or from the page’s own network responses (≥ 1024 px) and filed under the planned name, in order.
+            {mode === 'browser'
+              ? 'Images you download while a prompt is waiting (≥ 1024 px) are copied here under the planned name, in order.'
+              : 'Images are captured from downloads or from the page’s own network responses (≥ 1024 px) and filed under the planned name, in order.'}
             <button type="button" className="linkish" onClick={async () => void bridge?.shell.reveal((await bridge.prefs.get()).capturesDir)}>
               <FolderOpen size={11} aria-hidden /> Captures folder
             </button>

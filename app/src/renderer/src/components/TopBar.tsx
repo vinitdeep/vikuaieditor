@@ -34,7 +34,7 @@ export function TopBar() {
     void window.viku?.signin.open(card)
   }
 
-  const geminiOn = Boolean(gemini?.signedIn || auth?.gemini_web)
+  const geminiOn = Boolean(gemini?.signedIn || (gemini?.mode === 'browser' && gemini.watching) || auth?.gemini_web)
   const engState: 'on' | 'warn' | 'off' =
     apiKind === 'mock' ? 'warn' : engine?.state === 'running' || (!engine && health) ? 'on' : engine?.state === 'starting' || engine?.state === 'checking' ? 'warn' : 'off'
   const engTitle =

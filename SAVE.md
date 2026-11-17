@@ -2,6 +2,12 @@
 
 Contract: `ARCHITECTURE.md`. Update this file every session.
 
+## Session 6 (2026-11-17): AI Studio sign-in fix
+- Google refused sign-in in the embedded view ("Couldn't sign you in - This browser or app may not be secure", URL /v3/signin/rejected) even with the plain-Chrome UA. Embedded Google sign-in is not supported by Google, so disguising the view further is NOT the fix.
+- New default **browser mode** (`prefs.geminiMode = 'browser'`, `prefs.downloadsDir` = OS Downloads): AI Studio opens in the user's own browser; *Send next* copies the prompt (+ opens AI Studio once per session); a `fs.watch` on the Downloads folder files any image (>= 1024 px, png/jpg/webp, settled 1.2 s, mtime after the oldest waiting prompt's `sentAt`) into the planned name, via `browser`. Only while a prompt is in `sent`; the original download is left in place (copied). Embedded mode kept as *Inside Viku* with a warning banner.
+- Sign-in window: mode switch (Your browser / Inside Viku), 3-step guide, Open AI Studio button, watched-folder line + Change. TopBar/Onboarding treat browser mode + watching as connected.
+- Verified live (dev): simulated .crdownload -> rename in Downloads filed as `browser-mode-test.jpg`, queue item -> captured via browser; an image with no waiting prompt ignored; typecheck + lint clean. Not yet: a real AI Studio download end-to-end, installer rebuild.
+
 ## Project state: **v0.1.0 complete** (2026-11-17, session 5)
 Installer: `app/release/Viku-Setup-0.1.0.exe` (183.8 MB, NSIS per-user, unsigned) - `cd app && npm run dist`.
 A fresh install now works offline from the first minute with bundled starter illustrations and generated music.

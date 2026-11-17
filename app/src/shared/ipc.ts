@@ -20,7 +20,16 @@ export interface Prefs {
   engineSource: 'bundled' | 'custom'
   /** optional base URL of a models mirror, sent with every POST /models/install as mirror_url */
   modelsMirror: string
+  /**
+   * browser = AI Studio runs in the user's own browser (Google allows sign-in there); Viku copies each prompt and
+   * files the images the user downloads into downloadsDir. embedded = AI Studio inside Viku (Google may refuse sign-in).
+   */
+  geminiMode: GeminiMode
+  /** folder the browser saves downloads to (watched in browser mode) */
+  downloadsDir: string
 }
+
+export type GeminiMode = 'browser' | 'embedded'
 
 export type EngineState = 'checking' | 'setup' | 'starting' | 'running' | 'stopped' | 'error'
 
@@ -97,9 +106,11 @@ export interface PromptItem {
   meta?: GenMeta
   /** ms since epoch */
   queuedAt?: number
+  /** ms since epoch, when the prompt was typed / copied */
+  sentAt?: number
 }
 
-export type CaptureVia = 'download' | 'network'
+export type CaptureVia = 'download' | 'network' | 'browser'
 
 export interface CaptureEvent {
   promptId?: string
@@ -129,6 +140,11 @@ export interface GeminiViewState {
   title: string
   /** a Google session cookie exists in the persist:gemini partition */
   signedIn: boolean
+  mode: GeminiMode
+  /** downloads folder watched in browser mode */
+  watchDir: string
+  /** the downloads watcher is running */
+  watching: boolean
 }
 
 export type SignInCard = 'gemini' | 'heygen' | 'ebible'
@@ -205,6 +221,9 @@ export interface VikuBridge {
     onToast(cb: (t: ToastMsg) => void): Unsubscribe
     onGeminiState(cb: (s: GeminiViewState) => void): Unsubscribe
     onFocusCard(cb: (card: SignInCard) => void): Unsubscribe
+    setMode(mode: GeminiMode): Promise<GeminiViewState>
+    /** open AI Studio in the user's default browser */
+    openBrowser(): Promise<void>
   }
 }
 
@@ -237,5 +256,7 @@ export const IPC = {
   signinCaptureEvt: 'signin:capture-evt',
   signinToastEvt: 'signin:toast-evt',
   signinStateEvt: 'signin:state-evt',
-  signinFocusCardEvt: 'signin:focus-card-evt'
+  signinFocusCardEvt: 'signin:focus-card-evt',
+  signinMode: 'signin:mode',
+  signinOpenBrowser: 'signin:open-browser'
 } as const

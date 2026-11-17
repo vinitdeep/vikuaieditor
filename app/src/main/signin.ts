@@ -1,6 +1,6 @@
 import { BrowserWindow, WebContentsView, clipboard, session, shell, type Session, type WebContents } from 'electron'
 import { createHash, randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, watch, writeFileSync, type FSWatcher } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { imageInfo } from './imageSize'
 import {
@@ -8,6 +8,7 @@ import {
   type CaptureEvent,
   type CaptureVia,
   type GenMeta,
+  type GeminiMode,
   type GeminiViewState,
   type PromptItem,
   type Rect,
@@ -22,9 +23,23 @@ const MIN_SIDE = 1024
 
 type Broadcast = (channel: string, payload: unknown) => void
 
+interface ModeOptions {
+  mode: () => GeminiMode
+  watchDir: () => string
+  saveMode: (mode: GeminiMode) => void
+}
+
+const IMAGE_FILE = /.(png|jpe?g|webp)$/i
+
 /**
  * Sign-in window + Google AI Studio capture.
- * The user signs in to Google themselves inside the view: we never fill credentials or store passwords.
+ * The user signs in to Google themselves: we never fill credentials or store passwords.
+ *
+ * Two modes:
+ *  - browser (default): AI Studio runs in the user's own browser, where Google allows sign-in. "Send next" copies the
+ *    prompt; images the user downloads land in their Downloads folder, which is watched while a prompt is waiting.
+ *  - embedded: AI Studio inside a view in this window. Google refuses sign-in in embedded browsers for many accounts
+ *    ("This browser or app may not be secure"), so this is only a fallback for sessions that already work.
  *
  * Capture is layout-independent:
  *  1. session 'will-download' -> every downloaded image is saved into the pending folder, then filed.
@@ -39,6 +54,10 @@ export class SignInManager {
   private seen = new Set<string>()
   private sessionReady = false
   private pendingRequests = new Map<string, { url: string; mime: string }>()
+  private watcher: FSWatcher | null = null
+  private watchedDir = ''
+  private settle = new Map<string, NodeJS.Timeout>()
+  private browserOpened = false
 
   constructor(
     private capturesDir: () => string,
@@ -47,7 +66,8 @@ export class SignInManager {
     private preload: string,
     private icon: string | undefined,
     /** %APPDATA%\Viku\gemini-queue.json: the prompt queue survives reloads and restarts */
-    private queueFile: () => string
+    private queueFile: () => string,
+    private modes: ModeOptions
   ) {
     this.load()
   }
@@ -157,6 +177,79 @@ export class SignInManager {
     return ses
   }
 
+  // ---------- browser mode ----------
+
+  /** Start / stop / move the Downloads watcher to match the current mode and folder. */
+  syncWatcher(): void {
+    const want = this.modes.mode() === 'browser' ? this.modes.watchDir() : ''
+    if (want === this.watchedDir && (this.watcher || !want)) return
+    this.watcher?.close()
+    this.watcher = null
+    this.watchedDir = ''
+    if (want && existsSync(want)) {
+      try {
+        this.watcher = watch(want, (_ev, fname) => {
+          if (fname) this.onDownloadChange(join(want, fname.toString()))
+        })
+        this.watcher.on('error', () => {
+          this.watcher?.close()
+          this.watcher = null
+          this.pushState()
+        })
+        this.watchedDir = want
+      } catch {
+        /* folder not watchable: state shows watching=false */
+      }
+    }
+    this.pushState()
+  }
+
+  private onDownloadChange(p: string): void {
+    // the browser writes *.crdownload / *.part first and renames to the final name when done
+    if (!IMAGE_FILE.test(p)) return
+    if (!this.items.some((i) => i.status === 'sent')) return
+    const t = this.settle.get(p)
+    if (t) clearTimeout(t)
+    this.settle.set(
+      p,
+      setTimeout(() => {
+        this.settle.delete(p)
+        this.ingestDownload(p)
+      }, 1200)
+    )
+  }
+
+  private ingestDownload(p: string): void {
+    try {
+      const sent = this.items.filter((i) => i.status === 'sent')
+      if (!sent.length || !existsSync(p)) return
+      // only files that appeared after the oldest waiting prompt was sent (not old downloads being touched)
+      const since = Math.min(...sent.map((i) => i.sentAt ?? i.queuedAt ?? 0))
+      if (statSync(p).mtimeMs < since - 5000) return
+      const buf = readFileSync(p)
+      const info = imageInfo(buf)
+      if (!info || Math.max(info.width, info.height) < MIN_SIDE) return
+      // copied, the original stays in Downloads
+      this.file(buf, info.ext, 'browser', info.width, info.height)
+    } catch {
+      /* still being written or locked: the next change event retries */
+    }
+  }
+
+  openBrowser(): void {
+    this.browserOpened = true
+    void shell.openExternal(AISTUDIO)
+  }
+
+  setMode(mode: GeminiMode): Promise<GeminiViewState> {
+    this.modes.saveMode(mode)
+    if (mode === 'browser') this.view?.setVisible(false)
+    this.syncWatcher()
+    return this.state()
+  }
+
+  // ---------- embedded view ----------
+
   private ensureView(): WebContentsView | null {
     if (!this.win) return null
     if (this.view) return this.view
@@ -188,7 +281,7 @@ export class SignInManager {
 
   setGeminiBounds(bounds: Rect | null): void {
     this.viewBounds = bounds
-    if (!bounds) {
+    if (!bounds || this.modes.mode() !== 'embedded') {
       this.view?.setVisible(false)
       return
     }
@@ -227,7 +320,10 @@ export class SignInManager {
       url: wc?.getURL() ?? '',
       loading: wc?.isLoading() ?? false,
       title: wc?.getTitle() ?? '',
-      signedIn
+      signedIn,
+      mode: this.modes.mode(),
+      watchDir: this.modes.watchDir(),
+      watching: Boolean(this.watcher)
     }
   }
 
@@ -370,15 +466,27 @@ export class SignInManager {
   async sendNext(): Promise<SendResult> {
     const item = this.items.find((i) => i.status === 'queued')
     if (!item) return { ok: false, method: 'none' }
+    if (this.modes.mode() === 'browser') {
+      clipboard.writeText(item.prompt)
+      item.status = 'sent'
+      item.sentAt = Date.now()
+      this.emitQueue()
+      this.syncWatcher()
+      if (!this.browserOpened) this.openBrowser()
+      this.toast({ kind: 'info', text: 'Prompt copied — paste it in AI Studio (Ctrl+V), run it, then download the image. Viku files it automatically.' })
+      return { ok: true, method: 'clipboard', item }
+    }
     const wc = this.view?.webContents
     const typed = wc ? await this.typePrompt(wc, item.prompt) : false
     if (typed) {
       item.status = 'sent'
+      item.sentAt = Date.now()
       this.emitQueue()
       return { ok: true, method: 'typed', item }
     }
     clipboard.writeText(item.prompt)
     item.status = 'sent'
+    item.sentAt = Date.now()
     this.emitQueue()
     this.toast({ kind: 'warn', text: 'Prompt copied — click the AI Studio prompt box, paste (Ctrl+V) and send' })
     return { ok: true, method: 'clipboard', item }
