@@ -46,6 +46,28 @@ const shot = async (name) => {
 }
 const st = (fn, arg) => page.evaluate(fn, arg)
 
+// 0. First-run onboarding (fresh profile => shown once)
+if (await page.$('.ob')) {
+  await shot('00a-onboarding-welcome')
+  await page.click('.ob-next')
+  await wait(400)
+  await shot('00b-onboarding-folder')
+  await page.click('.ob-next')
+  await wait(500)
+  await shot('00c-onboarding-models')
+  await page.click('.ob-next')
+  await wait(400)
+  await shot('00d-onboarding-signins')
+  await page.click('.ob-next')
+  await wait(400)
+  await shot('00e-onboarding-church')
+  await page.click('.ob-next')
+  await wait(400)
+  await shot('00f-onboarding-done')
+  await page.click('.ob-choice:not(.primary)')
+  await wait(500)
+}
+
 // pick the reel that shows the most overlays
 await st(() => {
   const v = window.__viku
@@ -109,7 +131,21 @@ await st(() => {
   v.useApp.getState().set({ browserTab: 'library', libraryTab: 'illustrations' })
   v.useEditor.getState().select({ kind: 'cutaway', index: r?.cutaways[1] ? 1 : 0 })
 })
+await page.waitForSelector('.icell img:not(.img-loading), .icell .thumb-ph', { timeout: 15000 }).catch(() => undefined)
+await wait(600)
 await shot('04-library-cutaway')
+
+// 4b. An empty cutaway waiting for a generated image
+const hasNeed = await st(() => {
+  const v = window.__viku
+  const r = v.currentReel()
+  const i = r ? r.cutaways.findIndex((c) => !c.img) : -1
+  if (i < 0) return false
+  v.usePlayback.setState({ viewer: 'reel', t: r.cutaways[i].t0 + 1.5 })
+  v.useEditor.getState().select({ kind: 'cutaway', index: i })
+  return true
+})
+if (hasNeed) await shot('04b-cutaway-needs-image')
 
 // 5. Bible + verse inspector, music library
 await st(() => {
@@ -149,8 +185,25 @@ await shot('07-thumbnail-activity')
 await st(() => window.__viku.useApp.getState().set({ activityOpen: false, exportOpen: true }))
 await shot('08-export-dialog')
 
+// 8b. Keyboard shortcuts sheet (opened with "?")
+await st(() => window.__viku.useApp.getState().set({ exportOpen: false }))
+await wait(200)
+await page.keyboard.press('Shift+Slash')
+await wait(300)
+await shot('17-shortcuts')
+await page.keyboard.press('Escape')
+await wait(200)
+
+// 8c. Engine-down banner (pretend the user wants live data and the engine is stopped)
+await st(() => {
+  const v = window.__viku
+  v.useApp.getState().set({ adapterPref: 'auto', engine: { state: 'stopped', url: 'http://127.0.0.1:8765', spawned: false, message: 'Engine not running', log: [] } })
+})
+await shot('18-engine-banner')
+await st(() => window.__viku.useApp.getState().set({ adapterPref: 'mock' }))
+
 // 9. Settings (engine & models)
-await st(() => window.__viku.useApp.getState().set({ exportOpen: false, settingsOpen: true }))
+await st(() => window.__viku.useApp.getState().set({ settingsOpen: true }))
 await wait(300)
 await page.click('.settings-tabs button:nth-child(4)')
 await shot('09-settings-engine')
@@ -169,9 +222,12 @@ if (!live) {
   await wait(5200)
   await shot('12-automate-progress')
   await page.waitForSelector('.rcard', { timeout: 60000 })
-  await wait(900)
-  await page.evaluate(() => document.querySelector('.automate')?.scrollTo(0, 10000))
+  await wait(1600)
   await shot('13-automate-results')
+  // inline preview of the first reel
+  await page.hover('.rcard:first-child .rcard-media')
+  await wait(300)
+  await shot('13b-automate-results-hover')
 }
 
 // 14. Sign-in window

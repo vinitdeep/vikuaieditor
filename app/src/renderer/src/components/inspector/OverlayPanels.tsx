@@ -6,7 +6,8 @@ import { toast, useApp } from '@/state/app'
 import { useEditor } from '@/state/editor'
 import { usePlayback } from '@/state/playback'
 import { activeAt, reelDuration } from '@/lib/reel'
-import { generateCutaway } from '@/lib/gemini'
+import { generateForCutaway, genKey, useGen } from '@/lib/gemini'
+import { cutawayName, cutawayPrompt } from '@/lib/cutaways'
 import { Button, Empty, IconButton, Section, Slider, TextInput, Thumb } from '../ui'
 import { Row, TimeField } from './common'
 
@@ -88,6 +89,9 @@ export function CutawayPanel({ reel }: { reel: Reel }) {
   const idx = selection?.kind === 'cutaway' ? selection.index : (activeAt(reel.cutaways, t)?.index ?? -1)
   const c = reel.cutaways[idx]
   const [prompt, setPrompt] = useState('')
+  const queued = useGen((s) => (c ? Boolean(s.queued[genKey(reel.id, c.t0)]) : false))
+  const planned = c ? cutawayPrompt(c, reel.captions.filter((x) => x.t1 > c.t0 && x.t0 < c.t1).map((x) => x.text).join(' ')) : ''
+  useEffect(() => setPrompt(''), [idx, reel.id])
 
   const add = (): void => {
     const end = Math.min(reelDuration(reel), t + 4)
@@ -115,21 +119,26 @@ export function CutawayPanel({ reel }: { reel: Reel }) {
     if (files[0]) edit('Cutaway image', (r) => void (r.cutaways[idx].img = files[0]))
   }
 
-  const gen = (): void => {
-    const p = prompt.trim()
-    if (!p) return toast('warn', 'Describe the illustration first')
-    const name = `${reel.id}-cut${String(idx + 1).padStart(2, '0')}`
-    void generateCutaway(reel.id, c.t0, `Vertical 9:16 warm painterly illustration, no text: ${p}`, name)
-  }
+  const gen = (): void => void generateForCutaway(reel.id, idx, prompt.trim() || undefined)
+  const panPx = Math.abs(c.pan[0]) > 1 || Math.abs(c.pan[1]) > 1
+  const panMax = panPx ? 160 : 0.1
 
   return (
     <>
       <Section title={`Cutaway ${idx + 1} of ${reel.cutaways.length}`} right={<IconButton icon={Trash2} label="Delete cutaway" onClick={() => edit('Delete cutaway', (r) => void r.cutaways.splice(idx, 1))} />}>
-        <div className="cut-preview">
-          {c.img ? <Thumb src={api().mediaUrl(c.img)} alt="Cutaway image" seed={idx + 3} /> : <span className="cut-empty">No image yet</span>}
+        <div className={`cut-preview${c.img ? '' : ' needs'}`}>
+          {c.img ? (
+            <Thumb src={api().thumbUrl(c.img, 360)} alt="Cutaway image" seed={idx + 3} />
+          ) : (
+            <span className="cut-empty">
+              <Sparkles size={18} aria-hidden />
+              <b>Needs image</b>
+              <span className="small">{queued ? 'Queued in AI Studio…' : 'Generate it in AI Studio, or pick one'}</span>
+            </span>
+          )}
         </div>
-        <div className="small muted ellipsis" title={c.img}>
-          {c.img ? c.img.split(/[\\/]/).pop() : '—'}
+        <div className="cut-name ellipsis" title={c.img || undefined}>
+          {cutawayName(c) || 'Empty cutaway'}
         </div>
         <div className="row gap">
           <Button size="sm" icon={Images} onClick={() => useApp.getState().set({ browserTab: 'library', libraryTab: 'illustrations' })}>
@@ -140,10 +149,19 @@ export function CutawayPanel({ reel }: { reel: Reel }) {
           </Button>
         </div>
       </Section>
-      <Section title="Generate with Gemini (AI Studio)">
-        <textarea className="input area" rows={3} placeholder="e.g. empty tomb at sunrise, stone rolled away, soft gold light" value={prompt} onChange={(e) => setPrompt(e.target.value)} onKeyDown={(e) => e.stopPropagation()} aria-label="Image prompt" />
-        <Button size="sm" icon={Sparkles} onClick={gen}>
-          Queue in AI Studio
+      <Section title="Generate in AI Studio" defaultOpen={!c.img}>
+        <textarea
+          className="input area"
+          rows={c.need ? 5 : 3}
+          placeholder={planned}
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={(e) => e.stopPropagation()}
+          aria-label="Image prompt"
+        />
+        {c.need && !prompt && <p className="small muted">Viku planned this prompt from the captions it covers — type to replace it.</p>}
+        <Button size="sm" variant={c.img ? 'default' : 'primary'} icon={Sparkles} onClick={gen} disabled={queued}>
+          {queued ? 'Queued — waiting for the image' : c.img ? 'Generate a replacement' : 'Generate in AI Studio'}
         </Button>
         <p className="rule-note small">Runs in your own signed-in AI Studio tab (free). The image is captured automatically and placed here.</p>
       </Section>
@@ -155,10 +173,10 @@ export function CutawayPanel({ reel }: { reel: Reel }) {
           <Slider value={c.z1} min={1} max={1.5} step={0.01} reset={1.1} format={(v) => `${v.toFixed(2)}×`} onChange={(v) => edit('Cutaway zoom', (r) => void (r.cutaways[idx].z1 = v), `cz1-${idx}`)} ariaLabel="Zoom to" />
         </Row>
         <Row label="Pan X">
-          <Slider value={c.pan[0]} min={-0.1} max={0.1} step={0.002} reset={0} format={(v) => v.toFixed(3)} onChange={(v) => edit('Cutaway pan', (r) => void (r.cutaways[idx].pan[0] = v), `cpx-${idx}`)} ariaLabel="Pan X" />
+          <Slider value={c.pan[0]} min={-panMax} max={panMax} step={panPx ? 1 : 0.002} reset={0} format={(v) => (panPx ? `${Math.round(v)} px` : v.toFixed(3))} onChange={(v) => edit('Cutaway pan', (r) => void (r.cutaways[idx].pan[0] = v), `cpx-${idx}`)} ariaLabel="Pan X" />
         </Row>
         <Row label="Pan Y">
-          <Slider value={c.pan[1]} min={-0.1} max={0.1} step={0.002} reset={0} format={(v) => v.toFixed(3)} onChange={(v) => edit('Cutaway pan', (r) => void (r.cutaways[idx].pan[1] = v), `cpy-${idx}`)} ariaLabel="Pan Y" />
+          <Slider value={c.pan[1]} min={-panMax} max={panMax} step={panPx ? 1 : 0.002} reset={0} format={(v) => (panPx ? `${Math.round(v)} px` : v.toFixed(3))} onChange={(v) => edit('Cutaway pan', (r) => void (r.cutaways[idx].pan[1] = v), `cpy-${idx}`)} ariaLabel="Pan Y" />
         </Row>
         <Row label="Start">
           <TimeField label="Cutaway start" value={c.t0} max={c.t1 - 0.5} onChange={(v) => edit('Cutaway timing', (r) => void (r.cutaways[idx].t0 = v), `ct0-${idx}`)} />

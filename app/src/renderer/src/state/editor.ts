@@ -41,6 +41,8 @@ interface EditorState {
   select: (s: Selection | null) => void
   /** apply an undoable change to the current reel; `coalesce` merges rapid edits (slider drags) */
   edit: (label: string, fn: (r: Draft<Reel>) => void, coalesce?: string) => void
+  /** same as edit, for any reel of the open project (e.g. an AI Studio capture landing on a reel that is not open) */
+  editReel: (reelId: string, label: string, fn: (r: Draft<Reel>) => void, coalesce?: string) => void
   undo: () => void
   redo: () => void
   createReel: (segments: Seg[], title: string, sub: string) => Promise<Reel | null>
@@ -55,14 +57,24 @@ let saveTimer: ReturnType<typeof setTimeout> | null = null
 
 function scheduleSave(): void {
   if (saveTimer) clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => {
-    const p = useEditor.getState().project
-    if (!p) return
-    api()
-      .saveProject(p)
-      .then(() => useEditor.setState({ dirty: false, savedAt: Date.now() }))
-      .catch((e: unknown) => toast('error', `Could not save project: ${e instanceof Error ? e.message : String(e)}`))
-  }, 900)
+  saveTimer = setTimeout(() => void saveNow(), 900)
+}
+
+/** Flush the autosave now (Ctrl+S, before engine calls that read the saved project). */
+export async function saveNow(opts: { announce?: boolean } = {}): Promise<boolean> {
+  if (saveTimer) clearTimeout(saveTimer)
+  saveTimer = null
+  const p = useEditor.getState().project
+  if (!p) return false
+  try {
+    await api().saveProject(p)
+    useEditor.setState({ dirty: false, savedAt: Date.now() })
+    if (opts.announce) toast('success', 'Project saved')
+    return true
+  } catch (e) {
+    toast('error', `Could not save project: ${e instanceof Error ? e.message : String(e)}`, { label: 'Retry', run: () => void saveNow(opts) })
+    return false
+  }
 }
 
 export const useEditor = create<EditorState>((set, get) => ({
@@ -117,8 +129,13 @@ export const useEditor = create<EditorState>((set, get) => ({
   },
 
   edit: (label, fn, coalesce) => {
-    const { project, reelId } = get()
-    if (!project || !reelId) return
+    const { reelId } = get()
+    if (reelId) get().editReel(reelId, label, fn, coalesce)
+  },
+
+  editReel: (reelId, label, fn, coalesce) => {
+    const { project } = get()
+    if (!project) return
     const idx = project.reels.findIndex((r) => r.id === reelId)
     if (idx < 0) return
     const before = project.reels[idx]

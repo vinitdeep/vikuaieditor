@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useApp } from '@/state/app'
-import { currentReel, useEditor } from '@/state/editor'
+import { currentReel, saveNow, useEditor } from '@/state/editor'
+import { normalizeRanges, useTranscriptSel } from '@/state/transcriptSel'
 import { usePlayback } from '@/state/playback'
 import { bladeAt, editPoints, reelDuration, rippleDelete } from './reel'
 
@@ -13,12 +14,47 @@ function typing(e: KeyboardEvent): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable
 }
 
+/** I / O: mark the transcript line under the source playhead as in / out point (Shift+O adds a range). */
+function markInOut(which: 'in' | 'out', add: boolean): void {
+  const lines = useEditor.getState().project?.transcript ?? []
+  const t = usePlayback.getState().srcT
+  let idx = lines.findIndex((l) => t >= l.start - 0.01 && t < l.end)
+  if (idx < 0) idx = Math.max(0, lines.findIndex((l) => l.start > t) - 1)
+  if (idx < 0) idx = lines.length - 1
+  const sel = useTranscriptSel.getState()
+  useApp.getState().set({ browserTab: 'transcript' })
+  if (which === 'in') {
+    sel.setMarkIn(idx)
+    if (!add) sel.setRanges([])
+    useApp.getState().toast('info', `In-point at ${fmt(lines[idx].start)} — move to the last line and press O`)
+    return
+  }
+  const a = sel.markIn ?? idx
+  sel.setRanges(normalizeRanges([...(add ? sel.ranges : []), [a, idx]]))
+  sel.setMarkIn(null)
+}
+
+function fmt(t: number): string {
+  const m = Math.floor(t / 60)
+  const s = Math.floor(t % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 /** Keyboard-first editing (FCP-like defaults, original bindings). */
 export function useHotkeys(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (typing(e)) return
       const app = useApp.getState()
+      // a modal owns the keyboard (it closes itself on Esc)
+      if (app.onboardingOpen || app.settingsOpen || app.exportOpen) return
+      if (app.shortcutsOpen) {
+        if (e.key === 'Escape' || e.key === '?') {
+          e.preventDefault()
+          app.set({ shortcutsOpen: false })
+        }
+        return
+      }
       const ed = useEditor.getState()
       const pb = usePlayback.getState()
       const reel = currentReel()
@@ -32,7 +68,9 @@ export function useHotkeys(): void {
       }
       let handled = true
 
-      if (ctrl && (k === 'z' || k === 'Z') && !e.shiftKey) ed.undo()
+      if (k === '?' || (k === '/' && e.shiftKey)) app.set({ shortcutsOpen: true })
+      else if (ctrl && (k === 's' || k === 'S')) void saveNow({ announce: true })
+      else if (ctrl && (k === 'z' || k === 'Z') && !e.shiftKey) ed.undo()
       else if (ctrl && (k === 'y' || ((k === 'z' || k === 'Z') && e.shiftKey))) ed.redo()
       else if (ctrl && k === ',') app.set({ settingsOpen: true })
       else if (ctrl && (k === 'e' || k === 'E')) app.set({ exportOpen: true })
@@ -42,6 +80,11 @@ export function useHotkeys(): void {
         if (reel) ed.edit('Blade at playhead', (r) => void bladeAt(r, pb.t))
       } else if (ctrl) handled = false
       else if (k === ' ') pb.toggle()
+      else if (k === '+' || k === '=') app.set({ zoom: Math.min(400, app.zoom * 1.25) })
+      else if (k === '-' || k === '_') app.set({ zoom: Math.max(4, app.zoom / 1.25) })
+      else if ((k === 'i' || k === 'I' || k === 'o' || k === 'O') && app.mode === 'manual' && ed.project?.transcript.length) {
+        markInOut(k.toLowerCase() === 'i' ? 'in' : 'out', e.shiftKey)
+      }
       else if (k === 'k' || k === 'K') pb.set({ playing: false, rate: 1 })
       else if (k === 'l' || k === 'L') pb.set({ playing: true, rate: pb.playing && pb.rate > 0 ? Math.min(8, pb.rate * 2) : 1 })
       else if (k === 'j' || k === 'J') pb.set({ playing: true, rate: pb.playing && pb.rate < 0 ? Math.max(-8, pb.rate * 2) : -1 })
@@ -71,6 +114,7 @@ export function useHotkeys(): void {
         if (reel && el) app.set({ zoom: Math.max(4, Math.min(400, (el.clientWidth - 60) / Math.max(1, reelDuration(reel)))) })
       } else if (k === 'Escape') {
         ed.select(null)
+        useTranscriptSel.getState().setMarkIn(null)
         app.set({ activityOpen: false })
       } else if ((k === 'Delete' || k === 'Backspace') && reel && ed.selection) {
         const s = ed.selection

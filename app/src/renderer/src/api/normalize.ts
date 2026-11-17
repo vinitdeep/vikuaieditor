@@ -8,6 +8,7 @@ import type {
   CaptionFlag,
   Crop,
   Cutaway,
+  CutawayNeed,
   ExportItem,
   ExportPreset,
   Health,
@@ -58,7 +59,9 @@ export function health(x: unknown): Health {
     ok: bool(r.ok, true),
     version: str(r.version, '?'),
     gpu: typeof r.gpu === 'string' ? r.gpu : bool(r.gpu),
-    offline_ready: { asr: bool(o.asr), denoise: bool(o.denoise), embed: bool(o.embed), bible: bool(o.bible), library: bool(o.library) }
+    offline_ready: { asr: bool(o.asr), denoise: bool(o.denoise), embed: bool(o.embed), bible: bool(o.bible), library: bool(o.library) },
+    data_dir: typeof r.data_dir === 'string' ? r.data_dir : undefined,
+    details: isRec(r.details) ? r.details : undefined
   }
 }
 
@@ -137,11 +140,23 @@ const verse = (x: unknown): Verse => {
   const r = rec(x)
   return { ...r, t0: num(r.t0), t1: num(r.t1), text: str(r.text), ref: str(r.ref), top_y: num(r.top_y, 360) }
 }
+export const cutawayOf = (x: unknown): Cutaway => cutaway(x)
 const cutaway = (x: unknown): Cutaway => {
   const r = rec(x)
   const pan = arr(r.pan)
-  return { ...r, t0: num(r.t0), t1: num(r.t1), img: str(r.img), z0: num(r.z0, 1), z1: num(r.z1, 1.08), pan: [num(pan[0]), num(pan[1])] }
+  const out: Cutaway = { ...r, t0: num(r.t0), t1: num(r.t1), img: str(r.img), z0: num(r.z0, 1), z1: num(r.z1, 1.08), pan: [num(pan[0]), num(pan[1])] }
+  if (isRec(r.need)) out.need = need(r.need)
+  return out
 }
+const need = (r: Rec): CutawayNeed => ({
+  ...r,
+  prompt: str(r.prompt),
+  slug: str(r.slug, 'cutaway'),
+  scene: r.scene === undefined ? undefined : str(r.scene),
+  text: r.text === undefined ? undefined : str(r.text),
+  tags: arr(r.tags).map((t) => str(t)),
+  grade: r.grade === undefined ? undefined : str(r.grade)
+})
 const music = (x: unknown): Music | null => {
   if (!isRec(x) || !str(x.path)) return null
   return { ...x, path: str(x.path), gain_db: num(x.gain_db, -19), start: num(x.start), duck_db: x.duck_db === undefined ? undefined : num(x.duck_db) }
@@ -302,6 +317,7 @@ export function libraryImages(x: unknown): LibraryImage[] {
     const r = rec(v)
     const path = str(r.path)
     return {
+      id: r.id === undefined || r.id === null ? undefined : str(r.id),
       path,
       name: str(r.name ?? r.title, path.split(/[\\/]/).pop() ?? path),
       tags: arr(r.tags).map((t) => str(t)),

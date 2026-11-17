@@ -16,6 +16,10 @@ export interface Health {
   version: string
   gpu: boolean | string
   offline_ready: OfflineReady
+  /** engine data folder (%APPDATA%\Viku unless VIKU_DATA) */
+  data_dir?: string
+  /** extra readiness details: asr_indic, asr_whisper_en, denoise_engine, library_images, music_tracks, fonts, sfx … */
+  details?: Record<string, unknown>
 }
 
 export interface ExportPreset {
@@ -83,16 +87,30 @@ export interface Verse {
   top_y: number
 }
 
+/** A cutaway the engine could not fill from the library: what to generate (AI Studio prompt etc.). */
+export interface CutawayNeed {
+  prompt: string
+  slug: string
+  scene?: string
+  text?: string
+  tags?: string[]
+  grade?: string
+}
+
 export interface Cutaway {
   t0: number
   t1: number
+  /** '' = no image yet */
   img: string
   z0: number
   z1: number
   pan: [number, number]
-  /** engine extras: library id and the tags that matched */
-  lib_id?: string
-  why?: string[]
+  /** engine extras: library id and why it was picked (tag list, or {match, z, concept, desc} / {nearest}) */
+  lib_id?: string | null
+  why?: string[] | { desc?: string; nearest?: string; match?: number; [k: string]: unknown }
+  /** set while the cutaway waits for a generated image */
+  need?: CutawayNeed
+  need_done?: CutawayNeed
 }
 
 export interface Music {
@@ -241,6 +259,7 @@ export interface BibleVerse {
 }
 
 export interface LibraryImage {
+  id?: string
   path: string
   name: string
   tags: string[]

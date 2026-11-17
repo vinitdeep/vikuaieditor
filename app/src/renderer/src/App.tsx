@@ -4,9 +4,11 @@ import { toast, useApp } from '@/state/app'
 import { currentReel, useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
 import { usePlayback } from '@/state/playback'
-import { handleCapture } from '@/lib/gemini'
+import { handleCapture, syncQueue } from '@/lib/gemini'
+import { useLibraryIndex } from '@/lib/cutaways'
 import { useHotkeys } from '@/lib/hotkeys'
-import { TopBar, Logo } from '@/components/TopBar'
+import { TopBar } from '@/components/TopBar'
+import { Logo } from '@/components/Logo'
 import { Browser } from '@/components/browser/Browser'
 import { Viewer } from '@/components/viewer/Viewer'
 import { Inspector } from '@/components/inspector/Inspector'
@@ -14,11 +16,17 @@ import { Timeline } from '@/components/timeline/Timeline'
 import { AutomateView } from '@/components/automate/AutomateView'
 import { ActivityDrawer, ExportDialog, Splitter, Toasts } from '@/components/shell/Shell'
 import { SettingsDialog } from '@/components/shell/SettingsDialog'
+import { ShortcutsSheet } from '@/components/shell/ShortcutsSheet'
+import { Onboarding } from '@/components/shell/Onboarding'
+import { EngineBanner } from '@/components/shell/EngineBanner'
 
 async function boot(onWait: (msg: string) => void): Promise<void> {
   const a = await initApi(onWait)
   const app = useApp.getState()
-  app.set({ apiKind: a.kind })
+  const params = new URLSearchParams(location.search)
+  const prefs = window.viku ? await window.viku.prefs.get() : null
+  const forced = params.get('adapter')
+  app.set({ apiKind: a.kind, adapterPref: forced === 'mock' || forced === 'live' ? forced : (prefs?.adapter ?? 'auto') })
   a.subscribe((ev) => useJobs.getState().ingest(ev))
 
   const bridge = window.viku
@@ -33,7 +41,8 @@ async function boot(onWait: (msg: string) => void): Promise<void> {
         })
       }
     })
-    bridge.signin.onCapture(handleCapture)
+    bridge.signin.onCapture((ev) => void handleCapture(ev))
+    bridge.signin.onQueue((items) => syncQueue(new Set(items.filter((i) => i.status !== 'failed').map((i) => i.id))))
     bridge.signin.onToast((t) => toast(t.kind, t.text))
     bridge.signin.onGeminiState((g) => useApp.getState().set({ gemini: g }))
     void bridge.signin.geminiState().then((g) => useApp.getState().set({ gemini: g }))
@@ -46,9 +55,12 @@ async function boot(onWait: (msg: string) => void): Promise<void> {
     settings: settings.status === 'fulfilled' ? settings.value : null
   })
 
-  const params = new URLSearchParams(location.search)
   const mode = params.get('mode')
   if (mode === 'automate' || mode === 'manual') app.set({ mode })
+
+  void useLibraryIndex.getState().load()
+  // first run (or ?onboarding=1): the welcome guide
+  if ((prefs && !prefs.onboarded && !params.has('no-onboarding')) || params.has('onboarding')) app.set({ onboardingOpen: true })
 
   await useEditor.getState().loadProjects()
   const first = useEditor.getState().projects[0]
@@ -96,6 +108,7 @@ export function App() {
   return (
     <div className="app">
       <TopBar />
+      <EngineBanner />
       {mode === 'manual' ? (
         <div className="workspace">
           <div className="upper">
@@ -122,6 +135,8 @@ export function App() {
       <ActivityDrawer />
       <SettingsDialog />
       <ExportDialog />
+      <ShortcutsSheet />
+      <Onboarding />
       <Toasts />
     </div>
   )

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode, type RefObject } from 'react'
 import { ChevronDown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { LangOpt } from '@/api/types'
@@ -240,12 +240,15 @@ export function Kbd({ children }: { children: ReactNode }) {
   return <kbd className="kbd">{children}</kbd>
 }
 
-export function Empty({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children?: ReactNode }) {
+export function Empty({ icon: Icon, title, children, action }: { icon: LucideIcon; title: string; children?: ReactNode; action?: ReactNode }) {
   return (
     <div className="empty">
-      <Icon size={26} strokeWidth={1.5} aria-hidden />
+      <span className="empty-icon">
+        <Icon size={22} strokeWidth={1.6} aria-hidden />
+      </span>
       <div className="empty-title">{title}</div>
       {children && <div className="empty-body">{children}</div>}
+      {action && <div className="empty-action">{action}</div>}
     </div>
   )
 }
@@ -269,8 +272,12 @@ export function Section({ title, children, right, defaultOpen = true }: { title:
 /** Image that degrades to a tinted placeholder when the file is not reachable (mock mode without media). */
 export function Thumb({ src, alt, className, seed = 0 }: { src: string; alt: string; className?: string; seed?: number }) {
   const [failed, setFailed] = useState(false)
+  const [loaded, setLoaded] = useState(false)
   const ref = useRef<HTMLImageElement>(null)
-  useEffect(() => setFailed(false), [src])
+  useEffect(() => {
+    setFailed(false)
+    setLoaded(Boolean(ref.current?.complete && ref.current.naturalWidth))
+  }, [src])
   if (failed) {
     const hue = (seed * 47) % 360
     return (
@@ -281,5 +288,84 @@ export function Thumb({ src, alt, className, seed = 0 }: { src: string; alt: str
       />
     )
   }
-  return <img ref={ref} className={className} src={src} alt={alt} draggable={false} loading="lazy" decoding="async" onError={() => setFailed(true)} />
+  return (
+    <img
+      ref={ref}
+      className={`${className ? className + ' ' : ''}${loaded ? '' : 'img-loading'}`}
+      src={src}
+      alt={alt}
+      draggable={false}
+      loading="lazy"
+      decoding="async"
+      onLoad={() => setLoaded(true)}
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
+/** Shimmering placeholder block. */
+export function Skeleton({ w, h, r, className }: { w?: number | string; h?: number | string; r?: number; className?: string }) {
+  return <span className={`skel${className ? ' ' + className : ''}`} style={{ width: w, height: h, borderRadius: r }} aria-hidden />
+}
+
+/** A few placeholder rows while a list loads. */
+export function SkeletonRows({ rows = 6, avatar, label = 'Loading' }: { rows?: number; avatar?: boolean; label?: string }) {
+  return (
+    <div className="skel-rows" role="status" aria-label={label}>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="skel-row">
+          {avatar && <Skeleton w={26} h={26} r={6} />}
+          <span className="skel-lines">
+            <Skeleton h={10} w={`${88 - ((i * 23) % 40)}%`} />
+            <Skeleton h={8} w={`${46 - ((i * 13) % 20)}%`} />
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Windowed grid: only the rows in (or near) view are rendered. Cells keep a fixed aspect ratio.
+ * Returns the geometry; the caller renders `range` items absolutely positioned inside a `height` spacer.
+ */
+export function useVirtualGrid(ref: RefObject<HTMLElement | null>, count: number, opts: { minCell: number; gap: number; aspect: number; pad: number; overscan?: number }) {
+  const [box, setBox] = useState({ w: 0, h: 0, top: 0 })
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = (): void => setBox({ w: el.clientWidth, h: el.clientHeight, top: el.scrollTop })
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    let raf = 0
+    const onScroll = (): void => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => setBox((b) => (b.top === el.scrollTop ? b : { ...b, top: el.scrollTop })))
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    measure()
+    return () => {
+      ro.disconnect()
+      el.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(raf)
+    }
+  }, [ref])
+  const inner = Math.max(0, box.w - opts.pad * 2)
+  const cols = Math.max(1, Math.floor((inner + opts.gap) / (opts.minCell + opts.gap)))
+  const cellW = cols > 0 ? (inner - opts.gap * (cols - 1)) / cols : inner
+  const cellH = cellW * opts.aspect
+  const rowH = cellH + opts.gap
+  const rows = Math.ceil(count / cols)
+  const over = opts.overscan ?? 2
+  const first = Math.max(0, Math.floor(box.top / Math.max(1, rowH)) - over)
+  const last = Math.min(rows, Math.ceil((box.top + box.h) / Math.max(1, rowH)) + over)
+  return {
+    ready: box.w > 0,
+    cols,
+    cellW,
+    cellH,
+    height: rows * rowH - (rows ? opts.gap : 0) + opts.pad,
+    range: [first * cols, Math.min(count, last * cols)] as [number, number],
+    pos: (i: number) => ({ left: opts.pad + (i % cols) * (cellW + opts.gap), top: Math.floor(i / cols) * rowH, width: cellW, height: cellH })
+  }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '@/api'
-import type { Cutaway, Reel } from '@/api/types'
+import { Loader2, Sparkles } from 'lucide-react'
+import type { Reel } from '@/api/types'
 import { useApp } from '@/state/app'
 import { useEditor, type Selection } from '@/state/editor'
 import { usePlayback } from '@/state/playback'
@@ -9,15 +10,12 @@ import { clock } from '@/lib/time'
 import { dragging, readDrop, type DragPayload } from '@/lib/dnd'
 import { insertVerse } from '../browser/BibleTab'
 import { Thumb } from '../ui'
+import { cutawayName, useLibraryIndex } from '@/lib/cutaways'
+import { generateForCutaway, genKey, useGen } from '@/lib/gemini'
 import type { Geo } from './Timeline'
 
 let dragSeq = 0
 
-function cutawayLabel(c: Cutaway): string {
-  if (!c.img) return 'empty — generate'
-  if (c.why && c.why.length) return c.why.slice(0, 2).join(' · ')
-  return (c.img.split(/[\\/]/).pop() ?? '').replace(/\.[^.]+$/, '').replace(/^\d+-/, '').replace(/-/g, ' ')
-}
 const EDGE = 6
 
 type TimedKind = 'caption' | 'verse' | 'cutaway'
@@ -172,6 +170,13 @@ export function VerseLane({ reel, geo, h }: { reel: Reel; geo: Geo; h: number })
 
 export function CutawayLane({ reel, geo, h }: { reel: Reel; geo: Geo; h: number }) {
   const sel = useEditor((s) => s.selection)
+  const queued = useGen((s) => s.queued)
+  const byPath = useLibraryIndex((s) => s.byPath)
+  const byId = useLibraryIndex((s) => s.byId)
+  const lib = { byPath, byId, loaded: true, loading: false, load: async () => undefined }
+  useEffect(() => {
+    void useLibraryIndex.getState().load()
+  }, [])
   const drop = useDrop(
     ['image'],
     (p, t) => {
@@ -188,22 +193,69 @@ export function CutawayLane({ reel, geo, h }: { reel: Reel; geo: Geo; h: number 
     <div className={`lane lane-cutaway${drop.over ? ' drop' : ''}`} style={{ height: h }} {...drop.props}>
       {reel.cutaways.map((c, i) => {
         const w = Math.max(4, (c.t1 - c.t0) * geo.zoom)
+        const name = cutawayName(c, lib)
+        const key = genKey(reel.id, c.t0)
+        const isQueued = Boolean(queued[key])
+        if (!c.img) {
+          return (
+            <div
+              key={i}
+              className={`clip clip-cutaway needs${isSel(sel, 'cutaway', i) ? ' sel' : ''}${isQueued ? ' queued' : ''}`}
+              style={{ left: geo.x(c.t0), width: w }}
+              onPointerDown={timedPointer('cutaway', i, c, geo)}
+              title={`Needs image${name ? ` — ${name}` : ''}${c.need?.prompt ? `
+
+${c.need.prompt}` : ''}`}
+            >
+              <span className="need-icon" aria-hidden>
+                {isQueued ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />}
+              </span>
+              {w > 70 && (
+                <span className="need-text">
+                  <b>{isQueued ? 'In AI Studio queue' : 'Needs image'}</b>
+                  {name && w > 120 && <span className="ellipsis">{name}</span>}
+                </span>
+              )}
+              {!isQueued && w > 46 && (
+                <button
+                  type="button"
+                  className="need-gen"
+                  title="Generate in AI Studio — the prompt is queued in the Sign-in window and the image attaches itself"
+                  aria-label={`Generate cutaway ${i + 1} in AI Studio`}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => void generateForCutaway(reel.id, i)}
+                >
+                  <Sparkles size={11} aria-hidden />
+                  {w > 210 && <span>Generate</span>}
+                </button>
+              )}
+            </div>
+          )
+        }
+        const thumb = api().thumbUrl(c.img, 160)
+        const frames = Math.max(0, Math.min(6, Math.floor((w - 150) / 30)))
         return (
           <div
             key={i}
             className={`clip clip-cutaway${isSel(sel, 'cutaway', i) ? ' sel' : ''}`}
             style={{ left: geo.x(c.t0), width: w }}
             onPointerDown={timedPointer('cutaway', i, c, geo)}
-            title={c.img.split(/[\\/]/).pop()}
+            title={`${name}
+${c.img}`}
           >
-            <span className="cut-strip">
-              {Array.from({ length: Math.max(1, Math.min(8, Math.floor(w / 34))) }).map((_, k) =>
-                c.img ? <Thumb key={k} src={api().mediaUrl(c.img)} alt="" seed={i + 3} /> : <span key={k} className="thumb-ph" />
-              )}
+            <span className="cut-thumb">
+              <Thumb src={thumb} alt="" seed={i + 3} />
             </span>
+            {w > 56 && <span className="cut-name ellipsis">{name}</span>}
+            {frames > 0 && (
+              <span className="cut-strip" aria-hidden>
+                {Array.from({ length: frames }).map((_, k) => (
+                  <Thumb key={k} src={thumb} alt="" seed={i + 3} />
+                ))}
+              </span>
+            )}
             <span className="xfade l" />
             <span className="xfade r" />
-            <span className="clip-label">{cutawayLabel(c)}</span>
           </div>
         )
       })}

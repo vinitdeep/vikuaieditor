@@ -16,7 +16,8 @@ import {
   Undo2,
   ZoomIn,
   ZoomOut,
-  MoveHorizontal
+  MoveHorizontal,
+  Sparkles
 } from 'lucide-react'
 import type { Reel } from '@/api/types'
 import { useApp, type Tool } from '@/state/app'
@@ -24,6 +25,7 @@ import { useEditor, useReel } from '@/state/editor'
 import { usePlayback } from '@/state/playback'
 import { editPoints, reelDuration } from '@/lib/reel'
 import { clock } from '@/lib/time'
+import { generateAllForReel, genKey, useGen } from '@/lib/gemini'
 import { Empty, IconButton } from '../ui'
 import { CaptionLane, CutawayLane, MusicLane, SfxLane, VerseLane, VideoLane, VoiceLane } from './Lanes'
 
@@ -39,7 +41,7 @@ export interface TrackDef {
 
 export const TRACKS: TrackDef[] = [
   { id: 'verse', label: 'Verse', icon: BookOpen, h: 26 },
-  { id: 'cutaway', label: 'Cutaways', icon: ImageIcon, h: 40 },
+  { id: 'cutaway', label: 'Cutaways', icon: ImageIcon, h: 46 },
   { id: 'caption', label: 'Captions', icon: Captions, h: 28 },
   { id: 'video', label: 'Video', icon: Film, h: 54 },
   { id: 'voice', label: 'Voice', icon: Mic, h: 40 },
@@ -197,6 +199,26 @@ export function Timeline() {
   )
 }
 
+/** "3 need images" → one click queues them all in AI Studio. */
+function NeedsBadge({ reel }: { reel: Reel }) {
+  const queued = useGen((s) => s.queued)
+  const empty = reel.cutaways.filter((c) => !c.img)
+  if (!empty.length) return null
+  const waiting = empty.filter((c) => !queued[genKey(reel.id, c.t0)]).length
+  return (
+    <button
+      type="button"
+      className={`needs-badge${waiting ? '' : ' all-queued'}`}
+      title={waiting ? `${empty.length} cutaway${empty.length > 1 ? 's' : ''} need an image — queue ${waiting > 1 ? 'all' : 'it'} in AI Studio` : 'All queued in AI Studio'}
+      onClick={() => void generateAllForReel(reel.id)}
+      disabled={!waiting}
+    >
+      <Sparkles size={10} aria-hidden />
+      {empty.length}
+    </button>
+  )
+}
+
 function ReelSummary({ reel }: { reel: Reel }) {
   const dur = reelDuration(reel)
   return (
@@ -251,6 +273,7 @@ function TimelineBody({ reel, geo, viewW }: { reel: Reel; geo: Geo; viewW: numbe
             <div key={t.id} className={`tl-head th-${t.id}`} style={{ height: t.h }}>
               <t.icon size={12} aria-hidden />
               <span>{t.label}</span>
+              {t.id === 'cutaway' && <NeedsBadge reel={reel} />}
             </div>
           ))}
         </div>

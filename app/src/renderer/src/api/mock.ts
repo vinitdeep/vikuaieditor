@@ -76,7 +76,14 @@ export class MockApi implements VikuApi {
 
   async health() {
     await wait(60)
-    return { ok: true, version: '0.1.0-mock', gpu: 'NVIDIA RTX 3060 (CUDA)', offline_ready: { asr: true, denoise: true, embed: true, bible: this.auth.ebible === 'downloaded', library: true } }
+    return {
+      ok: true,
+      version: '0.1.0-mock',
+      gpu: 'NVIDIA RTX 3060 (CUDA)',
+      data_dir: 'D:\\Viku',
+      offline_ready: { asr: true, denoise: true, embed: true, bible: this.auth.ebible === 'downloaded', library: true },
+      details: { asr_indic: true, asr_whisper_en: false, denoise_engine: 'deepfilternet3', library_images: M.MOCK_LIBRARY.length, music_tracks: M.MOCK_MUSIC.length, fonts: true, sfx: true }
+    }
   }
   async getSettings() {
     return clone(this.settings)
@@ -197,6 +204,18 @@ export class MockApi implements VikuApi {
     }
     p.reels.push(reel)
     return clone(reel)
+  }
+  async attachCutawayImage(reelId: string, index: number, path: string) {
+    await wait(120)
+    const { r } = this.findReel(reelId)
+    const c = r.cutaways[index]
+    if (!c) throw new Error(`cutaway index ${index} out of range`)
+    c.img = path
+    if (c.need) {
+      c.need_done = c.need
+      delete c.need
+    }
+    return clone(c)
   }
   async autobuild(reelId: string) {
     return this.job(
@@ -327,7 +346,7 @@ export class MockApi implements VikuApi {
     )
   }
 
-  async librarySearch(q: string) {
+  async librarySearch(q: string, _limit?: number) {
     await wait(90)
     const n = q.trim().toLowerCase()
     return M.MOCK_LIBRARY.filter((i) => !n || i.name.includes(n) || i.tags.some((t) => t.includes(n)))
@@ -356,6 +375,10 @@ export class MockApi implements VikuApi {
     // the real engine streams the code in an early event
     setTimeout(() => this.emit({ job: ref.job, kind: 'heygen_login', progress: 0.05, message: 'Enter code WQ7K-M2PD at https://app.heygen.com/device', state: 'running', result: { code: 'WQ7K-M2PD', url: 'https://app.heygen.com/device' } }), 300)
     return ref
+  }
+
+  thumbUrl(path: string): string {
+    return this.mediaUrl(path)
   }
 
   mediaUrl(path: string): string {

@@ -60,7 +60,7 @@ export function ThumbPreview({ reel, width = 180, image, project }: { reel: Thum
       {pose && project ? (
         <PoseFrame project={project} reel={pose} width={width} height={height} />
       ) : img ? (
-        <Thumb className="thumbp-bg" src={api().mediaUrl(img)} alt="" seed={7} />
+        <Thumb className="thumbp-bg" src={api().thumbUrl(img, Math.max(240, Math.round(width * 2)))} alt="" seed={7} />
       ) : (
         <span className="thumbp-bg thumb-ph" />
       )}

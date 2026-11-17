@@ -16,7 +16,8 @@ function defaults(): Stored {
     engineCommand: 'uv run viku-engine',
     engineCwd: resolve(appRoot, '..', 'engine'),
     autoStartEngine: true,
-    capturesDir: join(app.getPath('userData'), 'captures', 'pending')
+    capturesDir: join(app.getPath('userData'), 'captures', 'pending'),
+    onboarded: false
   }
 }
 
@@ -55,6 +56,6 @@ export function savePrefs(patch: Partial<Stored>): Stored {
 }
 
 export function publicPrefs(): Prefs {
-  const { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir } = loadPrefs()
-  return { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir }
+  const { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir, onboarded } = loadPrefs()
+  return { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir, onboarded }
 }

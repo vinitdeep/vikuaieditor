@@ -105,6 +105,16 @@ export class HttpApi implements VikuApi {
     const u = this.units.get(projectId)
     return u ? this.cropsToUi(r, u.width, u.px) : r
   }
+  attachCutawayImage = async (reelId: string, index: number, path: string) => {
+    try {
+      const d = await this.call('POST', `/reels/${encodeURIComponent(reelId)}/cutaways/${index}/image`, { path })
+      return N.isRec(d) ? N.cutawayOf(d) : null
+    } catch (e) {
+      // older engines: no attach route -> the caller sets the image locally
+      if (e instanceof ApiError && (e.status === 404 || e.status === 405) && /not found|method/i.test(e.message)) return null
+      throw e
+    }
+  }
   autobuild = async (reelId: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/autobuild`, {}), 'autobuild')
   render = async (reelId: string, preset?: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/render`, preset ? { preset } : {}), 'render')
   thumbnail = async (reelId: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/thumbnail`, {}), 'thumbnail')
@@ -144,7 +154,7 @@ export class HttpApi implements VikuApi {
   }
   bibleDownload = async () => N.jobRef(await this.call('POST', '/bible/download', {}), 'bible_download')
 
-  librarySearch = async (query: string) => N.libraryImages(await this.call('GET', `/library/search${q({ q: query })}`))
+  librarySearch = async (query: string, limit = 60) => N.libraryImages(await this.call('GET', `/library/search${q({ q: query, limit })}`))
   libraryImport = async (paths: string[], tags: string[]) => {
     const d = await this.call('POST', '/library/import', { paths, tags })
     try {
@@ -167,6 +177,9 @@ export class HttpApi implements VikuApi {
   heygenLogin = async () => N.jobRef(await this.call('POST', '/auth/heygen/login', {}), 'heygen_login')
 
   mediaUrl = (path: string) => `${this.base}/media?path=${encodeURIComponent(path)}`
+  // the engine's /media has no resize parameter: Electron's main process makes + caches the small JPEG
+  thumbUrl = (path: string, width = 320) =>
+    window.viku && /\.(png|jpe?g|webp|gif|bmp)$/i.test(path) ? `viku-thumb://img/?p=${encodeURIComponent(path)}&w=${Math.round(width)}` : this.mediaUrl(path)
 
   subscribe(cb: (ev: JobEvent) => void): () => void {
     this.listeners.add(cb)

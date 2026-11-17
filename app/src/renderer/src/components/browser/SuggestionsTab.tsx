@@ -6,7 +6,7 @@ import { useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
 import { usePlayback } from '@/state/playback'
 import { clock, duration } from '@/lib/time'
-import { Button, Empty, IconButton, LangBadge, Progress } from '../ui'
+import { Button, Empty, IconButton, LangBadge, Progress, SkeletonRows } from '../ui'
 
 export function SuggestionsTab() {
   const project = useEditor((s) => s.project)
@@ -34,8 +34,12 @@ export function SuggestionsTab() {
   }
 
   const learn = async (): Promise<void> => {
-    const ref = await api().learn()
-    useJobs.getState().track(ref, 'Learn from feedback', { onDone: () => toast('success', 'Viku Brain updated from your keeps and rejects') })
+    try {
+      const ref = await api().learn()
+      useJobs.getState().track(ref, 'Learn from feedback', { onDone: () => toast('success', 'Viku Brain updated from your keeps and rejects') })
+    } catch (e) {
+      toast('error', `Learning failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   const ordered = [...cands].sort((a, b) => Number(rejected.includes(a.id)) - Number(rejected.includes(b.id)) || b.score - a.score)
@@ -62,8 +66,17 @@ export function SuggestionsTab() {
         </div>
       )}
       <div className="clist">
+        {!cands.length && running && <SkeletonRows rows={4} avatar label="Finding clips" />}
         {!cands.length && !running && (
-          <Empty icon={Sparkles} title="No suggestions yet">
+          <Empty
+            icon={Sparkles}
+            title="No suggestions yet"
+            action={
+              <Button size="sm" variant="primary" icon={Sparkles} onClick={() => void find()}>
+                Find clips
+              </Button>
+            }
+          >
             Viku Brain ranks every 20–60 s window by energy, direct address, encouragement and scripture — and learns from what you keep.
           </Empty>
         )}

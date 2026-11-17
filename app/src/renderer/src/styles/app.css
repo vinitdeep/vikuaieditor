@@ -751,8 +751,25 @@
   min-height: 120px;
 }
 
-.empty svg {
-  color: var(--text-4);
+.empty-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--bg-3), var(--bg-2));
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  margin-bottom: 2px;
+}
+
+.empty-action {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .empty-title {
@@ -1430,34 +1447,45 @@
 /* ============ library ============ */
 .igrid {
   flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: 0 8px 10px;
+  position: relative;
+}
+
+.igrid-meta {
+  padding: 0 10px 6px;
+}
+
+.igrid-space {
+  position: relative;
+}
+
+.igrid-skel {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
   gap: 8px;
-  align-content: start;
+  padding: 0 8px;
+}
+
+.icell-skel {
+  aspect-ratio: 9 / 16;
+  width: 100%;
 }
 
 .icell {
-  position: relative;
+  position: absolute;
   margin: 0;
   border-radius: var(--r-md);
   overflow: hidden;
   background: var(--bg-2);
   border: 1px solid var(--line);
   cursor: grab;
-  transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
-}
-
-/* in-flow 9:14 spacer (aspect-ratio + absolute children lets grid rows overlap) */
-.icell::before {
-  content: '';
-  display: block;
-  padding-top: 155.5%;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
 }
 
 .icell:hover {
   border-color: #50545e;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
 .icell img,
@@ -2027,4 +2055,54 @@
   font-size: inherit;
   padding: 0;
   margin-left: 6px;
+}
+
+/* ---------- skeletons ---------- */
+@keyframes skel-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -20% 0;
+  }
+}
+
+.skel,
+img.img-loading {
+  background: linear-gradient(90deg, var(--bg-2) 0%, var(--bg-3) 45%, var(--bg-2) 90%);
+  background-size: 260% 100%;
+  animation: skel-shimmer 1.3s linear infinite;
+}
+
+.skel {
+  display: block;
+  border-radius: 4px;
+}
+
+.skel-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px;
+}
+
+.skel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+}
+
+.skel-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel,
+  img.img-loading {
+    animation: none;
+  }
 }

@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { EngineManager } from './engine'
 import { loadPrefs, publicPrefs, savePrefs } from './prefs'
 import { SignInManager } from './signin'
+import { handleThumbs, registerThumbScheme } from './thumbs'
 import { IPC, type EngineRequest, type FileFilter, type Prefs, type Rect, type SignInCard } from '../shared/ipc'
 
 const isDev = !app.isPackaged && Boolean(process.env.ELECTRON_RENDERER_URL)
@@ -14,6 +15,8 @@ app.setName('Viku')
 // isolated profile for tests / screenshots
 if (process.env.VIKU_USER_DATA) app.setPath('userData', process.env.VIKU_USER_DATA)
 if (process.platform === 'win32') app.setAppUserModelId('org.viku.sermonreelstudio')
+// small cached JPEGs of library images (must be registered before ready)
+registerThumbScheme()
 
 const engine = new EngineManager(publicPrefs)
 let mainWin: BrowserWindow | null = null
@@ -104,6 +107,7 @@ function registerIpc(): void {
   })
   ipcMain.handle(IPC.engineStatus, () => engine.status)
   ipcMain.handle(IPC.engineRestart, () => engine.restart())
+  ipcMain.handle(IPC.engineStart, () => engine.start())
   ipcMain.handle(IPC.engineRequest, (_e, req: EngineRequest) => {
     if (!req || typeof req.path !== 'string' || !req.path.startsWith('/')) {
       return { ok: false, status: 0, data: null, error: 'bad request path' }
@@ -155,6 +159,7 @@ if (!gotLock) {
     }
   })
   void app.whenReady().then(() => {
+    handleThumbs(() => join(app.getPath('userData'), 'thumbs'))
     registerIpc()
     createMainWindow()
     if (process.env.VIKU_OPEN_SIGNIN) signin.open()

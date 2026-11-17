@@ -1,25 +1,12 @@
-import { Activity, Clapperboard, Download, Settings2, Sparkles, Wand2 } from 'lucide-react'
+import { Activity, Clapperboard, Download, Keyboard, Settings2, Sparkles, Wand2 } from 'lucide-react'
+import { Logo } from './Logo'
 import { useApp } from '@/state/app'
 import { runningCount, useJobs } from '@/state/jobs'
 import { useEditor, useReel } from '@/state/editor'
 import { IconButton, Segmented } from './ui'
 import type { SignInCard } from '@shared/ipc'
 
-export function Logo({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
-      <defs>
-        <linearGradient id="vk-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#ffe17e" />
-          <stop offset="1" stopColor="#f2b71c" />
-        </linearGradient>
-      </defs>
-      <rect x="1" y="1" width="22" height="22" rx="6.5" fill="url(#vk-g)" />
-      <path d="M6.6 8.2 12 17.6l5.4-9.4" stroke="#1d1700" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="12" cy="6.3" r="1.55" fill="#1d1700" />
-    </svg>
-  )
-}
+export { Logo }
 
 function StatusChip({ label, state, onClick, title }: { label: string; state: 'on' | 'off' | 'warn'; onClick: () => void; title: string }) {
   return (
@@ -58,7 +45,7 @@ export function TopBar() {
   return (
     <header className="topbar">
       <div className="tb-left">
-        <Logo />
+        <Logo size={26} />
         <span className="tb-app">Viku</span>
         <span className="tb-sep" aria-hidden />
         <span className="tb-project" title={project?.video_path}>
@@ -105,6 +92,7 @@ export function TopBar() {
           <Activity size={14} aria-hidden />
           {running > 0 && <span className="tb-count num">{running}</span>}
         </button>
+        <IconButton icon={Keyboard} label="Keyboard shortcuts" onClick={() => set({ shortcutsOpen: true })} kbd="?" />
         <IconButton icon={Settings2} label="Settings" onClick={() => set({ settingsOpen: true })} kbd="Ctrl+," />
         <button type="button" className="btn btn-primary btn-md tb-export" onClick={() => set({ exportOpen: true })} disabled={!reel && mode === 'manual'}>
           {mode === 'automate' ? <Sparkles size={14} aria-hidden /> : <Download size={14} aria-hidden />}

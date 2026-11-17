@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Cpu, FolderOpen, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { Check, Compass, Cpu, FolderOpen, Keyboard, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import type { Prefs } from '@shared/ipc'
 import { api } from '@/api'
 import type { ExportPreset, Settings } from '@/api/types'
@@ -148,6 +148,17 @@ export function SettingsDialog() {
                 </span>
               </div>
               <p className="rule-note small">The credit line is drawn at the bottom of every reel.</p>
+              <div className="irow">
+                <span className="irow-label">Getting started</span>
+                <span className="irow-ctl row gap">
+                  <Button size="sm" icon={Compass} onClick={() => set({ settingsOpen: false, onboardingOpen: true })}>
+                    Show the welcome guide
+                  </Button>
+                  <Button size="sm" variant="ghost" icon={Keyboard} onClick={() => set({ settingsOpen: false, shortcutsOpen: true })}>
+                    Keyboard shortcuts
+                  </Button>
+                </span>
+              </div>
             </>
           )}
           {tab === 'folders' && draft && (

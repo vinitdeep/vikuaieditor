@@ -11,6 +11,8 @@ export interface Prefs {
   autoStartEngine: boolean
   /** where AI Studio captures land before they are filed into a reel folder */
   capturesDir: string
+  /** first-run onboarding finished (re-openable from Settings → General) */
+  onboarded: boolean
 }
 
 export type EngineState = 'checking' | 'starting' | 'running' | 'stopped' | 'error'
@@ -113,6 +115,8 @@ export interface VikuBridge {
   engine: {
     status(): Promise<EngineStatus>
     restart(): Promise<EngineStatus>
+    /** spawn the engine now, even when auto-start is off */
+    start(): Promise<EngineStatus>
     request(req: EngineRequest): Promise<EngineResponse>
     onStatus(cb: (s: EngineStatus) => void): Unsubscribe
     /** raw SSE payloads from GET /events (already JSON-parsed) */
@@ -149,6 +153,7 @@ export const IPC = {
   prefsSet: 'prefs:set',
   engineStatus: 'engine:status',
   engineRestart: 'engine:restart',
+  engineStart: 'engine:start',
   engineRequest: 'engine:request',
   engineStatusEvt: 'engine:status-evt',
   engineEvent: 'engine:event',

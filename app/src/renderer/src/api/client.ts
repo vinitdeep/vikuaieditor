@@ -4,6 +4,7 @@ import type {
   BibleVerse,
   Candidate,
   CaptionFix,
+  Cutaway,
   Feedback,
   Health,
   JobEvent,
@@ -40,6 +41,8 @@ export interface VikuApi {
   candidates(projectId: string): Promise<Candidate[]>
   createReel(projectId: string, body: { segments: Seg[]; title: string; sub: string }): Promise<Reel>
   autobuild(reelId: string): Promise<JobRef>
+  /** attach a captured image to cutaway i (engine copies it into the library); null = adapter cannot, set it locally */
+  attachCutawayImage(reelId: string, index: number, path: string): Promise<Cutaway | null>
   render(reelId: string, preset?: string): Promise<JobRef>
   thumbnail(reelId: string): Promise<JobRef>
   automate(body: AutomateRequest): Promise<JobRef>
@@ -55,7 +58,7 @@ export interface VikuApi {
   bibleVerse(ref: string, lang: Lang): Promise<BibleVerse | null>
   bibleDownload(): Promise<JobRef>
 
-  librarySearch(q: string): Promise<LibraryImage[]>
+  librarySearch(q: string, limit?: number): Promise<LibraryImage[]>
   libraryImport(paths: string[], tags: string[]): Promise<JobRef | null>
   listMusic(): Promise<MusicTrack[]>
   heygenMusic(intent: string): Promise<JobRef>
@@ -66,6 +69,8 @@ export interface VikuApi {
 
   /** URL the <video>/<img>/<audio> element can load (engine /media?path= with Range). */
   mediaUrl(path: string): string
+  /** small cached JPEG of a local image (viku-thumb:// in Electron), for grids and timelines */
+  thumbUrl(path: string, width?: number): string
   /** subscribe to job events (SSE in live mode) */
   subscribe(cb: (ev: JobEvent) => void): () => void
 }

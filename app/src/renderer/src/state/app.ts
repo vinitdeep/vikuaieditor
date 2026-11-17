@@ -38,6 +38,8 @@ function loadLayout(): Layout {
 interface AppState {
   mode: Mode
   apiKind: 'live' | 'mock'
+  /** the data source the user asked for (prefs.adapter, or ?adapter= in tests) */
+  adapterPref: 'auto' | 'live' | 'mock'
   engine: EngineStatus | null
   health: Health | null
   auth: AuthStatus | null
@@ -49,6 +51,8 @@ interface AppState {
   activityOpen: boolean
   settingsOpen: boolean
   exportOpen: boolean
+  shortcutsOpen: boolean
+  onboardingOpen: boolean
   tool: Tool
   snapping: boolean
   skimming: boolean
@@ -68,6 +72,7 @@ let toastSeq = 1
 export const useApp = create<AppState>((set, get) => ({
   mode: 'manual',
   apiKind: 'mock',
+  adapterPref: 'auto',
   engine: null,
   health: null,
   auth: null,
@@ -79,6 +84,8 @@ export const useApp = create<AppState>((set, get) => ({
   activityOpen: false,
   settingsOpen: false,
   exportOpen: false,
+  shortcutsOpen: false,
+  onboardingOpen: false,
   tool: 'select',
   snapping: true,
   skimming: false,

@@ -7,7 +7,7 @@ import { useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
 import { duration } from '@/lib/time'
 import { reelDuration } from '@/lib/reel'
-import { Button, Empty, IconButton, LangBadge, Progress, Segmented } from '../ui'
+import { Button, Empty, IconButton, LangBadge, Progress, Segmented, SkeletonRows } from '../ui'
 
 export async function importSermon(language: LangOpt): Promise<void> {
   const files = (await window.viku?.dialog.openFile({ title: 'Choose a sermon video', filters: [{ name: 'Video', extensions: ['mp4', 'mov', 'mkv', 'm4v', 'webm', 'avi'] }] })) ?? []
@@ -78,8 +78,17 @@ export function MediaTab() {
       )}
 
       <div className="plist" role="list">
+        {!projects.length && loading && <SkeletonRows rows={3} avatar label="Loading projects" />}
         {!projects.length && !loading && (
-          <Empty icon={Film} title="No sermons yet">
+          <Empty
+            icon={Film}
+            title="No sermons yet"
+            action={
+              <Button size="sm" variant="primary" icon={FilePlus2} onClick={() => void importSermon(lang)}>
+                Import a sermon
+              </Button>
+            }
+          >
             Import a sermon video to start. Viku makes a proxy, transcribes it and finds reel-worthy moments.
           </Empty>
         )}

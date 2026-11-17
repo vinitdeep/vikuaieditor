@@ -139,6 +139,24 @@ export function mockReelA(): Reel {
     cutaways: [
       { t0: 9.0, t1: 16.2, img: 'D:\\Viku\\library\\illustrations\\09-empty-tomb.png', z0: 1.0, z1: 1.1, pan: [0, -0.02] },
       { t0: 27.0, t1: 32.4, img: 'D:\\Viku\\library\\illustrations\\05-first-believer.png', z0: 1.04, z1: 1.12, pan: [0.02, 0] },
+      {
+        t0: 34.2,
+        t1: 39.0,
+        img: '',
+        z0: 1.12,
+        z1: 1.22,
+        pan: [0, 0],
+        why: { match: 0.62, threshold: 1.3, nearest: 'shepherd hills' },
+        need: {
+          prompt:
+            'VERTICAL 9:16 portrait. Photorealistic cinematic still, Indian village at dawn: a shepherd carrying a tired lamb on his shoulders down a dusty path, warm low sun, gentle haze, no text, no logos.',
+          slug: '04-carried-home',
+          scene: 'a shepherd carrying a tired lamb home at dawn',
+          text: 'ସେ ମୋତେ କେବେ ଛାଡ଼ି ନାହାନ୍ତି।',
+          tags: ['shepherd', 'lamb', 'carried', 'home'],
+          grade: 'warm golden-hour grade'
+        }
+      },
       { t0: 45.6, t1: 52.6, img: 'D:\\Viku\\library\\illustrations\\11-victory-hill.png', z0: 1.0, z1: 1.08, pan: [0, 0.01] }
     ],
     music: { path: 'D:\\Viku\\music\\Hopeful Dawn - piano and strings.mp3', gain_db: -19, start: 0, duck_db: -8 },

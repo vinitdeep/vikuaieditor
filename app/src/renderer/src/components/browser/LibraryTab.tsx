@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { AudioLines, ImagePlus, Images, Music2, Pause, Play, Plus, Search, Sparkles, Waves, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { AudioLines, CircleAlert, ImagePlus, Images, Music2, Pause, Play, Plus, RefreshCw, Search, Sparkles, Waves, X } from 'lucide-react'
 import { api } from '@/api'
 import type { LibraryImage, MusicTrack, SfxItem } from '@/api/types'
 import { toast, useApp, type LibraryTab as LT } from '@/state/app'
@@ -9,7 +9,8 @@ import { usePlayback } from '@/state/playback'
 import { usePreview } from '@/lib/audio'
 import { endDrag, startDrag } from '@/lib/dnd'
 import { clock } from '@/lib/time'
-import { Button, Empty, IconButton, Segmented, Thumb } from '../ui'
+import { Button, Empty, IconButton, Segmented, Skeleton, SkeletonRows, Thumb, useVirtualGrid } from '../ui'
+import { readableName, useLibraryIndex } from '@/lib/cutaways'
 
 export function LibraryTab() {
   const tab = useApp((s) => s.libraryTab)
@@ -36,31 +37,60 @@ export function LibraryTab() {
   )
 }
 
+const GRID = { minCell: 96, gap: 8, aspect: 16 / 9, pad: 8 }
+
 function Illustrations() {
   const [q, setQ] = useState('')
   const [items, setItems] = useState<LibraryImage[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [nonce, setNonce] = useState(0)
+  const gridRef = useRef<HTMLDivElement>(null)
+  const vg = useVirtualGrid(gridRef, items.length, GRID)
+
   useEffect(() => {
     let alive = true
     setLoading(true)
     const t = setTimeout(() => {
       api()
-        .librarySearch(q)
-        .then((r) => alive && setItems(r))
-        .catch(() => alive && setItems([]))
+        .librarySearch(q, q.trim() ? 120 : 2000)
+        .then((r) => {
+          if (!alive) return
+          setItems(r)
+          setError(null)
+        })
+        .catch((e: unknown) => {
+          if (!alive) return
+          setItems([])
+          setError(e instanceof Error ? e.message : String(e))
+        })
         .finally(() => alive && setLoading(false))
     }, 160)
     return () => {
       alive = false
       clearTimeout(t)
     }
+  }, [q, nonce])
+
+  useEffect(() => {
+    gridRef.current?.scrollTo(0, 0)
   }, [q])
 
   const importImages = async (): Promise<void> => {
     const files = (await window.viku?.dialog.openFile({ title: 'Add illustrations', multi: true, filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }] })) ?? []
     if (!files.length) return
-    const ref = await api().libraryImport(files, [])
-    if (ref) useJobs.getState().track(ref, `Import ${files.length} illustrations`, { onDone: () => setQ((x) => x + '') })
+    try {
+      const ref = await api().libraryImport(files, [])
+      if (ref)
+        useJobs.getState().track(ref, `Import ${files.length} illustrations`, {
+          onDone: () => {
+            setNonce((n) => n + 1)
+            void useLibraryIndex.getState().load(true)
+          }
+        })
+    } catch (e) {
+      toast('error', `Import failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   const addAtPlayhead = (img: LibraryImage): void => {
@@ -73,6 +103,7 @@ function Illustrations() {
     })
   }
 
+  const [from, to] = vg.range
   return (
     <>
       <div className="ptool sub">
@@ -83,27 +114,86 @@ function Illustrations() {
         </span>
         <IconButton icon={ImagePlus} label="Add illustrations to library" onClick={() => void importImages()} />
       </div>
-      <div className="igrid">
-        {!items.length && !loading && <Empty icon={Images} title="Nothing found">Try another tag, or add images.</Empty>}
-        {items.map((it, i) => (
-          <figure
-            key={it.path}
-            className="icell"
-            draggable
-            onDragStart={(e) => startDrag(e, { kind: 'image', path: it.path, name: it.name })}
-            onDragEnd={endDrag}
-            onDoubleClick={() => addAtPlayhead(it)}
-            title={`${it.name}\n${it.tags.join(', ')}\nDrag onto the Cutaways track · double-click adds at playhead`}
+      {!loading && !error && items.length > 0 && (
+        <div className="igrid-meta small muted">
+          {items.length} illustration{items.length === 1 ? '' : 's'}
+          {q ? ` for “${q}”` : ''} · drag onto Cutaways
+        </div>
+      )}
+      <div className="igrid" ref={gridRef}>
+        {loading && !items.length ? (
+          <div className="igrid-skel">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <Skeleton key={i} className="icell-skel" r={6} />
+            ))}
+          </div>
+        ) : error ? (
+          <Empty
+            icon={CircleAlert}
+            title="Library unavailable"
+            action={
+              <Button size="sm" icon={RefreshCw} onClick={() => setNonce((n) => n + 1)}>
+                Try again
+              </Button>
+            }
           >
-            <Thumb src={api().mediaUrl(it.path)} alt={it.name} seed={i} />
-            <figcaption>
-              <span className="ellipsis">{it.name.replace(/^\d+-/, '').replace(/-/g, ' ')}</span>
-            </figcaption>
-            <button type="button" className="icell-add" aria-label={`Add ${it.name} at playhead`} onClick={() => addAtPlayhead(it)}>
-              <Plus size={12} />
-            </button>
-          </figure>
-        ))}
+            {error}
+          </Empty>
+        ) : !items.length ? (
+          q ? (
+            <Empty
+              icon={Search}
+              title="Nothing matches"
+              action={
+                <Button size="sm" onClick={() => setQ('')}>
+                  Clear search
+                </Button>
+              }
+            >
+              No illustration is tagged “{q}”. Try a broader word, or generate one from an empty cutaway.
+            </Empty>
+          ) : (
+            <Empty
+              icon={Images}
+              title="Your library is empty"
+              action={
+                <Button size="sm" variant="primary" icon={ImagePlus} onClick={() => void importImages()}>
+                  Add illustrations
+                </Button>
+              }
+            >
+              Add your own pictures, or generate them in AI Studio — every captured image is filed here.
+            </Empty>
+          )
+        ) : (
+          <div className="igrid-space" style={{ height: vg.height }}>
+            {vg.ready &&
+              items.slice(from, to).map((it, k) => {
+                const i = from + k
+                const name = readableName(it.name)
+                return (
+                  <figure
+                    key={it.path}
+                    className="icell"
+                    style={vg.pos(i)}
+                    draggable
+                    onDragStart={(e) => startDrag(e, { kind: 'image', path: it.path, name: it.name })}
+                    onDragEnd={endDrag}
+                    onDoubleClick={() => addAtPlayhead(it)}
+                    title={`${name}\n${it.tags.join(', ')}\nDrag onto the Cutaways track · double-click adds at playhead`}
+                  >
+                    <Thumb src={api().thumbUrl(it.path, 320)} alt={name} seed={i} />
+                    <figcaption>
+                      <span className="ellipsis">{name}</span>
+                    </figcaption>
+                    <button type="button" className="icell-add" aria-label={`Add ${name} at playhead`} onClick={() => addAtPlayhead(it)}>
+                      <Plus size={12} />
+                    </button>
+                  </figure>
+                )
+              })}
+          </div>
+        )}
       </div>
     </>
   )
@@ -111,6 +201,7 @@ function Illustrations() {
 
 function MusicList() {
   const [items, setItems] = useState<MusicTrack[]>([])
+  const [loading, setLoading] = useState(true)
   const [intent, setIntent] = useState('hopeful worship piano, gentle build')
   const playing = usePreview((s) => s.playing)
   const play = usePreview((s) => s.play)
@@ -121,7 +212,11 @@ function MusicList() {
     api()
       .listMusic()
       .then(setItems)
-      .catch(() => setItems([]))
+      .catch((e: unknown) => {
+        setItems([])
+        toast('error', `Could not list music: ${e instanceof Error ? e.message : String(e)}`)
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   const generate = async (): Promise<void> => {
@@ -173,7 +268,12 @@ function MusicList() {
             </Button>
           </div>
         ))}
-        {!items.length && <Empty icon={Music2} title="No music yet">Put tracks in your music folder (Settings → Folders).</Empty>}
+        {loading && !items.length && <SkeletonRows rows={6} avatar label="Loading music" />}
+        {!loading && !items.length && (
+          <Empty icon={Music2} title="No music yet">
+            Put tracks in your music folder (Settings → Folders), or generate one with HeyGen below.
+          </Empty>
+        )}
       </div>
       <div className="heygen-box">
         <div className="small muted">Generate with HeyGen {auth?.heygen ? '' : '(sign in first)'}</div>
@@ -190,6 +290,7 @@ function MusicList() {
 
 function SfxList() {
   const [items, setItems] = useState<SfxItem[]>([])
+  const [loading, setLoading] = useState(true)
   const playing = usePreview((s) => s.playing)
   const play = usePreview((s) => s.play)
   useEffect(() => {
@@ -197,6 +298,7 @@ function SfxList() {
       .listSfx()
       .then(setItems)
       .catch(() => setItems([]))
+      .finally(() => setLoading(false))
   }, [])
   const add = (s: SfxItem): void => {
     if (!currentReel()) return toast('warn', 'Open a reel first')
@@ -222,7 +324,12 @@ function SfxList() {
           </Button>
         </div>
       ))}
-      {!items.length && <Empty icon={AudioLines} title="No SFX found" />}
+      {loading && !items.length && <SkeletonRows rows={4} avatar label="Loading sound effects" />}
+      {!loading && !items.length && (
+        <Empty icon={AudioLines} title="No sound effects yet">
+          The engine installs impacts and air swells on first run — restart it if this stays empty.
+        </Empty>
+      )}
     </div>
   )
 }

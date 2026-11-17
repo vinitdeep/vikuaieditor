@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Download, Plus, Search, X } from 'lucide-react'
+import { BookOpen, CircleAlert, Download, Plus, Search, X } from 'lucide-react'
 import { api } from '@/api'
 import type { BibleVerse, Lang } from '@/api/types'
 import { toast, useApp } from '@/state/app'
@@ -8,7 +8,7 @@ import { useJobs } from '@/state/jobs'
 import { usePlayback } from '@/state/playback'
 import { endDrag, startDrag } from '@/lib/dnd'
 import { activeAt } from '@/lib/reel'
-import { Button, Empty, IconButton, Segmented } from '../ui'
+import { Button, Empty, IconButton, Segmented, SkeletonRows } from '../ui'
 
 export function insertVerse(v: { ref: string; text: string }, at?: number): void {
   const reel = currentReel()
@@ -33,6 +33,8 @@ export function BibleTab() {
   const [q, setQ] = useState('')
   const [res, setRes] = useState<BibleVerse[]>([])
   const [sel, setSel] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (reel) setLang(reel.language)
@@ -40,11 +42,21 @@ export function BibleTab() {
 
   useEffect(() => {
     let alive = true
+    setLoading(true)
     const t = setTimeout(() => {
       api()
         .bibleSearch(q, lang)
-        .then((r) => alive && setRes(r))
-        .catch(() => alive && setRes([]))
+        .then((r) => {
+          if (!alive) return
+          setRes(r)
+          setError(null)
+        })
+        .catch((e: unknown) => {
+          if (!alive) return
+          setRes([])
+          setError(e instanceof Error ? e.message : String(e))
+        })
+        .finally(() => alive && setLoading(false))
     }, 180)
     return () => {
       alive = false
@@ -101,7 +113,17 @@ export function BibleTab() {
         </div>
       )}
       <div className="vlist">
-        {!res.length && <Empty icon={BookOpen} title="No verses">Try a word like “ଶାନ୍ତି”, “संग” or “hope”.</Empty>}
+        {loading && !res.length && <SkeletonRows rows={5} label="Searching the Bible" />}
+        {!loading && error && (
+          <Empty icon={CircleAlert} title="Bible search failed">
+            {error}
+          </Empty>
+        )}
+        {!loading && !error && !res.length && (
+          <Empty icon={BookOpen} title={q ? 'No verses found' : 'Search the Bible'}>
+            {q ? `Nothing for “${q}”. Try one word, or a reference like “John 3:16”.` : 'Try a word like “ଶାନ୍ତି”, “संग” or “hope”, or a reference.'}
+          </Empty>
+        )}
         {res.map((v) => (
           <div
             key={v.ref}

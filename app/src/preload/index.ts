@@ -23,6 +23,7 @@ const bridge: VikuBridge = {
   engine: {
     status: () => ipcRenderer.invoke(IPC.engineStatus),
     restart: () => ipcRenderer.invoke(IPC.engineRestart),
+    start: () => ipcRenderer.invoke(IPC.engineStart),
     request: (req) => ipcRenderer.invoke(IPC.engineRequest, req),
     onStatus: (cb) => on(IPC.engineStatusEvt, cb),
     onEvent: (cb) => on(IPC.engineEvent, cb)

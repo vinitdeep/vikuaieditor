@@ -2,6 +2,7 @@
 import type { Reel } from '@/api/types'
 import { api } from '@/api'
 import { scriptFont } from '@/lib/lang'
+import { Sparkles } from 'lucide-react'
 import { Thumb } from '../ui'
 
 export const TRANS = 0.7 // cross-zoom dissolve seconds
@@ -12,6 +13,7 @@ const ease = (x: number): number => 1 - Math.pow(1 - Math.max(0, Math.min(1, x))
 export function cutawayInfluence(reel: Reel, t: number): { push: number } {
   let push = 0
   for (const c of reel.cutaways) {
+    if (!c.img) continue
     if (t >= c.t0 && t < c.t0 + TRANS) push = Math.max(push, ease((t - c.t0) / TRANS))
     if (t >= c.t1 - TRANS && t < c.t1) push = Math.max(push, 1 - ease((t - (c.t1 - TRANS)) / TRANS))
     if (t >= c.t0 + TRANS && t < c.t1 - TRANS) push = 1
@@ -24,6 +26,15 @@ export function CutawayLayer({ reel, t }: { reel: Reel; t: number }) {
     <>
       {reel.cutaways.map((c, i) => {
         if (t < c.t0 || t >= c.t1) return null
+        if (!c.img) {
+          return (
+            <div key={i} className="ov-need">
+              <Sparkles size={64} aria-hidden />
+              <b>Needs image</b>
+              {c.need?.slug && <span>{c.need.slug.replace(/^\d+[-_]*/, '').replace(/[-_]+/g, ' ')}</span>}
+            </div>
+          )
+        }
         const len = Math.max(0.01, c.t1 - c.t0)
         const p = (t - c.t0) / len
         const z = c.z0 + (c.z1 - c.z0) * p
@@ -32,8 +43,10 @@ export function CutawayLayer({ reel, t }: { reel: Reel; t: number }) {
         const scale = z * (1 + 0.08 * (1 - inP)) * (1 + 0.1 * outP)
         const blur = 10 * (1 - inP) + 10 * outP
         const opacity = Math.min(inP, 1 - outP)
-        const tx = c.pan[0] * 1080 * p
-        const ty = c.pan[1] * 1920 * p
+        // the engine stores pan in output pixels (e.g. [50, -60]); older UI data used 0..1 fractions
+        const px = Math.abs(c.pan[0]) > 1 || Math.abs(c.pan[1]) > 1
+        const tx = (px ? c.pan[0] : c.pan[0] * 1080) * p
+        const ty = (px ? c.pan[1] : c.pan[1] * 1920) * p
         return (
           <div
             key={i}

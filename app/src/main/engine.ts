@@ -194,6 +194,19 @@ export class EngineManager extends EventEmitter {
     this.sseAbort = null
   }
 
+  /** "Start engine" button: spawn even when auto-start is off (no-op when it already answers). */
+  async start(): Promise<EngineStatus> {
+    if (await this.health()) {
+      this.set({ state: 'running', message: 'Engine is running' })
+      this.startEvents()
+      this.startWatch()
+      return this.status
+    }
+    if (this.proc) return this.status
+    this.stopping = false
+    return this.spawnEngine()
+  }
+
   async restart(): Promise<EngineStatus> {
     await this.kill()
     this.stopping = false

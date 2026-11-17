@@ -1,0 +1,789 @@
+/* Onboarding, keyboard sheet, engine banner, transcript in-point. */
+
+.vk-logo {
+  flex: 0 0 auto;
+  display: block;
+}
+
+/* ---------- engine banner ---------- */
+.engine-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 6px 10px 6px 16px;
+  background: linear-gradient(90deg, rgba(255, 99, 99, 0.12), rgba(255, 99, 99, 0.04));
+  border-bottom: 1px solid rgba(255, 99, 99, 0.28);
+  color: #ffc9c9;
+  font-size: var(--fs-md);
+  flex: 0 0 auto;
+}
+
+.engine-banner.eb-fallback {
+  background: linear-gradient(90deg, rgba(255, 181, 71, 0.12), rgba(255, 181, 71, 0.03));
+  border-bottom-color: rgba(255, 181, 71, 0.3);
+  color: #ffd9a0;
+}
+
+.engine-banner.eb-up-on-mock,
+.engine-banner.starting {
+  background: linear-gradient(90deg, rgba(79, 157, 255, 0.12), rgba(79, 157, 255, 0.03));
+  border-bottom-color: rgba(79, 157, 255, 0.3);
+  color: #bcdcff;
+}
+
+.eb-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.eb-text b {
+  font-weight: 600;
+}
+
+.eb-detail {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- transcript in-point ---------- */
+.tline.mark-in {
+  box-shadow: inset 3px 0 0 var(--gold);
+  background: rgba(255, 210, 74, 0.07);
+}
+
+.tline.mark-in .tl-time::after {
+  content: 'IN';
+  display: block;
+  margin-top: 3px;
+  width: fit-content;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--gold);
+  color: var(--gold-ink);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- keyboard sheet ---------- */
+.kb-intro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 2px 4px;
+}
+
+.kb-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 28px;
+  padding-top: 6px;
+}
+
+.kb-group h3 {
+  margin: 14px 0 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.kb-row {
+  display: grid;
+  grid-template-columns: 196px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.kb-keys {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.kb-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.kb-or {
+  color: var(--text-4);
+  margin: 0 2px;
+}
+
+.kb-row .kbd,
+.kb-intro .kbd,
+.sel-bar .kbd,
+.ob .kbd {
+  min-width: 22px;
+  height: 22px;
+  line-height: 20px;
+  padding: 0 6px;
+  border-radius: 5px;
+  border: 1px solid var(--line-2);
+  border-bottom-width: 2px;
+  background: var(--bg-2);
+  color: var(--text-1);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  font-family: var(--font-ui);
+}
+
+.sel-bar .kbd {
+  height: 18px;
+  line-height: 16px;
+  min-width: 18px;
+  padding: 0 4px;
+  font-size: 10px;
+}
+
+.kb-label {
+  color: var(--text-2);
+  font-size: var(--fs-md);
+}
+
+/* ---------- onboarding ---------- */
+.ob-back {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(900px 500px at 30% 0%, rgba(255, 210, 74, 0.07), transparent 70%),
+    rgba(8, 9, 11, 0.82);
+  backdrop-filter: blur(6px);
+  animation: fade var(--t-med) var(--ease);
+}
+
+.ob {
+  width: min(1040px, 100%);
+  height: min(680px, 100%);
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--bg-1);
+  border: 1px solid var(--line-2);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  animation: pop 260ms var(--ease);
+}
+
+.ob-rail {
+  display: flex;
+  flex-direction: column;
+  padding: 26px 18px 18px;
+  background: linear-gradient(180deg, #1f2024, #18191c);
+  border-right: 1px solid var(--line);
+}
+
+.ob-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  padding: 0 6px 22px;
+}
+
+.ob-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ob-steps button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ob-steps button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ob-steps li.on button {
+  background: rgba(255, 210, 74, 0.08);
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+.ob-steps li.done button {
+  color: var(--text-2);
+}
+
+.ob-dot {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--line-2);
+  color: var(--text-3);
+}
+
+.ob-steps li.on .ob-dot {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--gold-ink);
+}
+
+.ob-steps li.done .ob-dot {
+  background: rgba(73, 201, 141, 0.16);
+  border-color: rgba(73, 201, 141, 0.4);
+  color: var(--green);
+}
+
+.ob-skip {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.ob-skip:hover {
+  color: var(--text-1);
+}
+
+.ob-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ob-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+}
+
+.ob-page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 44px 52px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: ob-in 280ms var(--ease);
+}
+
+@keyframes ob-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+.ob-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 600px;
+}
+
+.ob-kicker {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.ob-head h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.ob-head p {
+  margin: 2px 0 0;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.ob-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 28px 20px 52px;
+  border-top: 1px solid var(--line);
+}
+
+.ob-progress {
+  display: flex;
+  gap: 6px;
+}
+
+.ob-progress span {
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-4);
+  transition: background var(--t-med) var(--ease), width var(--t-med) var(--ease);
+}
+
+.ob-progress span.on {
+  background: var(--gold);
+}
+
+.ob-next {
+  height: 36px;
+  padding: 0 18px;
+}
+
+.ob-next > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ob-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.ob-hero {
+  width: 84px;
+  filter: drop-shadow(0 16px 30px rgba(255, 210, 74, 0.16));
+}
+
+.ob-feats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.ob-feat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.ob-feat b {
+  color: var(--text-1);
+  font-size: var(--fs-md);
+}
+
+.ob-feat-icon,
+.ob-card-icon,
+.ob-model-icon,
+.ob-engine-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gold-soft);
+  color: var(--gold);
+  flex: 0 0 auto;
+}
+
+.ob-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 620px;
+}
+
+.ob-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.ob-field .input {
+  height: 34px;
+  font-size: var(--fs-md);
+}
+
+.ob-path {
+  display: flex;
+  gap: 8px;
+}
+
+.ob-path .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ob-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 620px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.ob-note svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--text-2);
+}
+
+.ob-note code {
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  background: var(--bg-3);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.ob-engine {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(73, 201, 141, 0.3);
+  background: rgba(73, 201, 141, 0.06);
+}
+
+.ob-engine > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ob-engine.ok .ob-engine-icon {
+  background: rgba(73, 201, 141, 0.16);
+  color: var(--green);
+}
+
+.ob-engine.down {
+  border-color: rgba(255, 181, 71, 0.35);
+  background: rgba(255, 181, 71, 0.06);
+}
+
+.ob-engine.down .ob-engine-icon {
+  background: rgba(255, 181, 71, 0.16);
+  color: var(--amber);
+}
+
+.ob-models {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ob-models-head {
+  grid-column: 1 / -1;
+}
+
+.ob-model {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+}
+
+.ob-model.ok .ob-model-icon {
+  background: rgba(73, 201, 141, 0.14);
+  color: var(--green);
+}
+
+.ob-model.no .ob-model-icon {
+  background: rgba(255, 181, 71, 0.14);
+  color: var(--amber);
+}
+
+.ob-model.unk .ob-model-icon {
+  background: var(--bg-3);
+  color: var(--text-3);
+}
+
+.ob-model-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  line-height: 1.45;
+}
+
+.ob-model-text b {
+  color: var(--text-1);
+  font-size: var(--fs-md);
+}
+
+.ob-fix {
+  color: var(--amber);
+}
+
+.ob-state {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9px;
+  flex: 0 0 auto;
+}
+
+.ob-state.ok {
+  background: rgba(73, 201, 141, 0.14);
+  color: var(--green);
+}
+
+.ob-state.no {
+  background: rgba(255, 181, 71, 0.14);
+  color: var(--amber);
+}
+
+.ob-state.unk {
+  color: var(--text-4);
+}
+
+.ob-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 680px;
+}
+
+.ob-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+}
+
+.ob-card.on {
+  border-color: rgba(73, 201, 141, 0.3);
+}
+
+.ob-card-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.ob-card-text b {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-1);
+  font-size: 14px;
+}
+
+.ob-on,
+.ob-done-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green);
+}
+
+.ob-card-act {
+  flex: 0 0 auto;
+}
+
+.ob-church {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px;
+  gap: 32px;
+  align-items: start;
+}
+
+.ob-phone {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  border-radius: 18px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.55)),
+    radial-gradient(120% 70% at 50% 30%, #5a4a2e, #1a1712 70%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 20px 40px rgba(0, 0, 0, 0.45);
+}
+
+.ob-phone-mark {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform: translate(-50%, -50%);
+  color: rgba(255, 255, 255, 0.18);
+}
+
+.ob-phone-cap {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 30%;
+  text-align: center;
+  font-family: var(--font-or);
+  font-weight: 800;
+  font-size: 13px;
+  color: #fff;
+  -webkit-text-stroke: 0.6px #000;
+  paint-order: stroke fill;
+}
+
+.ob-phone-credit {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 9px;
+  text-align: center;
+  font-size: 7.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.ob-done {
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+}
+
+.ob-done .ob-head {
+  align-items: center;
+}
+
+.ob-done-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(73, 201, 141, 0.14);
+  border: 1px solid rgba(73, 201, 141, 0.35);
+  color: var(--green);
+}
+
+.ob-choices {
+  display: grid;
+  grid-template-columns: repeat(2, 230px);
+  gap: 14px;
+}
+
+.ob-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-2);
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+}
+
+.ob-choice b {
+  color: var(--text-1);
+  font-size: 14px;
+}
+
+.ob-choice svg {
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+
+.ob-choice:hover {
+  border-color: var(--gold-line);
+  transform: translateY(-1px);
+}
+
+.ob-choice.primary {
+  background: linear-gradient(180deg, rgba(255, 210, 74, 0.14), rgba(255, 210, 74, 0.05));
+  border-color: var(--gold-line);
+}
+
+@media (max-width: 900px) {
+  .ob {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ob-rail {
+    display: none;
+  }
+  .ob-page {
+    padding: 32px 24px 16px;
+  }
+  .ob-feats,
+  .ob-models {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

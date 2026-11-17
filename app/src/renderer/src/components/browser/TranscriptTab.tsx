@@ -6,19 +6,9 @@ import { useEditor, useReel } from '@/state/editor'
 import { usePlayback } from '@/state/playback'
 import { clock, duration } from '@/lib/time'
 import { Button, Empty, IconButton, LangBadge } from '../ui'
+import { normalizeRanges, useTranscriptSel, type Range } from '@/state/transcriptSel'
 
-type Range = [number, number] // line indices, inclusive
-
-function normalize(ranges: Range[]): Range[] {
-  const sorted = ranges.map(([a, b]) => [Math.min(a, b), Math.max(a, b)] as Range).sort((x, y) => x[0] - y[0])
-  const out: Range[] = []
-  for (const r of sorted) {
-    const last = out[out.length - 1]
-    if (last && r[0] <= last[1] + 1) last[1] = Math.max(last[1], r[1])
-    else out.push([r[0], r[1]])
-  }
-  return out
-}
+const normalize = normalizeRanges
 
 export function TranscriptTab() {
   const project = useEditor((s) => s.project)
@@ -27,7 +17,9 @@ export function TranscriptTab() {
   const srcT = usePlayback((s) => s.srcT)
   const viewer = usePlayback((s) => s.viewer)
   const [q, setQ] = useState('')
-  const [ranges, setRanges] = useState<Range[]>([])
+  const ranges = useTranscriptSel((s) => s.ranges)
+  const setRanges = useTranscriptSel((s) => s.setRanges)
+  const markIn = useTranscriptSel((s) => s.markIn)
   const [drag, setDrag] = useState<{ anchor: number; cur: number; add: boolean; x: number; y: number; moved: boolean } | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -59,7 +51,7 @@ export function TranscriptTab() {
     }
     window.addEventListener('mouseup', up)
     return () => window.removeEventListener('mouseup', up)
-  }, [drag, ranges, lines])
+  }, [drag, ranges, lines, setRanges])
 
   useEffect(() => {
     if (activeIdx < 0 || !listRef.current) return
@@ -104,7 +96,7 @@ export function TranscriptTab() {
               data-idx={i}
               role="option"
               aria-selected={sel}
-              className={`tline${sel ? ' sel' : ''}${i === activeIdx ? ' active' : ''}${used ? ' used' : ''}`}
+              className={`tline${sel ? ' sel' : ''}${i === activeIdx ? ' active' : ''}${used ? ' used' : ''}${i === markIn ? ' mark-in' : ''}`}
               onMouseDown={(e) => {
                 if (e.button !== 0) return
                 e.preventDefault()
@@ -152,7 +144,17 @@ export function TranscriptTab() {
             </Button>
           </>
         ) : (
-          <span className="muted small">Click a line to seek · drag to select · Ctrl+drag adds a range · Shift+click extends</span>
+          <span className="muted small">
+            {markIn !== null ? (
+              <>
+                In-point set — click the last line and press <kbd className="kbd">O</kbd>
+              </>
+            ) : (
+              <>
+                Click a line to seek · drag to select · <kbd className="kbd">I</kbd> / <kbd className="kbd">O</kbd> mark in / out
+              </>
+            )}
+          </span>
         )}
       </div>
     </div>
