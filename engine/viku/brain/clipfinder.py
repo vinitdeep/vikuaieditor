@@ -211,6 +211,7 @@ def suggest(p: dict, count: int = 8, rng: list | None = None, job=None) -> list[
         if len(picked) >= count:
             break
     out = []
+    sermon = [t["text"] for t in items]
     for rank, k in enumerate(picked):
         i, j = wins[k]
         its = items[i:j + 1]
@@ -221,7 +222,8 @@ def suggest(p: dict, count: int = 8, rng: list | None = None, job=None) -> list[
         lang = max(langs, key=langs.get)
         segs = planner.plan(its, p.get("pauses", []), lang)
         rs = ranker.reasons(contrib[k], model)
-        out.append({"id": f"s{rank + 1}", "score": round(float(sc[k]), 4), "title": pick_title(its, lang),
+        title, flag = pick_title(its, lang, sermon, f"{_short_name(p)} · Clip {rank + 1}")
+        out.append({"id": f"s{rank + 1}", "score": round(float(sc[k]), 4), "title": title, "title_flag": flag,
                     "segments": segs, "window": [items[i]["start"], items[j]["end"]],
                     "duration": round(sum(b - a for a, b in segs), 2), "reasons": [r["why"] for r in rs],
                     "reason_details": rs, "language": lang,
@@ -230,10 +232,44 @@ def suggest(p: dict, count: int = 8, rng: list | None = None, job=None) -> list[
     return out
 
 
-def pick_title(items: list[dict], lang: str) -> str:
-    """Hook title (<= 6 words + "!" / "?") from the window's lines - see brain/hooks.py."""
+def _short_name(p: dict) -> str:
+    name = p.get("name") or "Sermon"
+    return T.short_title(name.split(" _ ")[0].strip() or name, 32)
+
+
+def window_verses(items: list[dict], lang: str) -> list[dict]:
+    """Verses a window quotes: explicit references always, by meaning only when the Bible index is already built
+    (never trigger the 7-8 min index build from /suggest). -> [{"ref": "<native> · <English>"}]"""
+    from .. import bible
+    from . import scripture
+    if lang not in bible.TRANSLATIONS or not bible.db_path(lang).exists():
+        return []
+    caps = [{"t0": it["start"], "t1": it["end"], "text": it["text"]} for it in items]
+    try:
+        hits = scripture.detect(caps, lang, semantic=bible.index_ready(lang))
+    except Exception:  # noqa: BLE001 - a title fallback must never fail /suggest
+        return []
+    out = []
+    for h in hits[:1]:
+        try:
+            out.append({"ref": bible.verse(h["ref"], lang)["display_ref"]})
+        except Exception:  # noqa: BLE001
+            out.append({"ref": h["ref"]})
+    return out
+
+
+def pick_title(items: list[dict], lang: str, sermon: list[str] | None = None, fallback_name: str = ""
+               ) -> tuple[str, str | None]:
+    """Hook title (<= 6 words + "!" / "?") from the window's lines through the same ASR-quality gate as reels
+    (brain/hooks.py). When no line passes: the quoted verse's reference, else "<project> · Clip N", flagged
+    "review". -> (title, title_flag)."""
     from . import hooks
-    return hooks.hook(items, lang)["title"] or T.short_title(items[-1]["text"])
+    hk = hooks.hook(items, lang, sermon=sermon, fallback_name=fallback_name)
+    if hk.get("title_flag") == "review":
+        vs = window_verses(items, lang)
+        if vs:
+            hk = hooks.hook(items, lang, vs, sermon=sermon, fallback_name=fallback_name)
+    return hk["title"] or fallback_name, hk.get("title_flag")
 
 
 def window_features(p: dict, segments: list, lang: str) -> dict:

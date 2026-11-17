@@ -193,3 +193,16 @@ def test_no_gated_line_gives_verse_ref_or_neutral_name_for_review():
     assert hk["title"] == "Before the Foundation · Reel 3" and hk["title_flag"] == "review"
     good = hooks.hook([{"text": "आप अकेले नहीं हैं", "alt": "आप अकेले नहीं हैं"}] * 2, "hi")
     assert good["title_flag"] is None and "अकेले" in good["title"]
+
+
+def test_suggest_titles_use_the_gate_and_clip_fallback():
+    from viku.brain import clipfinder
+    junk = [{"start": 0, "end": 2, "text": "सो मु कौन कह", "alt": "सो मु कण कही"},
+            {"start": 2, "end": 4, "text": "देखू से कौन कवा जाए", "alt": "देखू सेतब कण क जाए"}]
+    title, flag = clipfinder.pick_title(junk, "hi", [], "Before the Foundation · Clip 2")
+    assert (title, flag) == ("Before the Foundation · Clip 2", "review")
+    good = [{"start": 0, "end": 2, "text": "आप अकेले नहीं हैं", "alt": "आप अकेले नहीं हैं"},
+            {"start": 2, "end": 4, "text": "परमेश्वर आपके साथ है", "alt": "परमेश्वर आपके साथ है"}]
+    title, flag = clipfinder.pick_title(good, "hi", [], "X · Clip 1")
+    assert flag is None and title and "Clip" not in title
+    assert clipfinder._short_name({"name": "ମୂଳଦୁଆ ପୂର୍ବରୁ _ Before the Foundation _ Pastor"}) == "ମୂଳଦୁଆ ପୂର୍ବରୁ"
