@@ -107,6 +107,44 @@ Details: `engine/README.md`.
 - Full-sermon analyze (2h26m) still not timed; ASR CPU-only.
 
 ## App
+**State (2026-11-17, final app round): installer + first-run setup + models manager done and verified end to end.**
+- **Installer**: `cd app && npm run dist` → `app/release/Viku-Setup-0.1.0.exe` (**~149 MB**, NSIS, per-user, no admin,
+  desktop + start-menu shortcuts, `build/icon.ico`). Bundles the engine source + `uv.lock` + `bootstrap.ps1` and the
+  official uv 0.12.4 `uv.exe` (pinned SHA-256, licences kept) as extraResources. First launch: hidden PowerShell runs
+  bootstrap.ps1 into `<install>\engine-env` behind a full-window **Setting up Viku** screen (PROGRESS lines, Details log,
+  Try again), then the app starts and owns `engine-env\engine\.venv\Scripts\viku-engine.exe`. Uninstaller keeps
+  `%APPDATA%\Viku` unless its *delete my data* box is ticked. Not code-signed, no auto-update.
+- **Verified with the real installer** (`node scripts/test-installer.mjs`): silent `/S /currentuser /D=%TEMP%\viku-install-test`
+  → installed Viku.exe launched with a fresh `VIKU_DATA` → setup ran bootstrap (~1.5–3 min, engine-env 979 MB) → engine
+  answered `/health` (`setup_needed`, missing deep-filter / indic-conformer / e5-small / fonts) → onboarding showed the
+  models from `GET /models`, fonts installed through the UI, IndicConformer showed the HF token step → About listed 69
+  components → quit left no processes → silent uninstall removed the app, shortcuts and registry key; temp dirs deleted.
+  Screenshots `app/screenshots/installer-01..06`.
+- **Models & setup** (Settings → Models + onboarding): required/optional, size, licence link, status, Install all
+  required / per item, live byte progress, Pause/Resume (resumable `.part`), Remove; `needs_token` items: Open model page,
+  one-shot password token field (`hf_token`, the app never stores it; the engine keeps it DPAPI-encrypted), Install from
+  folder (`source_dir`); models mirror URL (prefs → `mirror_url`); plain text per `error_code`.
+- **AI Studio queue** persisted to `%APPDATA%\Viku\gemini-queue.json` with `{reelId, index, t0, slug, attached}`;
+  `node scripts/test-queue.mjs` (mock): written, survives a reload, a capture that arrived while closed is attached on
+  restart (5/5 PASS).
+- **About & licences** (Settings → General): versions + searchable list (app shell + `GET /licences`).
+- **E2E in the built app vs the real engine and the user's data** (`node scripts/e2e-live.mjs`, `release/win-unpacked`):
+  project `20261117-045435-6d0d`, reel `~4` (an old automate test reel): caption 1 edited (added "।"), cutaway 1 swapped
+  from the Library (youth lost → call bible), bladed into a jump cut and the 2nd segment dragged before the 1st, saved
+  (engine JSON checked), rendered (~75 s, 1080×1920, 25.3 s), played in the new *Rendered* viewer. Automate on the real
+  sermon with Sermon part 2:10:50–2:13:20 (7850–8000 s), count 1, language Auto → continued in the same project →
+  reel `~6` (Hindi, 29.2 s, 4 cutaways, score 0.84) card with inline MP4 in 2 min 57 s. 0 console errors.
+  Screenshots `app/screenshots/e2e-01..11`.
+- Fixed on the way: Automate setup card broken by a `.setup` class clash (setup screen renamed `.first-run`), sermon-part row
+  overflow, late job events lost when a job finished before `track()` (now replayed), cancelled jobs never reached
+  handlers (`onCancel`), Rendered viewer showed source timecodes (own bar now), render progress now shown in the Reel
+  inspector, no way to swap a cutaway's picture (Library double-click / drop onto a cutaway).
+- **Gaps / next**: engine `automate` result `title` (hook, "ताकि वो परमेश्वर में आए!") differs from the stored reel title
+  ("बेटी जो बोलते हैं") — the card shows the stored one; library/music *seed* still read the dev folders (a fresh install has an
+  empty illustration library); bootstrap needs internet (~350 MB) and the HF token step needs a browser; installer unsigned;
+  a real signed-in AI Studio capture on the live engine is still untested (persistence verified with a simulated capture).
+- Docs: `USER-GUIDE.md` (church editors), `app/README.md` (Installer / Models / queue sections).
+
 **State (2026-11-17): desktop UI complete for Phases 1–2 screens; tested with mock data AND against the live engine.**
 `app/` = Electron 45 + React 19 + TS strict + Vite 8 (electron-vite). Build, typecheck and lint clean. Details: `app/README.md`.
 - Manual editor: Browser (Media / Transcript select→Make reel / Suggestions keep-reject→/feedback / Library / Bible),
