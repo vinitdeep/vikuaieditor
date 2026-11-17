@@ -107,6 +107,14 @@ def models_install(b: ModelsReq | None = None):
                                   {"ids": b.ids}))
 
 
+@app.get("/licences")
+def licences_list():
+    """Every third-party component (Python packages of the shipped env, runtime, tools, models, fonts, Bible texts)
+    with its licence; the same data as THIRD_PARTY_NOTICES.md."""
+    from . import licences
+    return licences.summary()
+
+
 @app.post("/models/remove")
 def models_remove(b: ModelsReq):
     from . import models
