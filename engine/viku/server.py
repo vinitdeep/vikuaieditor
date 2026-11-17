@@ -313,13 +313,15 @@ class AutomateReq(BaseModel):
     max_seconds: float = Field(60.0, ge=10, le=300)   # reel length: 10 s - 5 min
     pick: int = Field(0, ge=0, le=12)   # > 0: stop after suggest, return this many suggestions to choose from
     framing: Literal["follow", "fixed"] = "follow"   # auto framing (crop follows the speaker) or still crops
+    illustrations: Literal["library", "gemini", "none"] = "library"   # gemini: every cutaway asks for a new AI image
 
 
 @app.post("/automate")
 def automate_ep(b: AutomateReq):
     j = MANAGER.submit("automate", lambda job: automate.run(job, b.video_path, b.language, b.count, b.range,
                                                             b.project_id, render=b.render, max_seconds=b.max_seconds,
-                                                            pick=b.pick, framing=b.framing))
+                                                            pick=b.pick, framing=b.framing,
+                                                            illustrations=b.illustrations))
     return job_ref(j)
 
 
@@ -330,6 +332,7 @@ class AutomateBuildReq(BaseModel):
     suggestions: list[dict] | None = Field(None, max_length=12)   # several picked clips -> one job, built in order
     render: bool = True
     framing: Literal["follow", "fixed"] = "follow"
+    illustrations: Literal["library", "gemini", "none"] = "library"
 
 
 @app.post("/automate/build")
@@ -346,7 +349,7 @@ def automate_build(b: AutomateBuildReq):
     except JobError as e:
         raise HTTPException(404 if b.suggestion is None and not b.suggestions else 422, str(e)) from e
     j = MANAGER.submit("automate_build", lambda job: automate.build_suggestions(job, b.project_id, picked, b.render,
-                                                                                b.framing),
+                                                                                b.framing, b.illustrations),
                        {"project": b.project_id})
     return job_ref(j)
 

@@ -9,6 +9,25 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
 - Verified live (dev): simulated .crdownload -> rename in Downloads filed as `browser-mode-test.jpg`, queue item -> captured via browser; an image with no waiting prompt ignored; typecheck + lint clean. Not yet: a real AI Studio download end-to-end, installer rebuild.
 - **Length cap 10 s - 5 min** (Automate slider 10-300 s, step 5 below 1 min / 15 above; label "2 min 30 s"). Before this the slider was cosmetic: the engine ignored max_seconds and always used 20-60 s windows + a 60 s planner cap. Now `AutomateReq.max_seconds` / `SuggestReq.max_seconds` (10-300, default 60, 422 outside) -> `clipfinder.length_bounds(cap)` = (min window max(5, min(20, cap/2)), cap, ideal 0.75 cap) -> `build_windows`, `planner.plan(max_len)`, `ranker.raw_features(target)` (duration_fit = same 45 +/- 25 shape scaled to the target). 60 s gives exactly the old bounds. Caps > 60 s keep at most 16 evenly spaced ends per start; windows never span a > 10 s hole between cues (un-analysed gaps). Live: 6d0d / 4f96 at 10 s -> 6-9 s reels; at 60 s unchanged; at 300 s still ~28-34 s (the cap is a maximum; the ranker prefers those). tests/test_length_cap.py; 62 passed.
 
+## Session 8d (2026-11-17): why new AI pictures never reached the videos — fixed
+- Diagnosis (user's data): no AI Studio prompt had EVER been queued (no gemini-queue.json); every picture in every
+  reel came from the starter library and unmatched cutaways stayed empty ("needs": 3b05~6 had 3, ~3 had 2 ...).
+  Causes: (1) the Automate "Illustrations" option was ignored by app + engine; (2) nothing queued prompts for empty
+  cutaways after Automate (only the Manual per-cutaway Generate button did); (3) a captured picture only updated the
+  cutaway — the already-rendered MP4 never got it.
+- Engine: `AutomateReq.illustrations` / `AutomateBuildReq.illustrations` (library | gemini | none) ->
+  `automate.illustration_steps()` -> autobuild steps `cutaways` / `ai_images`; `cutaways.plan(..., library=False)`
+  keeps the same moments but makes every one a `need` (real reel 3b05~6: library 5 lib + 3 needs; gemini 0 + 8).
+- App: Illustrations = Gemini -> after Automate (Make reels or picked clips) `lib/gemini.queueEmptyCutaways(reels)`
+  queues every empty cutaway in ONE batch and opens the Sign-in window. After a capture is attached,
+  `rerenderWhenComplete()` re-renders a reel that was already rendered once none of its prompts is still waiting
+  (engine copy of the reel is the truth; a picture landing mid-render triggers one more render).
+- Still manual by design (free AI Studio): press Send next, paste in AI Studio, run, download — Viku files the image.
+- Verified: e2e-ai-images.mjs (mock adapter + REAL Sign-in queue and Downloads watcher, own profile, browser +
+  clipboard stubbed): rendered reel with an empty cutaway -> queued -> Send next -> image in Downloads -> filed ->
+  placed on cutaway 3 -> re-render "(new pictures)" done. Note: the watcher ignores files modified > 5 s before the
+  prompt was sent (a Windows file COPY keeps the old time — real downloads are new files). 80 engine tests pass.
+
 ## Session 8c (2026-11-17): tick several picked clips, make them together
 - User asked: select / mark clips in "Choose your reel" for the build. Each clip card has a tick box; the header has
   Select all / Clear + "Make N selected reels" (disabled with none ticked). "Make this reel" on a card still makes one.

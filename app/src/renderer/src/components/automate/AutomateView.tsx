@@ -28,6 +28,7 @@ import { useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
 import { clock, duration, parseTime } from '@/lib/time'
 import { reelDuration } from '@/lib/reel'
+import { queueEmptyCutaways } from '@/lib/gemini'
 import { Button, IconButton, LangBadge, Progress, Segmented, Toggle } from '../ui'
 import { ThumbPreview } from '../ThumbPreview'
 import { resultPath } from '../inspector/ReelPanel'
@@ -488,6 +489,14 @@ export function AutomateView() {
     set({ reels: map, projects: pmap })
   }
 
+  /** Illustrations = Gemini: queue a new AI picture for every empty cutaway of the reels just made (AI Studio). */
+  const askForAiImages = async (res: AutomateResultReel[]): Promise<void> => {
+    if (useAuto.getState().form.illustrations !== 'gemini') return
+    const all = useAuto.getState().reels
+    const made = res.map((r) => all[r.reel_id]).filter((r): r is Reel => Boolean(r))
+    await queueEmptyCutaways(made)
+  }
+
   const run = async (): Promise<void> => {
     if (!form.video_path) return toast('warn', 'Choose a sermon video first')
     if (partBad) return toast('warn', 'Sermon part: use times like 2:10:50 or seconds, at least 20 s apart')
@@ -521,6 +530,7 @@ export function AutomateView() {
           await loadProjects(res.map((r) => r.project_id))
           void useEditor.getState().loadProjects()
           toast('success', `${res.length} reel${res.length === 1 ? '' : 's'} ready`)
+          await askForAiImages(res)
         }
       })
     } catch (e) {
@@ -534,7 +544,10 @@ export function AutomateView() {
     setPreviewing(null)
     const ids = list.map((c) => c.id)
     try {
-      const ref = await api().automateBuild(picks.project_id, list.length === 1 ? list[0] : list, form.framing ?? 'follow')
+      const ref = await api().automateBuild(picks.project_id, list.length === 1 ? list[0] : list, {
+        framing: form.framing ?? 'follow',
+        illustrations: form.illustrations
+      })
       set({ jobId: ref.job, phase: 'build', building: ids })
       const done = (): void => set({ building: [] })
       const label = list.length === 1 ? list[0].title || 'picked clip' : `${list.length} picked clips`
@@ -558,6 +571,7 @@ export function AutomateView() {
           await loadProjects(res.map((r) => r.project_id))
           void useEditor.getState().loadProjects()
           toast('success', res.length === 1 ? 'Your reel is ready' : `${res.length} reels ready`)
+          await askForAiImages(res)
         },
         onError: done,
         onCancel: done

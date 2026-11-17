@@ -23,14 +23,20 @@ def suggest_job(pid: str, job: Job, count: int = 8, rng: list | None = None, max
     return sug
 
 
-def build_reel(pid: str, s: dict, job: Job, render: bool = True, framing: str = "follow") -> dict:
+def illustration_steps(illustrations: str) -> dict:
+    """Automate "Illustrations" option -> autobuild steps: library pictures, new AI pictures (Gemini) or none."""
+    return {"cutaways": illustrations != "none", "ai_images": illustrations == "gemini"}
+
+
+def build_reel(pid: str, s: dict, job: Job, render: bool = True, framing: str = "follow",
+               illustrations: str = "library") -> dict:
     """One suggestion -> reel -> autobuild (-> render). Progress: build 0-0.4, render 0.4-1 of the current scope.
     framing: "follow" = auto framing (the crop pans with the speaker), "fixed" = one still crop per shot."""
     r = reel.create(pid, s["segments"], s["title"], "", {"suggestion": s["id"], "score": s["score"],
                                                       "title_auto": True, "sub_auto": True,
                                                       "framing": framing if framing in ("follow", "fixed") else "follow"})
     with job.scope(0.0, 0.4 if render else 1.0):
-        reel.autobuild(r["id"], job)
+        reel.autobuild(r["id"], job, illustration_steps(illustrations))
     res = {"reel": r["id"], "score": s["score"], "suggested_title": s["title"], "suggestion": s["id"]}
     if render:
         with job.scope(0.4, 1.0):
@@ -44,7 +50,7 @@ def build_reel(pid: str, s: dict, job: Job, render: bool = True, framing: str = 
 
 def run(job: Job, video_path: str = "", language: str = "or", count: int = 3, rng: list | None = None,
         project_id: str | None = None, name: str = "", render: bool = True, max_seconds: float = 60.0,
-        pick: int = 0, framing: str = "follow") -> dict:
+        pick: int = 0, framing: str = "follow", illustrations: str = "library") -> dict:
     """pick > 0: stop after analyze + suggest and return the top `pick` suggestions for the editor to choose from
     ({"project", "stage": "pick", "suggestions"}); POST /automate/build then makes the chosen one."""
     if project_id:
@@ -67,7 +73,7 @@ def run(job: Job, video_path: str = "", language: str = "or", count: int = 3, rn
     n = max(len(sug), 1)
     for i, s in enumerate(sug):
         with job.scope(0.5 + 0.5 * i / n, 0.5 + 0.5 * (i + 1) / n):
-            out.append(build_reel(pid, s, job, render, framing))
+            out.append(build_reel(pid, s, job, render, framing, illustrations))
     return {"project": pid, "reels": out}
 
 
@@ -86,17 +92,19 @@ def find_suggestion(pid: str, suggestion_id: str = "", suggestion: dict | None =
     return s
 
 
-def build_suggestion(job: Job, pid: str, s: dict, render: bool = True, framing: str = "follow") -> dict:
+def build_suggestion(job: Job, pid: str, s: dict, render: bool = True, framing: str = "follow",
+                     illustrations: str = "library") -> dict:
     """Make the one suggestion the editor picked. Same result shape as /automate."""
-    return build_suggestions(job, pid, [s], render, framing)
+    return build_suggestions(job, pid, [s], render, framing, illustrations)
 
 
-def build_suggestions(job: Job, pid: str, picked: list[dict], render: bool = True, framing: str = "follow") -> dict:
+def build_suggestions(job: Job, pid: str, picked: list[dict], render: bool = True, framing: str = "follow",
+                      illustrations: str = "library") -> dict:
     """POST /automate/build: make every clip the editor marked, one after another (one job, progress split evenly).
     Each result reel carries `suggestion` (the clip id it came from)."""
     out = []
     n = max(len(picked), 1)
     for i, s in enumerate(picked):
         with job.scope(i / n, (i + 1) / n):
-            out.append(build_reel(pid, s, job, render, framing))
+            out.append(build_reel(pid, s, job, render, framing, illustrations))
     return {"project": pid, "reels": out}

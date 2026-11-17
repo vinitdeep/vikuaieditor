@@ -1,7 +1,7 @@
 import type { EngineRequest, EngineResponse, HttpMethod } from '@shared/ipc'
 import { ApiError, type VikuApi } from './client'
 import * as N from './normalize'
-import type { Candidate, Framing, JobEvent, Lang, MusicGenerateRequest, Project, Reel, Settings } from './types'
+import type { AutomateBuildOptions, Candidate, JobEvent, Lang, MusicGenerateRequest, Project, Reel, Settings } from './types'
 
 /** Requests go through the main process (no CORS); falls back to fetch when opened outside Electron. */
 async function transport(base: string, req: EngineRequest): Promise<EngineResponse> {
@@ -133,11 +133,12 @@ export class HttpApi implements VikuApi {
   render = async (reelId: string, preset?: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/render`, preset ? { preset } : {}), 'render')
   thumbnail = async (reelId: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/thumbnail`, {}), 'thumbnail')
   automate = async (body: Parameters<VikuApi['automate']>[0]) => N.jobRef(await this.call('POST', '/automate', body), 'automate')
-  automateBuild = async (projectId: string, c: Candidate | Candidate[], framing: Framing = 'follow') => {
+  automateBuild = async (projectId: string, c: Candidate | Candidate[], opts: AutomateBuildOptions = {}) => {
     const wire = (x: Candidate) => ({ id: x.id, segments: x.segments, title: x.title, score: x.score })
+    const o = { framing: opts.framing ?? 'follow', illustrations: opts.illustrations ?? 'library' }
     const body = Array.isArray(c)
-      ? { project_id: projectId, suggestions: c.map(wire), framing }
-      : { project_id: projectId, suggestion_id: c.id, suggestion: wire(c), framing }
+      ? { project_id: projectId, suggestions: c.map(wire), ...o }
+      : { project_id: projectId, suggestion_id: c.id, suggestion: wire(c), ...o }
     return N.jobRef(await this.call('POST', '/automate/build', body), 'automate_build')
   }
   cancelJob = async (jobId: string) => {

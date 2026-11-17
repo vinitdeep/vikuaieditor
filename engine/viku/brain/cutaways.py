@@ -229,7 +229,9 @@ def need_request(text: str, lang: str, idx: int, tags: list[str]) -> dict:
 
 # ---------------------------------------------------------------- plan --
 def plan(captions: list[dict], dur: float, lang: str, jumps: list[float] | None = None,
-         wav16: np.ndarray | None = None, ref_texts: list[str] | None = None) -> list[dict]:
+         wav16: np.ndarray | None = None, ref_texts: list[str] | None = None, library: bool = True) -> list[dict]:
+    """library=False (Automate "Illustrations: Gemini"): the same moments are chosen, but none is filled from the
+    picture library - every cutaway becomes a `need` request for a new AI image."""
     caps = sorted([c for c in captions if c.get("text", "").strip()], key=lambda c: c["t0"])
     if len(caps) < 3 or dur < 10:
         return []
@@ -318,7 +320,7 @@ def plan(captions: list[dict], dur: float, lang: str, jumps: list[float] | None 
                 heapq.heappush(heap, (-s, k))
                 continue
             item = {"t0": round(a, 3), "t1": round(b, 3), "text": txt}
-            if good:
+            if good and library:
                 it = M.items[best[1]]
                 used.add(it["id"])
                 item.update({"img": it["path"], "lib_id": it["id"], "set": it["set"], "lib_set": True,

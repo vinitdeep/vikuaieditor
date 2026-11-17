@@ -4,6 +4,7 @@ import { api } from '@/api'
 import type { Cutaway, Reel } from '@/api/types'
 import { toast } from '@/state/app'
 import { saveNow, useEditor } from '@/state/editor'
+import { useJobs } from '@/state/jobs'
 import { cutawayPrompt, readableName, useLibraryIndex } from './cutaways'
 
 /**
@@ -68,6 +69,91 @@ export async function generateForCutaway(reelId: string, index: number, promptOv
     toast('info', 'Prompt queued in AI Studio — press “Send next” in the Sign-in window. The image lands on the cutaway by itself.')
   } catch (e) {
     toast('error', `Could not queue the prompt: ${e instanceof Error ? e.message : String(e)}`)
+  }
+}
+
+/**
+ * Queue a new AI picture for every empty cutaway of these reels (any project — Automate's reels need not be open), in
+ * one batch, then open the Sign-in window once. Used by Automate with "Illustrations: Gemini".
+ */
+export async function queueEmptyCutaways(reels: Reel[]): Promise<number> {
+  const bridge = window.viku
+  if (!bridge) return 0
+  const queued = useGen.getState().queued
+  const batch = reels.flatMap((reel) =>
+    reel.cutaways.flatMap((c, index) =>
+      c.img || queued[genKey(reel.id, c.t0)]
+        ? []
+        : [{ prompt: cutawayPrompt(c, captionTextUnder(reel, c.t0, c.t1)), name: plannedName(reel, index), meta: { reelId: reel.id, index, t0: c.t0, slug: c.need?.slug } as GenMeta }]
+    )
+  )
+  if (!batch.length) return 0
+  try {
+    syncQueue(await bridge.signin.queue(batch))
+    await bridge.signin.open('gemini')
+    toast(
+      'info',
+      `${batch.length} new picture${batch.length === 1 ? '' : 's'} queued in AI Studio — press “Send next” in the Sign-in window for each. Each image lands on its cutaway, and the reel re-renders when its last picture is in.`
+    )
+  } catch (e) {
+    toast('error', `Could not queue the AI pictures: ${e instanceof Error ? e.message : String(e)}`)
+    return 0
+  }
+  return batch.length
+}
+
+/** reels re-rendering because new pictures arrived; `again` = another picture landed during that render */
+const rerendering = new Map<string, { again: boolean }>()
+
+/**
+ * A captured picture only changes the cutaway: the reel's MP4 still lacks it. Once a reel that was already rendered has
+ * no AI Studio prompts left waiting, render it again so the new pictures are in the video.
+ */
+async function rerenderWhenComplete(reelId: string): Promise<void> {
+  const bridge = window.viku
+  if (!bridge) return
+  const items = await bridge.signin.list().catch(() => [] as PromptItem[])
+  if (items.some((i) => i.meta?.reelId === reelId && (i.status === 'queued' || i.status === 'sent'))) return
+  const busy = rerendering.get(reelId)
+  if (busy) {
+    busy.again = true
+    return
+  }
+  // the engine's copy is the truth (the open editor may not have seen the last render); the open one is the fallback
+  const open = useEditor.getState().project
+  const local = open?.reels.find((r) => r.id === reelId)
+  let reel: Reel | undefined
+  try {
+    reel = (await api().getProject(local && open ? open.id : reelId.split('~')[0])).reels.find((r) => r.id === reelId)
+  } catch {
+    reel = undefined
+  }
+  reel ??= local
+  // not rendered yet: the editor's own render will include the pictures
+  if (!reel || (reel.status !== 'rendered' && !reel.exports.length)) return
+  const st = useEditor.getState()
+  if (st.dirty && st.project?.reels.some((r) => r.id === reelId)) await saveNow()
+  const state = { again: false }
+  rerendering.set(reelId, state)
+  const finish = (): void => {
+    rerendering.delete(reelId)
+    if (state.again) void rerenderWhenComplete(reelId)
+  }
+  try {
+    const ref = await api().render(reelId)
+    useJobs.getState().track(ref, `Render · ${reel.title || reelId} (new pictures)`, {
+      onDone: () => {
+        finish()
+        void useEditor.getState().refresh()
+        toast('success', `${reel?.title || 'Reel'} re-rendered with its new pictures`)
+      },
+      onError: finish,
+      onCancel: finish
+    })
+    toast('info', `All pictures are in — re-rendering ${reel.title || 'the reel'}`)
+  } catch (e) {
+    finish()
+    toast('warn', `New pictures are on ${reel.title || 'the reel'}, but the re-render did not start: ${e instanceof Error ? e.message : String(e)}`)
   }
 }
 
@@ -175,6 +261,7 @@ async function attach(promptId: string, meta: GenMeta, file: string): Promise<vo
   }
   await window.viku?.signin.markAttached(promptId)
   if (fromEngine) void useLibraryIndex.getState().load(true)
+  void rerenderWhenComplete(reel.id)
   const slug = meta.slug ?? reel.cutaways[index]?.need?.slug ?? ''
   toast('success', `Image placed on cutaway ${index + 1}${slug ? ` (${readableName(slug)})` : ''}${openReel ? '' : ` of reel ${reel.title || reel.id}`}`)
 }

@@ -203,7 +203,8 @@ def caption_chunks(wav16: np.ndarray, bounds: list[float], max_cue=3.5) -> list[
 
 # ------------------------------------------------------------------ build --
 def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
-    steps = {"captions": True, "cutaways": True, "music": True, **(steps or {})}
+    # ai_images: cutaways are all requests for new AI pictures (none taken from the library)
+    steps = {"captions": True, "cutaways": True, "music": True, "ai_images": False, **(steps or {})}
     p, r = projects.find_reel(rid)
     d = projects.reel_dir(rid)
     segs = r["segments"]
@@ -262,7 +263,7 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
                     "-c:a", "pcm_s16le", str(w16)], job=job)
         xv = ff.read_wav16(str(w16))
         ref = [t["text"] for t in p.get("transcript", []) if t.get("text")]
-        cutaways = cutplan.plan(captions, dur, r["language"], jumps, xv, ref)
+        cutaways = cutplan.plan(captions, dur, r["language"], jumps, xv, ref, library=not steps["ai_images"])
         job.update(0.6, "matching verses")
         verses = scripture.place_verses(captions, cutaways, r["language"])
     sfx = plan_sfx([c for c in cutaways if c.get("img") and Path(c["img"]).exists()])

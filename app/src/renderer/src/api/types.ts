@@ -401,6 +401,12 @@ export interface AutomateRequest {
   framing?: Framing
 }
 
+/** options for building the clip(s) picked after automate({pick}) */
+export interface AutomateBuildOptions {
+  framing?: Framing
+  illustrations?: AutomateRequest['illustrations']
+}
+
 export interface AutomateResultReel {
   project_id: string
   reel_id: string
