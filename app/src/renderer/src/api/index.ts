@@ -4,7 +4,15 @@ import { MockApi } from './mock'
 
 export type { VikuApi } from './client'
 
-let current: VikuApi | null = null
+// Kept on globalThis, not in module scope: a dev hot reload re-runs this module (any edit under api/ does), and a
+// module-level `let` would come back null while the app stays booted -> "API not initialised" on the next call.
+const slot = globalThis as typeof globalThis & { __vikuApi?: VikuApi | null }
+let current: VikuApi | null = slot.__vikuApi ?? null
+const keep = (a: VikuApi): VikuApi => {
+  current = a
+  slot.__vikuApi = a
+  return a
+}
 
 /** Pick the adapter: prefs.adapter (auto|mock|live), overridable with ?adapter= for screenshots/tests. */
 /** In auto mode, give an engine that Electron is still starting a chance before falling back to mock data. */
@@ -38,24 +46,22 @@ export async function initApi(onWait?: (msg: string) => void): Promise<VikuApi> 
   const base = (prefs?.engineUrl ?? 'http://127.0.0.1:8765').replace(/\/$/, '')
   const override = new URLSearchParams(location.search).get('adapter')
   const mode = override === 'mock' || override === 'live' ? override : (prefs?.adapter ?? 'auto')
-  if (mode === 'mock') current = new MockApi()
-  else if (mode === 'live') current = new HttpApi(base)
-  else {
-    await waitForEngine(onWait)
-    const live = new HttpApi(base)
-    const ok = await Promise.race([
-      live.health().then(
-        () => true,
-        () => false
-      ),
-      new Promise<boolean>((r) => setTimeout(() => r(false), 1800))
-    ])
-    current = ok ? live : new MockApi()
-  }
-  return current
+  if (mode === 'mock') return keep(new MockApi())
+  if (mode === 'live') return keep(new HttpApi(base))
+  await waitForEngine(onWait)
+  const live = new HttpApi(base)
+  const ok = await Promise.race([
+    live.health().then(
+      () => true,
+      () => false
+    ),
+    new Promise<boolean>((r) => setTimeout(() => r(false), 1800))
+  ])
+  return keep(ok ? live : new MockApi())
 }
 
 export function api(): VikuApi {
-  if (!current) throw new Error('API not initialised')
-  return current
+  const a = current ?? slot.__vikuApi
+  if (!a) throw new Error('API not initialised')
+  return a
 }
