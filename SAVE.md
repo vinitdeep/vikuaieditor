@@ -53,5 +53,15 @@ Details: `engine/README.md`.
   lossless project round-trip (no engine field dropped), engine auto-spawn on start + kill on quit.
 - Run: `cd app && npm install && npm run dev`. Screenshots: `npm run build && npm run screenshots` (`-- --live` for the engine)
   → `app/screenshots/`. Mock media for screenshots: `npm run mock:media` (gitignored `app/public/mock/`).
-- Next: engine thumbnail param for the library grid (full PNGs are slow), installer (Phase 4), thumbnail designer styles
-  once the engine supports them, verify AI Studio capture end-to-end with a signed-in Google account.
+- 2026-11-17 (later): cutaway clips show readable library names ("fallen angel") over their thumbnail; empty cutaways
+  (`need`) are dashed gold "Needs image" clips with a one-click ✦ Generate → prompt queued in the Sign-in window → capture
+  attached via `POST /reels/{id}/cutaways/{i}/image` (verified with a simulated capture in mock; route present on the engine).
+  Automate: sticky pipeline card, finished run collapses to a summary, results = responsive 9:16 card grid (engine thumbnail,
+  lang badge, score, inline MP4 preview, Open in Manual / Re-render / Export / Reveal). Library: `viku-thumb://` cached
+  320 px JPEGs (~30 KB instead of 8 MB, `%APPDATA%\Viku\thumbs`) + virtualised grid (15 of 119 cells mounted).
+  First-run onboarding (folders, engine/models from /health, sign-ins, church + credit line), Viku logo + `build/icon.ico`,
+  `?` shortcuts sheet (every key verified by Playwright, incl. new Ctrl+S, I/O, +/−), engine-down banner with Start engine,
+  skeletons / empty states / error toasts. Screenshots: `app/screenshots/00a–00f` (onboarding), `04b`, `13`, `13b`, `17`,
+  `18`, `19` + `live-*`.
+- Next: installer (Phase 4, `build/icon.ico` ready), run one real signed-in AI Studio capture → attach on the live engine,
+  persist queued generation requests across reloads, thumbnail designer style picker once `/thumbnails/styles` settles.

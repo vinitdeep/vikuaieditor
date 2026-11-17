@@ -134,11 +134,12 @@ export function CutawayPanel({ reel }: { reel: Reel }) {
               <Sparkles size={18} aria-hidden />
               <b>Needs image</b>
               <span className="small">{queued ? 'Queued in AI Studio…' : 'Generate it in AI Studio, or pick one'}</span>
+              {c.need?.text && <span className={`cut-covers lang-${reel.language}`}>“{c.need.text}”</span>}
             </span>
           )}
         </div>
         <div className="cut-name ellipsis" title={c.img || undefined}>
-          {cutawayName(c) || 'Empty cutaway'}
+          {cutawayName(c) || (c.img ? 'Illustration' : 'Waiting for an image')}
         </div>
         <div className="row gap">
           <Button size="sm" icon={Images} onClick={() => useApp.getState().set({ browserTab: 'library', libraryTab: 'illustrations' })}>

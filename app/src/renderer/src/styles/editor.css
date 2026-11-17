@@ -850,6 +850,13 @@
   padding: 0 16px;
 }
 
+.cut-covers {
+  margin-top: 6px;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
 .cut-preview.needs .cut-empty .small {
   color: var(--text-3);
 }
@@ -857,7 +864,10 @@
 .cut-name {
   font-size: var(--fs-md);
   font-weight: 600;
-  text-transform: capitalize;
+}
+
+.cut-name::first-letter {
+  text-transform: uppercase;
 }
 
 .music-name {
@@ -1355,31 +1365,32 @@
   z-index: 1;
   flex: 0 1 auto;
   min-width: 0;
-  padding: 0 8px;
+  padding: 0 6px 0 8px;
   font-size: 11px;
   font-weight: 600;
   color: #e8fffb;
-  text-transform: capitalize;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
-.cut-strip {
-  position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 100%;
-  display: flex;
-  justify-content: flex-end;
-  opacity: 0.55;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px);
-  mask-image: linear-gradient(90deg, transparent, #000 40px);
+.cut-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
 }
 
-.cut-strip > * {
-  flex: 0 0 auto;
+.cut-bg > * {
+  width: 100%;
   height: 100%;
-  aspect-ratio: 9 / 16;
   object-fit: cover;
+  display: block;
+  opacity: 0.95;
+}
+
+.cut-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(6, 24, 22, 0.82) 0, rgba(6, 24, 22, 0.45) 55%, rgba(6, 24, 22, 0.1));
 }
 
 /* empty cutaway: waiting for a generated image */

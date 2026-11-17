@@ -4,6 +4,7 @@ import { api } from '@/api'
 import { scriptFont } from '@/lib/lang'
 import { Sparkles } from 'lucide-react'
 import { Thumb } from '../ui'
+import { cutawayName } from '@/lib/cutaways'
 
 export const TRANS = 0.7 // cross-zoom dissolve seconds
 
@@ -31,7 +32,7 @@ export function CutawayLayer({ reel, t }: { reel: Reel; t: number }) {
             <div key={i} className="ov-need">
               <Sparkles size={64} aria-hidden />
               <b>Needs image</b>
-              {c.need?.slug && <span>{c.need.slug.replace(/^\d+[-_]*/, '').replace(/[-_]+/g, ' ')}</span>}
+              {cutawayName(c) && <span>{cutawayName(c)}</span>}
             </div>
           )
         }

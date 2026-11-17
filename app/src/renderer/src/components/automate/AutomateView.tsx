@@ -42,7 +42,7 @@ interface AutoState {
   set: (p: Partial<AutoState>) => void
 }
 
-const useAuto = create<AutoState>((set, get) => ({
+export const useAuto = create<AutoState>((set, get) => ({
   form: { video_path: '', language: 'auto', count: 3, max_seconds: 60, illustrations: 'library', music: 'library', thumbnails: true },
   jobId: null,
   results: [],
@@ -309,7 +309,7 @@ export function AutomateView() {
           </div>
         </header>
 
-        {collapsed && job && (
+        {collapsed && (
           <section className="auto-summary" aria-label="Last run">
             <span className="as-check">
               <Check size={16} aria-hidden />
@@ -319,7 +319,8 @@ export function AutomateView() {
                 {results.length} reel{results.length === 1 ? '' : 's'} ready
               </b>
               <span className="small muted ellipsis">
-                {fileName} · {form.language === 'auto' ? 'auto language' : form.language.toUpperCase()} · ≤ {form.max_seconds} s · finished in {took(job.updatedAt - job.startedAt)}
+                {fileName || 'Last run'} · {form.language === 'auto' ? 'auto language' : form.language.toUpperCase()} · ≤ {form.max_seconds} s
+                {job ? ` · finished in ${took(job.updatedAt - job.startedAt)}` : ''}
               </span>
             </div>
             <Button variant="ghost" icon={Wand2} onClick={() => setSetupOpen(true)}>

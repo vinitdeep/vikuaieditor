@@ -200,7 +200,10 @@ await st(() => {
   v.useApp.getState().set({ adapterPref: 'auto', engine: { state: 'stopped', url: 'http://127.0.0.1:8765', spawned: false, message: 'Engine not running', log: [] } })
 })
 await shot('18-engine-banner')
-await st(() => window.__viku.useApp.getState().set({ adapterPref: 'mock' }))
+await st(async () => {
+  const v = window.__viku
+  v.useApp.getState().set({ adapterPref: v.api().kind === 'live' ? 'live' : 'mock', engine: await window.viku.engine.status() })
+})
 
 // 9. Settings (engine & models)
 await st(() => window.__viku.useApp.getState().set({ settingsOpen: true }))
@@ -228,6 +231,26 @@ if (!live) {
   await page.hover('.rcard:first-child .rcard-media')
   await wait(300)
   await shot('13b-automate-results-hover')
+} else {
+  // live: show the gallery with the project's real reels and their rendered exports
+  await st(async () => {
+    const v = window.__viku
+    const p = v.useEditor.getState().project
+    if (!p) return
+    const results = p.reels.map((r) => ({
+      project_id: p.id,
+      reel_id: r.id,
+      title: r.title,
+      duration: r.duration ?? 0,
+      score: r.score,
+      output: r.exports?.[r.exports.length - 1]?.path,
+      thumbnail: r.exports?.[r.exports.length - 1]?.thumbnail
+    }))
+    const reels = Object.fromEntries(p.reels.map((r) => [r.id, r]))
+    v.useAuto.getState().set({ results, reels, projects: { [p.id]: p } })
+  })
+  await wait(2500)
+  await shot('13-automate-results')
 }
 
 // 14. Sign-in window

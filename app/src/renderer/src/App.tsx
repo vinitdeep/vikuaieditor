@@ -6,6 +6,7 @@ import { useJobs } from '@/state/jobs'
 import { usePlayback } from '@/state/playback'
 import { handleCapture, syncQueue } from '@/lib/gemini'
 import { useLibraryIndex } from '@/lib/cutaways'
+import { useTranscriptSel } from '@/state/transcriptSel'
 import { useHotkeys } from '@/lib/hotkeys'
 import { TopBar } from '@/components/TopBar'
 import { Logo } from '@/components/Logo'
@@ -13,7 +14,7 @@ import { Browser } from '@/components/browser/Browser'
 import { Viewer } from '@/components/viewer/Viewer'
 import { Inspector } from '@/components/inspector/Inspector'
 import { Timeline } from '@/components/timeline/Timeline'
-import { AutomateView } from '@/components/automate/AutomateView'
+import { AutomateView, useAuto } from '@/components/automate/AutomateView'
 import { ActivityDrawer, ExportDialog, Splitter, Toasts } from '@/components/shell/Shell'
 import { SettingsDialog } from '@/components/shell/SettingsDialog'
 import { ShortcutsSheet } from '@/components/shell/ShortcutsSheet'
@@ -75,7 +76,7 @@ async function boot(onWait: (msg: string) => void): Promise<void> {
   })
 
   if (params.has('debug')) {
-    Object.assign(window, { __viku: { useApp, useEditor, usePlayback, useJobs, api, currentReel } })
+    Object.assign(window, { __viku: { useApp, useEditor, usePlayback, useJobs, useAuto, useTranscriptSel, api, currentReel } })
   }
 }
 

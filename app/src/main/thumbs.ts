@@ -39,9 +39,12 @@ export function handleThumbs(cacheDir: () => string): void {
       const info = head ? imageInfo(head) : null
       let img: Electron.NativeImage | null = null
       try {
-        const t = await nativeImage.createThumbnailFromPath(src, { width: w, height: Math.round(w * 2.4) })
+        // the shell fits the thumbnail in a square box: ask for the long side so a 9:16 image comes back >= w wide
+        const box = Math.round(w * Math.max(1, info ? info.height / Math.max(1, info.width) : 1.8))
+        const t = await nativeImage.createThumbnailFromPath(src, { width: box, height: box })
         const s = t.getSize()
-        const ok = !t.isEmpty() && (!info || Math.abs(s.width / s.height - info.width / info.height) < 0.03)
+        const sharp = s.width >= Math.min(w, info?.width ?? w) * 0.95
+        const ok = !t.isEmpty() && sharp && (!info || Math.abs(s.width / s.height - info.width / info.height) < 0.03)
         if (ok) img = s.width > w ? t.resize({ width: w, quality: 'good' }) : t
       } catch {
         /* no shell thumbnail: decode below */

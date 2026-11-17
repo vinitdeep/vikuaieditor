@@ -233,7 +233,6 @@ ${c.need.prompt}` : ''}`}
           )
         }
         const thumb = api().thumbUrl(c.img, 160)
-        const frames = Math.max(0, Math.min(6, Math.floor((w - 150) / 30)))
         return (
           <div
             key={i}
@@ -243,17 +242,15 @@ ${c.need.prompt}` : ''}`}
             title={`${name}
 ${c.img}`}
           >
-            <span className="cut-thumb">
+            <span className="cut-bg" aria-hidden>
               <Thumb src={thumb} alt="" seed={i + 3} />
             </span>
-            {w > 56 && <span className="cut-name ellipsis">{name}</span>}
-            {frames > 0 && (
-              <span className="cut-strip" aria-hidden>
-                {Array.from({ length: frames }).map((_, k) => (
-                  <Thumb key={k} src={thumb} alt="" seed={i + 3} />
-                ))}
+            {w >= 120 && (
+              <span className="cut-thumb">
+                <Thumb src={thumb} alt="" seed={i + 3} />
               </span>
             )}
+            {w > 30 && <span className="cut-name ellipsis">{name}</span>}
             <span className="xfade l" />
             <span className="xfade r" />
           </div>
