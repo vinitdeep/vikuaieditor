@@ -1,6 +1,8 @@
 import { spawn, execFile, type ChildProcess } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { existsSync } from 'node:fs'
+import { join } from 'node:path'
+import { app } from 'electron'
 import type { EngineRequest, EngineResponse, EngineStatus, Prefs, SetupStatus } from '../shared/ipc'
 import { bundlePaths, runBootstrap, setupNeeded } from './bundle'
 
@@ -170,7 +172,15 @@ export class EngineManager extends EventEmitter {
     this.pushLog(b ? `$ ${b.engineExe}` : `$ ${p.engineCommand}   (in ${p.engineCwd})`)
     this.set({ state: 'starting', message: 'Starting engine…', spawned: true })
     try {
-      const env = { ...process.env, PYTHONUTF8: '1', PYTHONUNBUFFERED: '1', ...(port ? { VIKU_PORT: port } : {}) }
+      // packaged: the bundled starter content (illustrations) lives in <resources>/starter
+      const starter = app.isPackaged ? join(process.resourcesPath, 'starter') : ''
+      const env = {
+        ...process.env,
+        PYTHONUTF8: '1',
+        PYTHONUNBUFFERED: '1',
+        ...(port ? { VIKU_PORT: port } : {}),
+        ...(starter && existsSync(starter) && !process.env.VIKU_STARTER ? { VIKU_STARTER: starter } : {})
+      }
       // bundled: run the venv's console script directly (no shell, path may contain spaces)
       const child = b
         ? spawn(b.engineExe, [], { cwd, windowsHide: true, env })

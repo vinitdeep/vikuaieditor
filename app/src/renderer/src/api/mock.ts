@@ -10,7 +10,11 @@ import type {
   LicenceItem,
   ModelInstallRequest,
   ModelItem,
+  MusicGenerateRequest,
+  MusicMood,
+  MusicTrack,
   Project,
+  StarterInfo,
   Reel,
   Seg,
   Settings
@@ -424,8 +428,40 @@ export class MockApi implements VikuApi {
   async libraryImport() {
     return this.job('library_import', [{ msg: 'Tagging + embedding images', ms: 1200 }])
   }
+  private music: MusicTrack[] = clone(M.MOCK_MUSIC)
+  private previews: MusicTrack[] = []
   async listMusic() {
-    return clone(M.MOCK_MUSIC)
+    return clone(this.music)
+  }
+  async musicMoods(): Promise<MusicMood[]> {
+    return clone(M.MOCK_MOODS)
+  }
+  async generateMusic(req: MusicGenerateRequest) {
+    const seed = req.seed ?? Math.floor(Math.random() * 100000)
+    const name = `viku_${req.mood}_s${seed}.flac`
+    const track: MusicTrack = { path: ['D:', 'Viku', req.preview ? 'music_previews' : 'music', name].join('\\'), name, duration: req.duration ?? 90, mood: req.mood, source: 'viku', seed }
+    return this.job('music_generate', [{ msg: 'voices', ms: 900 }, { msg: 'reverb', ms: 500 }, { msg: 'loudness -14 LUFS', ms: 300 }], () => {
+      if (req.preview) this.previews = [track]
+      else this.music.push(track)
+      return { ...track, preview: Boolean(req.preview) }
+    })
+  }
+  async keepMusic(path: string) {
+    const p = this.previews.find((t) => t.path === path)
+    if (!p) throw new Error('not a generated preview')
+    const t = { ...p, path: p.path.replace('music_previews', 'music') }
+    this.previews = []
+    this.music.push(t)
+    return clone(t)
+  }
+  async deleteMusic(name: string) {
+    this.music = this.music.filter((t) => t.name !== name)
+  }
+  async starter(): Promise<StarterInfo> {
+    return { illustrations: { available: true, count: 119, imported: 119, size_mb: 34.8, licence: M.STARTER_LICENCE }, music: { generated: this.music.filter((t) => t.source === 'viku').length, tracks: this.music.length } }
+  }
+  async importStarter() {
+    return this.job('library_import', [{ msg: 'importing starter illustrations', ms: 600 }], () => ({ added: 0, skipped: 119 }))
   }
   async heygenMusic(intent: string) {
     return this.job('heygen_music', [{ msg: `HeyGen: generating "${intent}"`, ms: 2500 }], undefined, this.auth.heygen ? undefined : 'HeyGen is not signed in — open Sign-in → HeyGen')

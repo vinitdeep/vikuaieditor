@@ -1,7 +1,7 @@
 import type { EngineRequest, EngineResponse, HttpMethod } from '@shared/ipc'
 import { ApiError, type VikuApi } from './client'
 import * as N from './normalize'
-import type { Candidate, JobEvent, Lang, Project, Reel, Settings } from './types'
+import type { Candidate, JobEvent, Lang, MusicGenerateRequest, Project, Reel, Settings } from './types'
 
 /** Requests go through the main process (no CORS); falls back to fetch when opened outside Electron. */
 async function transport(base: string, req: EngineRequest): Promise<EngineResponse> {
@@ -165,6 +165,20 @@ export class HttpApi implements VikuApi {
   }
   listMusic = async () => N.musicList(await this.call('GET', '/music'))
   heygenMusic = async (intent: string) => N.jobRef(await this.call('POST', '/music/heygen', { intent }), 'heygen_music')
+  musicMoods = async () => N.musicMoods(await this.call('GET', '/music/moods'))
+  generateMusic = async (req: MusicGenerateRequest) => N.jobRef(await this.call('POST', '/music/generate', req), 'music_generate')
+  keepMusic = async (path: string) => N.musicList([await this.call('POST', '/music/keep', { path })])[0]
+  deleteMusic = async (name: string) => {
+    await this.call('DELETE', `/music/${encodeURIComponent(name)}`)
+  }
+  starter = async () => N.starterInfo(await this.call('GET', '/starter'))
+  importStarter = async () => {
+    try {
+      return N.jobRef(await this.call('POST', '/library/import', { seed: true }), 'library_import')
+    } catch {
+      return null
+    }
+  }
   listSfx = async () => {
     try {
       return N.sfxList(await this.call('GET', '/sfx'))

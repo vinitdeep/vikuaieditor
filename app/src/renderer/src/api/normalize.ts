@@ -22,6 +22,8 @@ import type {
   ModelItem,
   Music,
   MusicTrack,
+  MusicMood,
+  StarterInfo,
   Project,
   ProjectSummary,
   ProxyRange,
@@ -411,9 +413,36 @@ export function musicList(x: unknown): MusicTrack[] {
       duration: num(r.duration),
       mood: r.mood !== undefined ? str(r.mood) : arr(r.tags).length ? str(arr(r.tags)[0]) : undefined,
       bpm: r.bpm === undefined ? undefined : num(r.bpm),
-      source: r.source === 'heygen' ? 'heygen' : 'library'
+      source: r.source === 'heygen' ? 'heygen' : r.source === 'viku' ? 'viku' : 'library',
+      seed: r.seed === undefined || r.seed === null ? undefined : num(r.seed)
     }
   })
+}
+
+export function musicMoods(x: unknown): MusicMood[] {
+  return arr(x)
+    .map((v) => {
+      const r = rec(v)
+      return { id: str(r.id), label: str(r.label, str(r.id)), desc: str(r.desc) }
+    })
+    .filter((m) => m.id)
+}
+
+export function starterInfo(x: unknown): StarterInfo {
+  const r = rec(x)
+  const il = rec(r.illustrations)
+  const mu = rec(r.music)
+  return {
+    illustrations: {
+      available: Boolean(il.available),
+      count: num(il.count),
+      imported: num(il.imported),
+      size_mb: il.size_mb === undefined ? undefined : num(il.size_mb),
+      licence: il.licence ? str(il.licence) : undefined,
+      path: il.path ? str(il.path) : undefined
+    },
+    music: { generated: num(mu.generated), tracks: num(mu.tracks), defaults_job: mu.defaults_job ? str(mu.defaults_job) : null }
+  }
 }
 
 export function sfxList(x: unknown): SfxItem[] {

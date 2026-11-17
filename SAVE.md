@@ -2,6 +2,55 @@
 
 Contract: `ARCHITECTURE.md`. Update this file every session.
 
+## Project state: **v0.1.0 complete** (2026-11-17, session 5)
+Installer: `app/release/Viku-Setup-0.1.0.exe` (183.8 MB, NSIS per-user, unsigned) - `cd app && npm run dist`.
+A fresh install now works offline from the first minute with bundled starter illustrations and generated music.
+- **Starter illustrations** (`data/starter/illustrations`, committed): the project's own 119 AI illustrations (Before the
+  Foundation + Salvation reels, permission from the user) -> 1080x1920 JPEG q85 (centre-cropped to exact 9:16, no
+  metadata), **34.8 MB** + `index.json` (id, title, tags, desc, set from `viku.library`). `engine/scripts/build_starter.py`
+  rebuilds it. Shipped as extraResources `resources/starter/illustrations`; the app passes `VIKU_STARTER`; the engine
+  imports it into an empty library on first run. Licence line (`/licences`, notices, About): "Viku starter illustrations -
+  AI-generated (Google Gemini / AI Studio) by the Viku project, free to use in Viku videos".
+- **Offline music generator** (`engine/viku/music_gen.py`): 5 moods (hopeful piano-pad, victorious strings swell,
+  reflective ambient, prayerful warm pad, uplifting pulse), numpy wavetable synthesis + filter sweeps + circular FFT
+  reverb, seamless 90 s loop, deterministic by seed, 48 kHz stereo FLAC. Seed-1 samples (`data/starter/music_samples/`,
+  gitignored, 3.4-3.9 MB each): -14.0 LUFS (victorious -14.2) / true peak -1.5 to -3.4 dBTP (ffmpeg ebur128 agrees), no
+  clipping, energy above 2 kHz -52 to -78 dB, 0 bell-like events (tonal > 2 kHz partial with a fast attack; a synthetic
+  bell overlay is caught once per strike), loop seam < 0.6 of a normal sample step; 5-9 s each. `POST /music/generate`
+  (+ preview / keep / DELETE, `GET /music/moods`); fresh install with no music -> job `music_defaults` (5 beds, ~40 s).
+  Autobuild picks the bed by the reel's hook theme (victory -> victorious, prayer -> prayerful, depression ->
+  reflective, hope/love -> hopeful, salvation -> uplifting). **No licensed tracks are bundled**; the HeyGen seed and the
+  user-folder illustration seed run only with `VIKU_DEV=1`.
+- **Automate title**: the `/automate` result now reports the stored reel's title / sub / title_flag / mood after the
+  title gate (+ `suggested_title`); test `test_automate_result_title_is_the_stored_reel_title`.
+- **App**: Library -> Music -> *Generate music* (mood picker, job progress, auto-played preview, Add to library / Try
+  another); generated beds listed as "Hopeful bed · #1 … Viku generated". Settings -> General -> *Starter content* (+
+  Re-import starter illustrations) and the About dialog show the pack and generated music; licences group "Viku content".
+- **Verified**: `cd engine && uv run pytest` -> 57 passed (~24 s). `cd app && npm run build && npm run lint` clean.
+  `node scripts/test-installer.mjs` on the rebuilt installer with a fresh `VIKU_DATA`: install 11 s, setup 102 s, engine
+  up, /starter = 119/119 illustrations imported + 5 generated beds (job finished before the 153 s check), library search
+  "fallen angel" -> the starter's 06-fallen-angel, About shows the starter summary (71 components), Library screenshots,
+  one more "victorious" bed generated through the UI and added (6 tracks), quit left 0 processes / engine down,
+  silent uninstall removed app + shortcuts, temp dirs deleted. Screenshots `app/screenshots/installer-01..09`
+  (`07-starter-illustrations`, `08-generated-music`, `09-generate-music-preview`). A fresh-data engine run on :8799 from
+  the repo also imported 119 + generated 5 beds; preview -> keep -> delete round trip OK.
+- Commits: 2686b2c (engine: starter pack, music generator, automate title), + app/docs commit (this session).
+
+### Known limitations (v0.1.0)
+- **Unsigned installer** (no code-signing certificate): SmartScreen asks once ("More info -> Run anyway"); no auto-update.
+- **AI Studio capture verified only with a simulated capture** (mock + engine route); a real signed-in Gemini / AI
+  Studio capture -> `/cutaways/{i}/image` round trip on the live engine has not been run.
+- **IndicConformer needs a free Hugging Face token** (gated repo: account + "agree" + read token, stored DPAPI-encrypted)
+  **or a folder install** (`source_dir`, e.g. from a USB stick) or a church mirror (`models_mirror_url`); no public mirror
+  is hosted yet.
+- **CPU-only ASR**: IndicConformer / faster-whisper run on the CPU (torch CPU build); a full 2-hour sermon analyse is
+  slow and still untimed (a 150 s range takes ~1 min on this 12-thread PC). Ranges are the practical workflow.
+- First launch needs internet once (~350 MB of Python packages + ~3.2 GB of required models); everything after is offline.
+- Hook titles and Odia picture matching are heuristic (see the session 4 gaps below); generated music is pleasant
+  underscore, not composed scores - HeyGen / own tracks remain for special reels.
+- The starter pack covers the themes of two sermons (creation, praise, scripture, the enemy defeated, salvation,
+  prayer, family); other topics fall back to AI Studio generation requests.
+
 ## Engine
 **State (2026-11-17, session 4): gated download, licences, fill fix, enemy-aware titles, tests.** Commits 4618800
 (HF token / mirror / error codes), 4f24268 (licences), 57ea713 (fill + titles), e61b9bb (tests + title fixes), + docs.
@@ -139,7 +188,7 @@ Details: `engine/README.md`.
   overflow, late job events lost when a job finished before `track()` (now replayed), cancelled jobs never reached
   handlers (`onCancel`), Rendered viewer showed source timecodes (own bar now), render progress now shown in the Reel
   inspector, no way to swap a cutaway's picture (Library double-click / drop onto a cutaway).
-- **Gaps / next**: engine `automate` result `title` (hook, "ताकि वो परमेश्वर में आए!") differs from the stored reel title
+- **Gaps / next** (automate title + empty fresh library: FIXED in session 5, see the top): engine `automate` result `title` (hook, "ताकि वो परमेश्वर में आए!") differs from the stored reel title
   ("बेटी जो बोलते हैं") — the card shows the stored one; library/music *seed* still read the dev folders (a fresh install has an
   empty illustration library); bootstrap needs internet (~350 MB) and the HF token step needs a browser; installer unsigned;
   a real signed-in AI Studio capture on the live engine is still untested (persistence verified with a simulated capture).

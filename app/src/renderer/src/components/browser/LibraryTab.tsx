@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { AudioLines, CircleAlert, ImagePlus, Images, Music2, Pause, Play, Plus, RefreshCw, Search, Sparkles, Waves, X } from 'lucide-react'
 import { api } from '@/api'
-import type { LibraryImage, MusicTrack, SfxItem } from '@/api/types'
+import type { LibraryImage, MusicMood, MusicTrack, SfxItem } from '@/api/types'
+import { musicList } from '@/api/normalize'
 import { toast, useApp, type LibraryTab as LT } from '@/state/app'
 import { currentReel, useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
@@ -9,7 +10,7 @@ import { usePlayback } from '@/state/playback'
 import { usePreview } from '@/lib/audio'
 import { endDrag, startDrag } from '@/lib/dnd'
 import { clock } from '@/lib/time'
-import { Button, Empty, IconButton, Segmented, Skeleton, SkeletonRows, Thumb, useVirtualGrid } from '../ui'
+import { Button, Empty, IconButton, Segmented, Select, Skeleton, SkeletonRows, Thumb, useVirtualGrid } from '../ui'
 import { cutawayAt, readableName, setCutawayImage, useLibraryIndex } from '@/lib/cutaways'
 
 export function LibraryTab() {
@@ -216,7 +217,7 @@ function MusicList() {
   const reelMusic = useEditor((s) => s.project?.reels.find((r) => r.id === s.reelId)?.music?.path)
   const auth = useApp((s) => s.auth)
 
-  useEffect(() => {
+  const reload = (): Promise<void> =>
     api()
       .listMusic()
       .then(setItems)
@@ -225,6 +226,9 @@ function MusicList() {
         toast('error', `Could not list music: ${e instanceof Error ? e.message : String(e)}`)
       })
       .finally(() => setLoading(false))
+
+  useEffect(() => {
+    void reload()
   }, [])
 
   const generate = async (): Promise<void> => {
@@ -262,11 +266,11 @@ function MusicList() {
           >
             <IconButton icon={playing === m.path ? Pause : Play} label={playing === m.path ? 'Stop preview' : `Preview ${m.name}`} onClick={() => play(m.path, api().mediaUrl(m.path))} />
             <span className="mrow-info">
-              <span className="ellipsis">{m.name}</span>
+              <span className="ellipsis">{trackTitle(m)}</span>
               <span className="muted small">
                 {m.mood ?? 'music'}
                 {m.bpm ? ` · ${m.bpm} bpm` : ''}
-                {m.source === 'heygen' ? ' · HeyGen' : ''}
+                {m.source === 'heygen' ? ' · HeyGen' : m.source === 'viku' ? ' · Viku generated' : ''}
               </span>
             </span>
             {playing === m.path && <Waves size={13} className="eq" aria-hidden />}
@@ -279,10 +283,12 @@ function MusicList() {
         {loading && !items.length && <SkeletonRows rows={6} avatar label="Loading music" />}
         {!loading && !items.length && (
           <Empty icon={Music2} title="No music yet">
-            Put tracks in your music folder (Settings → Folders), or generate one with HeyGen below.
+            Viku makes five royalty-free beds on first run. Generate one below, put tracks in your music folder (Settings → Folders), or use
+            HeyGen.
           </Empty>
         )}
       </div>
+      <MusicGenerator onAdded={() => void reload()} />
       <div className="heygen-box">
         <div className="small muted">Generate with HeyGen {auth?.heygen ? '' : '(sign in first)'}</div>
         <div className="row">
@@ -293,6 +299,110 @@ function MusicList() {
         </div>
       </div>
     </>
+  )
+}
+
+const cap = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s)
+
+/** "viku_hopeful_s1.flac" -> "Hopeful bed · #1"; other tracks keep their file name. */
+function trackTitle(m: MusicTrack): string {
+  return m.source === 'viku' && m.mood ? `${cap(m.mood)} bed · #${m.seed ?? 1}` : m.name
+}
+
+/** Offline music generator (engine music_gen): pick a mood → preview → add to the library. Royalty-free, no bells. */
+function MusicGenerator({ onAdded }: { onAdded: () => void }) {
+  const [moods, setMoods] = useState<MusicMood[]>([])
+  const [mood, setMood] = useState('hopeful')
+  const [busy, setBusy] = useState<number | null>(null)
+  const [preview, setPreview] = useState<MusicTrack | null>(null)
+  const playing = usePreview((s) => s.playing)
+  const play = usePreview((s) => s.play)
+  const stop = usePreview((s) => s.stop)
+
+  useEffect(() => {
+    api()
+      .musicMoods()
+      .then((m) => {
+        setMoods(m)
+        if (m.length && !m.some((x) => x.id === 'hopeful')) setMood(m[0].id)
+      })
+      .catch(() => setMoods([]))
+  }, [])
+
+  const generate = async (): Promise<void> => {
+    if (preview && playing === preview.path) stop()
+    setBusy(0)
+    try {
+      const ref = await api().generateMusic({ mood, preview: true, duration: 90 })
+      useJobs.getState().track(ref, `Generate music · ${mood}`, {
+        onEvent: (ev) => setBusy(ev.progress),
+        onDone: (ev) => {
+          setBusy(null)
+          const t = musicList([ev.result])[0]
+          if (!t?.path) return
+          setPreview(t)
+          play(t.path, api().mediaUrl(t.path))
+        },
+        onError: (ev) => {
+          setBusy(null)
+          toast('error', `Music generation failed: ${ev.error ?? ev.message}`)
+        },
+        onCancel: () => setBusy(null)
+      })
+    } catch (e) {
+      setBusy(null)
+      toast('error', `Music generation failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  const add = async (): Promise<void> => {
+    if (!preview) return
+    if (playing === preview.path) stop()
+    try {
+      await api().keepMusic(preview.path)
+      toast('success', `${trackTitle(preview)} added to your music library`)
+      setPreview(null)
+      onAdded()
+    } catch (e) {
+      toast('error', `Could not add the track: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  const info = moods.find((m) => m.id === mood)
+  return (
+    <div className="heygen-box musicgen" aria-label="Generate music">
+      <div className="small muted">Generate music · royalty-free, made on this PC (no internet)</div>
+      <div className="row">
+        <Select
+          className="grow"
+          ariaLabel="Music mood"
+          value={mood}
+          onChange={(v: string) => setMood(v)}
+          options={(moods.length ? moods : [{ id: 'hopeful', label: 'Hopeful piano + pad', desc: '' }]).map((m) => ({ id: m.id, label: m.label }))}
+        />
+        <Button size="sm" variant="primary" icon={Sparkles} disabled={busy !== null} onClick={() => void generate()}>
+          {busy !== null ? `Generating ${Math.round(busy * 100)}%` : preview ? 'Try another' : 'Generate'}
+        </Button>
+      </div>
+      {info?.desc && <div className="small muted musicgen-desc">{info.desc}</div>}
+      {preview && (
+        <div className="mrow musicgen-preview" draggable={false}>
+          <IconButton
+            icon={playing === preview.path ? Pause : Play}
+            label={playing === preview.path ? 'Stop preview' : 'Play preview'}
+            onClick={() => play(preview.path, api().mediaUrl(preview.path))}
+          />
+          <span className="mrow-info">
+            <span className="ellipsis">{trackTitle(preview)}</span>
+            <span className="muted small">preview · {clock(preview.duration)} · loops seamlessly</span>
+          </span>
+          {playing === preview.path && <Waves size={13} className="eq" aria-hidden />}
+          <Button size="sm" icon={Plus} onClick={() => void add()}>
+            Add to library
+          </Button>
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -318,7 +318,30 @@ export interface MusicTrack {
   duration: number
   mood?: string
   bpm?: number
-  source?: 'library' | 'heygen'
+  /** viku = made on this PC by the engine's music generator (royalty-free) */
+  source?: 'library' | 'heygen' | 'viku'
+  seed?: number
+}
+
+/** GET /music/moods */
+export interface MusicMood {
+  id: string
+  label: string
+  desc: string
+}
+
+export interface MusicGenerateRequest {
+  mood: string
+  seed?: number
+  duration?: number
+  /** true: render into the previews folder; keepMusic() adds it to the library */
+  preview?: boolean
+}
+
+/** GET /starter: bundled starter illustrations + generated default music */
+export interface StarterInfo {
+  illustrations: { available: boolean; count: number; imported: number; size_mb?: number; licence?: string; path?: string }
+  music: { generated: number; tracks: number; defaults_job?: string | null }
 }
 
 export interface SfxItem {

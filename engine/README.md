@@ -10,8 +10,10 @@ uv sync                      # .venv incl. the `asr` group (torch CPU from downl
 uv run viku-engine           # http://127.0.0.1:8765   (VIKU_PORT / VIKU_HOST override)
 ```
 Data dir: `%APPDATA%\Viku` (override with env `VIKU_DATA`). Nothing is read from anyone's personal folders: tools and
-models come from the model manager (below). First start synthesizes the SFX, copies the seed music and fetches the
-Noto fonts.
+models come from the model manager (below). First start imports the bundled starter illustrations into an empty
+library (`VIKU_STARTER`, else the repo's `data/starter`), generates the 5 default music beds into an empty music
+library (job `music_defaults`, ~40 s), synthesizes the SFX and fetches the Noto fonts. `VIKU_DEV=1` (dev machine
+only) also seeds from the original reel folders / the developer's licensed HeyGen beds - never on other PCs.
 
 **Installer / clean PC**: `scripts/bootstrap.ps1 -Uv <bundled uv.exe> -InstallDir <dir> [-DataDir <dir>] [-Port 8765]
 [-NoStart] [-CleanCache]` copies the engine into `<dir>\engine`, installs uv-managed CPython 3.11 into `<dir>\python`
@@ -25,7 +27,8 @@ One-time content (online):
 ```
 POST /models/install {}                    # every required tool/model that is missing (job, byte progress)
 POST /bible/download                      # eBible ory / hin2017 / eng-web -> <data>/bible/*.sqlite
-POST /library/import {"seed": true}       # the 119 Before-the-Foundation + Salvation illustrations
+POST /library/import {"seed": true}       # (offline) re-import the bundled starter pack (119 illustrations)
+POST /music/generate {"mood": "victorious", "seed": 7}   # (offline) a new royalty-free bed
 POST /music/heygen {"intent": "..."}      # optional, needs `npx hyperframes auth login --device`
 ```
 
@@ -97,7 +100,9 @@ lookup (tiny in-memory eBible zip), jump-cut segment remap (`reel.segment_offset
 caption fixer (dictionary fix, RNNT/CTC flag, learned edit), ranker scoring with the seed model, cutaway planner house
 rules (`cutaways.check`: hook, closing line, gaps >= 0.75 s, lengths, pans, alternating zoom), hook titles (enemy
 rule, theme fallback), the true-peak loudness guard (`reel.tp_guard_gain`), HF token storage / mirror URLs / error
-codes, and the licence inventory.
+codes, the licence inventory, the starter pack (index complete, <= 60 MB, import into an empty library, dev-only
+seeds), the music generator (5 moods, -14 LUFS +- 1, no clipping, deterministic, seamless loop, no bell-like energy, a
+synthetic bell IS detected, generate job tags + mood pick) and the /automate stored-title result.
 
 ## Speech models
 | Part | Engine | Notes |
@@ -201,6 +206,41 @@ or poll `GET /jobs/{id}`; cancel with `POST /jobs/{id}/cancel` (kills its ffmpeg
   last cue, or a reference announcement ("Matthew 4, verse 4 ...") - the house rule is to end on a finished line.
 - `captions.py` dictionary + learned corrections + RNNT/CTC flags; `planner.py` jump cuts; lexicons / concepts / weights
   are plain JSON next to the code.
+
+## Starter illustrations (`data/starter`, `scripts/build_starter.py`)
+`uv run python scripts/build_starter.py` (dev machine) converts the project's own AI illustrations (Before the
+Foundation + Salvation reel folders) to 1080x1920 (centre-crop to exactly 9:16) baseline JPEG q85 without metadata and
+writes `index.json` with `library.tags_for` / `library.describe` tags + desc, `set` = source folder, id = sha1 of the
+JPEG (the library's id scheme). 119 images, 34.8 MB. `library.import_starter()` copies them in (idempotent),
+`library.starter_status()` -> `GET /starter`. Licence: AI-generated (Google Gemini / AI Studio) by the Viku project,
+free to use in Viku videos.
+
+## Music generator (`viku/music_gen.py`, `viku/music.py`)
+`music_gen.generate(mood, seed=1, duration=90)` -> float32 (n, 2) at 48 kHz + info `{lufs, true_peak, key, bpm, bars}`.
+numpy only. Voices are band-limited wavetables (harmonic k of the timbre x 3rd-order low-pass weight at k*f0, capped at
+2 kHz), two per note (dark / bright) cross-faded by a slow brightness curve (a filter sweep without per-sample IIR);
+pads 2-3 detuned voices spread in stereo, strings with delayed vibrato, a felt piano (fast brightness decay, never above
+C5), a soft 8th-note pluck pulse, a low pitch-dropping boom. Harmony: I-V-vi-IV / vi-IV-I-V / I-IV-vi-V / I-IV-I-V /
+I-vi-IV-I with add9 colour and nearest-voicing voice leading; bar length rounded to a 2^a3^b5^c sample count so the
+whole-loop FFTs are fast. Everything lives on a circular timeline (notes, release tails, FFT reverb) so the file loops
+without a seam. Master: 35 Hz HP + 5 kHz LP, BS.1770-4 gated loudness -> -14 LUFS, 4x-oversampled true peak <= -1.5 dBTP
+(gain only), 16-bit FLAC with TPDF dither.
+
+| mood | sound | progression / tempo |
+|---|---|---|
+| hopeful | felt-piano broken chords over a saw pad, bass enters later | I-V-vi-IV or I-IV-vi-V, ~75 bpm |
+| victorious | 3-voice string-pad swells + low warm pad, bass, boom on 2-bar downbeats | vi-IV-I-V or I-V-vi-IV, ~85 bpm, 2 bars/chord |
+| reflective | sine pads, warm low pad, root+fifth drone, long reverb | vi-IV-I-V or I-IV-I-V, ~64 bpm |
+| prayerful | warm 3-voice pad, drone, soft bass | I-IV-I-V or I-vi-IV-I, ~64 bpm |
+| uplifting | 8th-note pluck pulse, saw pad, bass, light boom | I-V-vi-IV or I-IV-vi-V, 96 bpm |
+
+Measured (90 s, seed 1): -14.0 LUFS (victorious -14.2, true-peak-limited), true peak -1.5 to -3.4 dBTP (ffmpeg ebur128
+agrees), energy above 2 kHz -52 to -78 dB, 0 fast-attack tonal > 2 kHz events (a synthetic bell overlay scores one per
+strike), loop seam < 0.6 x a normal sample step; ~5-9 s each on this PC. `music.generate` (job) writes
+`<data>/music/viku_<mood>_s<seed>.flac` + music.json `{tags: ["viku generated", mood], source: "viku", mood, seed,
+lufs, true_peak}`; `preview` -> `<data>/music_previews` (one at a time) and `POST /music/keep`. `music.pick(mood, key)`:
+that mood's generated beds, then tracks tagged with it, else any (deterministic by reel id). Samples of each mood:
+`data/starter/music_samples/` (gitignored; regenerate with `music_gen.generate` + `music_gen.write`).
 
 ## Library (`viku/library.py`)
 `<data>/library/library.sqlite` images with tags (folder + slug words + user tags), `set` (source folder) and optional

@@ -1,5 +1,5 @@
 // Realistic mock content (Odia / Hindi / English) used by the mock adapter and screenshots.
-import type { BibleVerse, Candidate, Lang, LibraryImage, MusicTrack, Project, Reel, Settings, SfxItem, TranscriptLine } from './types'
+import type { BibleVerse, Candidate, Lang, LibraryImage, MusicMood, MusicTrack, Project, Reel, Settings, SfxItem, TranscriptLine } from './types'
 
 export const MOCK_VIDEO = 'D:\\Sermons\\2026-11-09 Before the Foundation - Pastor Jacob Deep.mp4'
 export const MOCK_VIDEO_HI = 'D:\\Sermons\\2026-10-26 Akele Nahin - Hindi service.mp4'
@@ -326,12 +326,27 @@ export const MOCK_LIBRARY: LibraryImage[] = [
 }))
 
 export const MOCK_MUSIC: MusicTrack[] = [
+  { path: 'D:\\Viku\\music\\viku_hopeful_s1.flac', name: 'viku_hopeful_s1.flac', duration: 90, mood: 'hopeful', source: 'viku', seed: 1 },
+  { path: 'D:\\Viku\\music\\viku_victorious_s1.flac', name: 'viku_victorious_s1.flac', duration: 90, mood: 'victorious', source: 'viku', seed: 1 },
+  { path: 'D:\\Viku\\music\\viku_reflective_s1.flac', name: 'viku_reflective_s1.flac', duration: 90, mood: 'reflective', source: 'viku', seed: 1 },
+  { path: 'D:\\Viku\\music\\viku_prayerful_s1.flac', name: 'viku_prayerful_s1.flac', duration: 90, mood: 'prayerful', source: 'viku', seed: 1 },
+  { path: 'D:\\Viku\\music\\viku_uplifting_s1.flac', name: 'viku_uplifting_s1.flac', duration: 90, mood: 'uplifting', source: 'viku', seed: 1 },
   { path: 'D:\\Viku\\music\\Hopeful Dawn - piano and strings.mp3', name: 'Hopeful Dawn', duration: 142, mood: 'hopeful', bpm: 72, source: 'library' },
   { path: 'D:\\Viku\\music\\Still Waters - ambient pad.mp3', name: 'Still Waters', duration: 188, mood: 'calm', bpm: 60, source: 'library' },
   { path: 'D:\\Viku\\music\\Rise Again - cinematic build.mp3', name: 'Rise Again', duration: 121, mood: 'triumphant', bpm: 90, source: 'library' },
   { path: 'D:\\Viku\\music\\Morning Mercy - acoustic guitar.mp3', name: 'Morning Mercy', duration: 156, mood: 'warm', bpm: 84, source: 'library' },
   { path: 'D:\\Viku\\music\\heygen\\uplifting-worship-bed-01.mp3', name: 'Uplifting worship bed', duration: 60, mood: 'uplifting', bpm: 76, source: 'heygen' }
 ]
+
+export const MOCK_MOODS: MusicMood[] = [
+  { id: 'hopeful', label: 'Hopeful piano + pad', desc: 'felt piano broken chords over a soft pad, I-V-vi-IV' },
+  { id: 'victorious', label: 'Victorious strings swell', desc: 'string-pad swells, low boom on the downbeats' },
+  { id: 'reflective', label: 'Reflective ambient', desc: 'slow sine pads and a drone, vi-IV-I-V' },
+  { id: 'prayerful', label: 'Prayerful warm pad', desc: 'warm pad and low drone, very slow movement' },
+  { id: 'uplifting', label: 'Uplifting pulse', desc: 'soft eighth-note pluck pulse, pad and bass' }
+]
+
+export const STARTER_LICENCE = 'Viku starter illustrations - AI-generated (Google Gemini / AI Studio) by the Viku project, free to use in Viku videos'
 
 export const MOCK_SFX: SfxItem[] = [
   { name: 'impact_low', path: 'D:\\Viku\\sfx\\impact_low.wav', duration: 1.8, kind: 'impact' },

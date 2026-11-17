@@ -29,7 +29,7 @@ Settings → Engine & models edits the command/folder/URL, toggles auto-start an
 
 ## Installer (Phase 4)
 
-`electron-builder.yml` → **`release/Viku-Setup-<version>.exe`** (~149 MB): NSIS assisted installer, **per-user** (no admin,
+`electron-builder.yml` → **`release/Viku-Setup-<version>.exe`** (~184 MB): NSIS assisted installer, **per-user** (no admin,
 default `%LOCALAPPDATA%\Programs\Viku`, folder can be changed), desktop + start-menu shortcuts, icon `build/icon.ico`.
 Silent: `Viku-Setup-0.1.0.exe /S /currentuser /D=C:\path` (`/D` last, unquoted); uninstall
 `"Uninstall Viku.exe" /S /currentuser` (add `--delete-app-data` to also remove `%APPDATA%\Viku`).
@@ -39,6 +39,10 @@ Silent: `Viku-Setup-0.1.0.exe /S /currentuser /D=C:\path` (`/D` last, unquoted);
   (`scripts/fetch-uv.mjs`: release zip checked against the release's `.sha256` file AND a pinned hash, unpacked in an
   empty temp folder) + `LICENSE-MIT`, `LICENSE-APACHE`, `VERSION.txt`. The app bundle itself has no `node_modules`
   (electron-vite bundles everything; main only needs node builtins).
+- **Starter content**: `resources/starter/illustrations/` = `../data/starter/illustrations` (119 JPEG + `index.json`,
+  34.8 MB). The packaged app spawns the engine with `VIKU_STARTER=<resources>\starter`; on first run the engine imports the
+  pack into an empty library and generates the 5 default music beds (job `music_defaults`). No music files are bundled
+  (the developer's HeyGen tracks are licensed to his account).
 - **First launch** (`src/main/bundle.ts`, `engine.ts`): when `<install>\engine-env\engine\.venv\Scripts\viku-engine.exe`
   is missing, or the stamp `engine-env\viku-app.json` names another app version / uv.lock hash, the main process runs
   `powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File bootstrap.ps1 -Uv <resources>\uv\uv.exe
@@ -69,6 +73,10 @@ Silent: `Viku-Setup-0.1.0.exe /S /currentuser /D=C:\path` (`/D` last, unquoted);
   `prefs.modelsMirror` (Settings → Models) is sent as `mirror_url` on every install. Error codes (`error_code` on the
   job, or recognised wording) → plain text: `hf_auth_required`, `network` (Resume keeps the partial file), `checksum`,
   `bad_request`.
+- **Starter content** (`StarterSummary` in `shell/AboutDialog.tsx`, from `GET /starter`): Settings → General → *Starter
+  content* (illustrations bundled / in the library, generated music beds, **Re-import starter illustrations** →
+  `POST /library/import {seed: true}`) and the top of the About dialog (with the starter licence line). The engine's
+  licence list has a *Viku content (bundled / generated)* group.
 - **About & licences** (`shell/AboutDialog.tsx`, Settings → General): app / engine / Electron / Chromium / uv versions,
   data folder, searchable list = the app shell's own components (`app:info` IPC, incl. uv's licence text) + `GET /licences`
   (`{components:[{name, version, licence, url, kind, notice}]}`, grouped by kind; click a row for its notice text).
@@ -144,7 +152,9 @@ build/           icon.svg (+ icon-small.svg) → icon.ico, icon.png, icons/NxN.p
   click = seek source, drag = select, Ctrl+drag = add range, Shift+click = extend, Preview / Make reel),
   Suggestions (score bar, reason chips, preview, Keep/Reject → `/feedback`, Learn), Library (virtualised illustrations grid with
   cached thumbnails — only visible rows mount,
-  music with preview + HeyGen generate, SFX — all draggable onto tracks), Bible (IRV ory / hin2017 / WEB search, insert).
+  music with preview + **Generate music** (offline mood picker → `POST /music/generate {mood, preview: true}` job with
+  progress → auto-played preview → **Add to library** = `POST /music/keep` / **Try another**; generated beds show as
+  "Hopeful bed · #1 … Viku generated") + HeyGen generate, SFX — all draggable onto tracks), Bible (IRV ory / hin2017 / WEB search, insert).
 - **Viewer**: *Reel 9:16* / *Source 16:9* / *Rendered* (plays the reel's latest export MP4; the export rows' **Play** and a
   finished render switch to it, cache-busted so a re-render reloads). 9:16 reel with fixed crop + punch-in, blurred fill for wide crops, cutaway cross-zoom dissolve (0.7 s),
   title hook (0.2–4.2 s), lower-third captions (400 px from bottom), verse cards (upper half), credit line, safe zones;
@@ -187,5 +197,5 @@ Shift+Z fit · S skimming · N snapping · Shift+S safe zones · 1 / 2 reel / so
   capture → `/cutaways/{i}/image` round trip on the live engine has not been run (it writes into the user's library).
 - `music.duck_db` and `style.voice_gain_db` are UI fields the engine may ignore.
 - The installer is not code-signed and has no auto-update; the bootstrap needs internet (~350 MB of wheels) on first launch.
-- The library / music *seed* imports still read the original dev folders (engine `library.seed`, `music.seed`); a fresh
-  install starts with an empty illustration library until images are imported or generated.
+- A fresh install has the 119 starter illustrations and 5 generated beds only; more pictures come from AI Studio, more
+  music from *Generate music* or HeyGen.

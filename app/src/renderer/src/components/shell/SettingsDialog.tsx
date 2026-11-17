@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Compass, Cpu, FolderOpen, Info, Keyboard, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { Compass, Cpu, FolderOpen, Images, Info, Keyboard, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import type { Prefs } from '@shared/ipc'
 import { api } from '@/api'
 import type { ExportPreset, Settings } from '@/api/types'
 import { toast, useApp } from '@/state/app'
+import { useJobs } from '@/state/jobs'
 import { Button, IconButton, Segmented, Tabs, Toggle } from '../ui'
 import { Modal } from './Shell'
 import { ModelsPanel } from './ModelsPanel'
+import { StarterSummary } from './AboutDialog'
 
 type Tab = 'general' | 'folders' | 'export' | 'models' | 'engine'
 
@@ -142,6 +144,29 @@ export function SettingsDialog() {
                 </span>
               </div>
               <p className="rule-note small">The credit line is drawn at the bottom of every reel.</p>
+              <div className="irow">
+                <span className="irow-label">Starter content</span>
+                <span className="irow-ctl col gap">
+                  <StarterSummary compact />
+                  <span className="row gap">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={Images}
+                      onClick={() =>
+                        void api()
+                          .importStarter()
+                          .then((ref) => {
+                            if (ref) useJobs.getState().track(ref, 'Import starter illustrations', { onDone: () => toast('success', 'Starter illustrations are in your library') })
+                          })
+                          .catch((e: unknown) => toast('error', `Import failed: ${e instanceof Error ? e.message : String(e)}`))
+                      }
+                    >
+                      Re-import starter illustrations
+                    </Button>
+                  </span>
+                </span>
+              </div>
               <div className="irow">
                 <span className="irow-label">Getting started</span>
                 <span className="irow-ctl row gap">

@@ -1,7 +1,9 @@
 // End-to-end test of the real installer:
 //   silent per-user install into %TEMP%\viku-install-test -> launch the installed Viku.exe with a fresh VIKU_DATA
 //   -> "Setting up Viku" runs bootstrap.ps1 -> engine answers /health -> onboarding shows the models
-//   -> install one small required item (fonts) through the UI -> quit -> silent uninstall -> temp dirs removed.
+//   -> install one small required item (fonts) through the UI -> bundled starter illustrations + 5 generated music beds
+//   appear in the fresh library (Library screenshots, one more bed generated through the UI) -> quit -> silent uninstall
+//   -> temp dirs removed.
 // Usage: npm run dist && node scripts/test-installer.mjs [--keep]
 import { _electron as electron } from 'playwright-core'
 import { execFileSync, spawnSync } from 'node:child_process'
@@ -131,11 +133,44 @@ await shot('05-models-after')
 const models = await (await fetch(`http://127.0.0.1:${PORT}/models`)).json()
 log('models:', models.map((m) => `${m.id}=${m.installed ? 'ok' : 'missing'}${m.needs_token ? '(token)' : ''}`).join(' '))
 
-// About dialog in the installed app
+// starter content on a fresh install: the bundled illustrations are imported, the 5 default beds are generated
+let st = null
+for (let i = 0; i < 150; i++) {
+  st = await (await fetch(`http://127.0.0.1:${PORT}/starter`)).json()
+  if (st.illustrations.count > 0 && st.illustrations.imported >= st.illustrations.count && st.music.generated >= 5) break
+  await sleep(2000)
+}
+log('starter:', JSON.stringify(st))
+const mus = await (await fetch(`http://127.0.0.1:${PORT}/music`)).json()
+log('music:', mus.map((m) => `${m.name} (${m.mood}, ${m.duration} s, ${m.source})`).join(' | '))
+const lib = await (await fetch(`http://127.0.0.1:${PORT}/library/search?q=fallen%20angel&limit=3`)).json()
+log('library search "fallen angel":', lib.map((x) => `${x.title} [${x.set}] ${x.width}x${x.height}`).join(' | '))
+if (!(st.illustrations.imported >= 100 && st.music.generated >= 5)) throw new Error('starter content missing in the fresh install')
+
+// About dialog in the installed app (starter summary + licences)
 await page.evaluate(() => window.__viku?.useApp.getState().set({ onboardingOpen: false, aboutOpen: true }))
 await page.waitForSelector('.about-row', { timeout: 20000 })
 await page.waitForTimeout(800)
 await shot('06-about')
+
+// Library: starter illustrations + generated music, then generate one more bed through the UI
+await page.evaluate(() => window.__viku?.useApp.getState().set({ aboutOpen: false, mode: 'manual', browserTab: 'library', libraryTab: 'illustrations' }))
+await page.waitForSelector('.icell', { timeout: 30000 })
+await page.waitForTimeout(2500)
+await shot('07-starter-illustrations')
+await page.evaluate(() => window.__viku?.useApp.getState().set({ libraryTab: 'music' }))
+await page.waitForSelector('.mrow', { timeout: 30000 })
+await page.waitForTimeout(800)
+await shot('08-generated-music')
+await page.selectOption('.musicgen select', 'victorious')
+await page.click('.musicgen button:has-text("Generate")')
+await page.waitForSelector('.musicgen-preview', { timeout: 180000 })
+await page.waitForTimeout(800)
+await shot('09-generate-music-preview')
+await page.click('.musicgen-preview button:has-text("Add to library")')
+await page.waitForTimeout(1500)
+const mus2 = await (await fetch(`http://127.0.0.1:${PORT}/music`)).json()
+log('music after "Add to library":', mus2.length, 'tracks; new:', mus2.filter((m) => !mus.some((o) => o.name === m.name)).map((m) => m.name).join(', '))
 
 } catch (e) {
   failure = e

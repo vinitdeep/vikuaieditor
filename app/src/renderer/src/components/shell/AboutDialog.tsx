@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ExternalLink, Search } from 'lucide-react'
+import { ExternalLink, Images, Music2, Search } from 'lucide-react'
 import type { AppInfo } from '@shared/ipc'
 import { api } from '@/api'
-import type { LicenceItem } from '@/api/types'
+import type { LicenceItem, StarterInfo } from '@/api/types'
 import { useApp } from '@/state/app'
 import { Logo } from '../Logo'
 import { Modal } from './Shell'
@@ -22,9 +22,43 @@ const GROUP_LABEL: Record<string, string> = {
   font: 'Fonts',
   fonts: 'Fonts',
   data: 'Data',
+  content: 'Viku content (bundled / generated)',
   bible: 'Bibles',
   runtime: 'Engine runtime',
   library: 'Libraries'
+}
+
+/** Bundled starter content: the illustration pack (installer) + the generated default music beds. */
+export function StarterSummary({ compact = false }: { compact?: boolean }) {
+  const [s, setS] = useState<StarterInfo | null>(null)
+  const [err, setErr] = useState(false)
+  useEffect(() => {
+    api()
+      .starter()
+      .then(setS)
+      .catch(() => setErr(true))
+  }, [])
+  if (err) return <div className="small muted">Starter content: the engine is not answering.</div>
+  if (!s) return <div className="small muted">Starter content…</div>
+  const il = s.illustrations
+  return (
+    <div className={`starter-summary${compact ? ' compact' : ''}`}>
+      <div className="starter-line">
+        <Images size={14} aria-hidden />
+        <span>
+          <b>Starter illustrations</b>{' '}
+          {il.available ? `${il.count} images${il.size_mb ? ` (${il.size_mb} MB)` : ''} · ${il.imported} in your library` : 'not bundled with this build'}
+        </span>
+      </div>
+      <div className="starter-line">
+        <Music2 size={14} aria-hidden />
+        <span>
+          <b>Generated music</b> {s.music.generated} royalty-free beds made on this PC · {s.music.tracks} tracks in your library
+        </span>
+      </div>
+      {!compact && il.licence && <div className="small muted starter-lic">{il.licence}. Generated music is free to use in any video.</div>}
+    </div>
+  )
 }
 
 /** About Viku: version + every third-party licence (GET /licences for the engine, the app shell's own list). */
@@ -82,6 +116,7 @@ export function AboutDialog() {
             {info && <div className="small muted about-path">Data: {info.userData}</div>}
           </div>
         </div>
+        <StarterSummary />
         <p className="small muted about-note">
           Viku is built on free and open-source software. Each component below keeps its own licence; models and tools downloaded during setup carry
           theirs into the data folder.

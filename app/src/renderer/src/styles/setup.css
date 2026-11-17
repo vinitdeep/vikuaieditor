@@ -450,6 +450,33 @@
   margin: 0;
   line-height: 1.5;
 }
+.starter-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-2);
+  font-size: var(--fs-sm);
+}
+.starter-summary.compact {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.starter-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.starter-line svg {
+  color: var(--gold, #ffd24a);
+  flex: none;
+}
+.starter-lic {
+  line-height: 1.5;
+}
 .about-search {
   display: flex;
   align-items: center;

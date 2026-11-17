@@ -33,6 +33,12 @@ progress bar.
 
 This happens only once (and again for a minute after an update).
 
+**Ready from the first minute:** the installer brings **119 starter illustrations** (Viku's own AI pictures —
+creation, praise, prayer, the cross, family, the enemy defeated …), so cutaways work before you generate any
+pictures. On the first start Viku also **composes five soft music beds** on your PC — *Hopeful*, *Victorious*,
+*Reflective*, *Prayerful* and *Uplifting* (about a minute in the background; no internet needed). Settings →
+General → **Starter content** shows both.
+
 ## 3. The welcome guide
 
 After the setup, a short guide opens:
@@ -149,14 +155,24 @@ When the library has no fitting picture, the cutaway shows a dashed gold **Needs
 The queue is remembered: if you close Viku while prompts are waiting, they are still there next time, and a
 picture that arrives later still lands on its cutaway.
 
-## 8. HeyGen music (optional)
+## 8. Music
 
-Viku comes with soft music beds. For a fresh one:
+Viku picks a music bed for each reel from its theme: a victory message gets the **Victorious** bed, a prayer
+message **Prayerful**, a message about struggle or depression **Reflective**, hope and God's love **Hopeful**,
+salvation **Uplifting**. You can always choose another track in **Library → Music** (double-click it, or drag it
+onto the Music track).
+
+**Make a new bed (offline, free):** in **Library → Music → Generate music**, pick a mood and click **Generate**
+(10–20 seconds). The new bed plays as a preview — click **Add to library** to keep it, or **Try another** for a
+different one. Generated music is made on your PC, is royalty-free and may be used in any video; it never uses
+bell, chime or shimmer sounds. Each bed is 90 seconds and loops seamlessly under longer reels.
+
+**HeyGen music (optional, online):**
 
 1. Click the **HeyGen** chip at the top → **Sign in**. A code appears; open the link, enter the code and approve.
    (No password is typed into Viku.)
-2. In **Library → Music**, describe the mood ("hopeful worship piano") and click **Generate**. The new track joins
-   your music library.
+2. In **Library → Music**, describe the mood ("hopeful worship piano") under *Generate with HeyGen* and click
+   **Generate**. The new track joins your music library. HeyGen tracks are licensed to your HeyGen account.
 
 Music is always mixed quietly under the voice (it dips when the preacher speaks).
 
@@ -188,6 +204,7 @@ In **Manual → Bible** you can search verses and drag one onto the **Verse** tr
 | No Odia/Hindi captions | Settings → Models: IndicConformer must say **Installed**. |
 | No verse cards | Download the Bibles (section 9). |
 | Pictures are wrong for the words | Swap them from the Library, or generate new ones in AI Studio. Viku learns from the reels you keep. |
+| The Library has no pictures / no music | Settings → General → **Starter content** → *Re-import starter illustrations*; Library → Music → **Generate music**. |
 | AI Studio prompt was not sent | Click in AI Studio's prompt box, press Ctrl+V, then Ctrl+Enter. |
 | Disk is full | Settings → Models: remove optional models; delete old projects' proxy files from Media; move Projects to another drive (Settings → Folders). |
 | Windows SmartScreen warning on install | **More info → Run anyway** (the installer is not signed yet). |
@@ -200,4 +217,5 @@ In **Manual → Bible** you can search verses and drag one onto the **Verse** tr
 tick **"Also delete my projects, models and settings"** in the uninstaller.
 
 **About & licences:** Settings → General → **About & licences** lists every open-source component Viku uses and
-its licence.
+its licence. The starter illustrations were made with Google Gemini / AI Studio by the Viku project and are free
+to use in Viku videos.

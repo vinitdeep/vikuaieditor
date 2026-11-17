@@ -27,6 +27,13 @@ extraResources:
       - "!**/.mypy_cache/**"
       - "!**/tests/**"
       - "!.viku-bootstrap.json"
+  # bundled starter illustrations (the project's own AI images, 1080x1920 JPEG + index.json, ~35 MB); the app passes
+  # VIKU_STARTER=<resources>/starter to the engine, which imports them into an empty library on first run
+  - from: ../data/starter/illustrations
+    to: starter/illustrations
+    filter:
+      - "**/*.jpg"
+      - index.json
   - from: vendor/uv
     to: uv
     filter:

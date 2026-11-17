@@ -64,7 +64,11 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
 | POST | /bible/download | job: fetch eBible USFM zips once (online) |
 | GET | /library/search?q= | illustration library search (tags + filename + embedding) |
 | POST | /library/import | add images (folder/files) with tags |
-| GET | /music | local music library list; POST /music/heygen {intent} → job (online, via `npx hyperframes media-use`) |
+| GET | /music | local music library list `[{name, path, duration, tags, source: local\|viku\|heygen, mood, seed}]`; POST /music/heygen {intent} → job (online, via `npx hyperframes media-use`) |
+| POST | /music/generate | job: `{mood, seed?, duration?=90, preview?}` → offline procedural bed (`viku/music_gen.py`), FLAC 48 kHz stereo, −14 LUFS, seamless loop, tagged "viku generated" + mood; `preview` renders into `<data>/music_previews` |
+| GET | /music/moods | `[{id, label, desc}]`: hopeful, victorious, reflective, prayerful, uplifting |
+| POST / DELETE | /music/keep {path}, /music/{name} | move a preview into the library / delete a library track |
+| GET | /starter | `{illustrations:{available, count, imported, size_mb, licence, path}, music:{generated, tracks, defaults_job}}` |
 | GET | /auth/status | `{gemini_web:bool, heygen:bool, ebible:"downloaded"\|"missing"}` |
 | POST | /auth/heygen/login | job: device-code login (returns code + URL to show) |
 
@@ -133,6 +137,25 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
   `title_auto`, `sub_auto` (PUT with a changed title clears them) and `describe` (last draft). Settings added:
   `allow_system_tools`, `legacy_tools`, `hf_token`, `model_mirrors`, `ollama_url`, `ollama_model`,
   `paths.{deep_filter, faster_whisper_model}`; `credit_line` / `church_name` default to empty.
+
+### Session 5 additions (2026-11-17): starter content, offline music, v0.1.0
+- **Starter illustrations** `data/starter/illustrations/` (119 of the project's own AI images, 1080×1920 JPEG q85, no
+  metadata, 34.8 MB, `index.json` = `{version, licence, count, bytes, items:[{id, file, title, tags, desc, set, width,
+  height, bytes}]}`, built by `engine/scripts/build_starter.py`). The installer ships it as extraResources
+  (`resources/starter/illustrations`) and the app passes `VIKU_STARTER`; the engine (`config.starter_dir()`: env, else the
+  repo's `data/starter`) imports it into an EMPTY library on first run. `/library/import {seed:true}` = the starter pack;
+  the user-folder seeds (library + HeyGen music) run only with `VIKU_DEV=1`.
+- **Music generator** `viku/music_gen.py`: numpy-only procedural beds - band-limited wavetable voices (dark/bright tables
+  cross-faded by a slow filter curve), pads / strings / felt piano / pluck pulse / low boom, diatonic progressions with
+  nearest-voicing voice leading, circular timeline (notes, tails and an FFT reverb wrap → seamless loop), 35 Hz HP + 5 kHz
+  LP, BS.1770 −14 LUFS, true peak ≤ −1.5 dBTP; every partial ≤ 2 kHz (no bells/chimes/shimmer, clear of the speech presence
+  band); `bell_check()` measures tonal > 2 kHz partials with fast attack. Deterministic by `(mood, seed, duration)`.
+  Fresh install with no music → job `music_defaults` makes the 5 moods (seed 1, ~7 s each). Autobuild: `hooks` theme →
+  mood (`music_gen.THEME_MOOD`) → `music.pick(mood)`; reels store `mood` + `theme`, `music.mood`.
+- `/automate` result per reel: `title` / `sub` / `title_flag` / `mood` = the STORED reel after autobuild (the hook writer
+  + ASR gate), `suggested_title` = the clip finder's.
+- `/licences` kind `content`: "Viku starter illustrations" (AI-generated (Google Gemini / AI Studio) by the Viku project,
+  free to use in Viku videos) + "Viku generated music" (royalty-free).
 
 ## Offline AI (clip finder + caption fixer) — "Viku Brain"
 - Signals per transcript window (sentence-ish chunks joined at pauses, 20–60 s): voice energy & variance, speech rate, pitch variance (excitement), direct address ("ଆପଣ/ତୁମେ", "आप/तुम", "you"), encouragement/victory lexicon (or/hi/en, `engine/viku/brain/lexicon.json`), scripture mention regex (book names in 3 languages + "ଅଧ୍ୟାୟ/अध्याय/chapter"), ends-on-hope check (last 2 sentences), Hindi/Odia language id.
