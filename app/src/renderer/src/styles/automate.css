@@ -276,7 +276,7 @@
   gap: 4px;
 }
 
-.stage {
+.pstage {
   display: flex;
   gap: 12px;
   padding: 10px;
@@ -285,7 +285,7 @@
   transition: background var(--t-med) var(--ease), border-color var(--t-med) var(--ease);
 }
 
-.stage.st-active {
+.pstage.st-active {
   background: rgba(255, 210, 74, 0.05);
   border-color: rgba(255, 210, 74, 0.25);
 }

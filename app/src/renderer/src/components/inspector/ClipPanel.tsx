@@ -48,7 +48,7 @@ export function ClipPanel({ reel }: { reel: Reel }) {
             {timecode(p.t0)} → {timecode(p.t1)}
           </span>
         </Row>
-        <div className="row gap">
+        <div className="row gap wrap">
           <Button size="sm" icon={MonitorPlay} onClick={() => usePlayback.setState({ viewer: 'source', srcT: p.src[0], playing: false, preview: null })}>
             Show in source
           </Button>

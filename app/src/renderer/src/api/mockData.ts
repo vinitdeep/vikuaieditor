@@ -122,7 +122,7 @@ export function mockReelA(): Reel {
     ],
     captions: [
       { t0: 0.3, t1: 3.6, text: 'ଶୟତାନ ହାରିସାରିଛି!', flags: [] },
-      { t0: 3.8, t1: 8.6, text: 'କ୍ରୁସ ଉପରେ ଯୀଶୁ କହିଲେ, ସମାପ୍ତ ହେଲା।', flags: [{ start: 0, end: 4, reason: 'Bible vocabulary', suggest: 'କ୍ରୁଶ' }] },
+      { t0: 3.8, t1: 8.6, text: 'କ୍ରୁସ ଉପରେ ଯୀଶୁ କହିଲେ, ସମାପ୍ତ ହେଲା।', flags: [{ start: 0, end: 5, reason: 'Bible vocabulary', suggest: 'କ୍ରୁଶ' }] },
       { t0: 8.9, t1: 13.4, text: 'ସେହି ଦିନ ଠାରୁ ଅନ୍ଧକାରର', flags: [] },
       { t0: 13.5, t1: 17.8, text: 'କ୍ଷମତା ଭାଙ୍ଗିଗଲା।', flags: [] },
       { t0: 17.9, t1: 21.2, text: 'ତେଣୁ ଭୟ କରନ୍ତୁ ନାହିଁ,', flags: [] },

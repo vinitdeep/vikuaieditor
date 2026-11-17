@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '@/api'
-import type { Reel } from '@/api/types'
+import type { Cutaway, Reel } from '@/api/types'
 import { useApp } from '@/state/app'
 import { useEditor, type Selection } from '@/state/editor'
 import { usePlayback } from '@/state/playback'
@@ -12,6 +12,12 @@ import { Thumb } from '../ui'
 import type { Geo } from './Timeline'
 
 let dragSeq = 0
+
+function cutawayLabel(c: Cutaway): string {
+  if (!c.img) return 'empty — generate'
+  if (c.why && c.why.length) return c.why.slice(0, 2).join(' · ')
+  return (c.img.split(/[\\/]/).pop() ?? '').replace(/\.[^.]+$/, '').replace(/^\d+-/, '').replace(/-/g, ' ')
+}
 const EDGE = 6
 
 type TimedKind = 'caption' | 'verse' | 'cutaway'
@@ -197,7 +203,7 @@ export function CutawayLane({ reel, geo, h }: { reel: Reel; geo: Geo; h: number 
             </span>
             <span className="xfade l" />
             <span className="xfade r" />
-            <span className="clip-label">{c.img ? (c.img.split(/[\\/]/).pop() ?? '').replace(/\.[^.]+$/, '').replace(/^\d+-/, '') : 'empty — generate'}</span>
+            <span className="clip-label">{cutawayLabel(c)}</span>
           </div>
         )
       })}
@@ -425,11 +431,18 @@ export function MusicLane({ reel, geo, h }: { reel: Reel; geo: Geo; h: number })
   if (m) {
     const base = toY(m.gain_db)
     const duck = toY(m.gain_db + (m.duck_db ?? -8))
+    // speech spans = captions merged across short gaps; music ducks under them
+    const spans: [number, number][] = []
+    for (const c of [...reel.captions].sort((a, b) => a.t0 - b.t0)) {
+      const last = spans[spans.length - 1]
+      if (last && c.t0 - last[1] < 0.8) last[1] = Math.max(last[1], c.t1)
+      else spans.push([c.t0, c.t1])
+    }
     const pts: [number, number][] = [[0, base]]
-    for (const c of reel.captions) {
-      const a = c.t0 * geo.zoom
-      const b = c.t1 * geo.zoom
-      pts.push([Math.max(0, a - 6), base], [a, duck], [b, duck], [b + 6, base])
+    for (const [s, e] of spans) {
+      const a = s * geo.zoom
+      const b = e * geo.zoom
+      pts.push([Math.max(0, a - 8), base], [a, duck], [b, duck], [b + 8, base])
     }
     pts.push([w, base])
     path = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ')

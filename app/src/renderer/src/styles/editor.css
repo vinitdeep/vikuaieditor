@@ -873,16 +873,10 @@
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 30%, rgba(0, 0, 0, 0.75) 100%);
 }
 
-.thumbp-speaker {
+.thumbp-pose {
   position: absolute;
-  left: 18%;
-  right: 18%;
-  bottom: 0;
-  height: 46%;
-  background:
-    radial-gradient(ellipse 30% 26% at 50% 26%, #c99f7a 0, #9f7656 70%, transparent 72%),
-    radial-gradient(ellipse 50% 60% at 50% 100%, #252c40 0, #1c2233 70%, transparent 72%);
-  opacity: 0.95;
+  object-fit: fill;
+  transition: opacity var(--t-med) var(--ease);
 }
 
 .thumbp-text {
@@ -1539,4 +1533,10 @@
 
 .tool-trim .clip-video {
   cursor: ew-resize;
+}
+
+.clip-music .clip-label {
+  align-self: flex-start;
+  margin-top: 2px;
+  font-size: 10.5px;
 }

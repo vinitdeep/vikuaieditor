@@ -19,7 +19,7 @@ import {
   X
 } from 'lucide-react'
 import { api } from '@/api'
-import type { AutomateRequest, AutomateResultReel, LangOpt, Reel } from '@/api/types'
+import type { AutomateRequest, AutomateResultReel, LangOpt, Project, Reel } from '@/api/types'
 import { isRec, num, str } from '@/api/normalize'
 import { toast, useApp } from '@/state/app'
 import { useEditor } from '@/state/editor'
@@ -34,6 +34,7 @@ interface AutoState {
   jobId: string | null
   results: AutomateResultReel[]
   reels: Record<string, Reel>
+  projects: Record<string, Project>
   setForm: (p: Partial<AutomateRequest>) => void
   set: (p: Partial<AutoState>) => void
 }
@@ -43,24 +44,25 @@ const useAuto = create<AutoState>((set, get) => ({
   jobId: null,
   results: [],
   reels: {},
+  projects: {},
   setForm: (p) => set({ form: { ...get().form, ...p } }),
   set: (p) => set(p)
 }))
 
+// The engine's /automate job scopes progress: analyze 0–0.45, suggest 0.45–0.5, then per reel build (40%) + render (60%).
 const STAGES = [
-  { id: 'analyze', label: 'Analyze', detail: 'Proxy · 16 kHz audio · pauses · shots · transcription', icon: ScanSearch, re: /analy|proxy|transcri|audio|pause|shot/i, range: [0, 0.45] },
-  { id: 'suggest', label: 'Find clips', detail: 'Viku Brain ranks windows, plans jump cuts', icon: Sparkles, re: /suggest|rank|clip|jump/i, range: [0.45, 0.6] },
-  { id: 'build', label: 'Build reels', detail: 'Captions · verse cards · cutaways · music · SFX', icon: Clapperboard, re: /build|caption|verse|cutaway|music|sfx/i, range: [0.6, 0.78] },
-  { id: 'render', label: 'Render & thumbnails', detail: 'Enhance speech · composite · −14 LUFS · H.264', icon: Hammer, re: /render|encod|composit|thumbnail|loud/i, range: [0.78, 1] }
+  { id: 'analyze', label: 'Analyze', detail: 'Proxy · 16 kHz audio · pauses · shots · transcription', icon: ScanSearch, range: [0, 0.45] },
+  { id: 'suggest', label: 'Find clips', detail: 'Viku Brain ranks windows, plans jump cuts', icon: Sparkles, range: [0.45, 0.5] },
+  { id: 'build', label: 'Build reels', detail: 'Captions · verse cards · cutaways · music · SFX', icon: Clapperboard, range: [0.5, 1] },
+  { id: 'render', label: 'Render & thumbnails', detail: 'Enhance speech · composite · −14 LUFS · H.264', icon: Hammer, range: [0.5, 1] }
 ] as const
 
+const RENDER_RE = /render|encod|composit|thumbnail|loud|mix|enhanc|final/i
+
 function stageOf(message: string, progress: number): number {
-  const prefix = message.split(':')[0]
-  const byMsg = STAGES.findIndex((s) => s.re.test(prefix))
-  if (byMsg >= 0) return byMsg
-  const byAny = STAGES.findIndex((s) => s.re.test(message))
-  if (byAny >= 0) return byAny
-  return Math.max(0, STAGES.findIndex((s) => progress >= s.range[0] && progress < s.range[1]))
+  if (progress < 0.45) return 0
+  if (progress < 0.5) return 1
+  return RENDER_RE.test(message) ? 3 : 2
 }
 
 function parseResults(result: unknown): AutomateResultReel[] {
@@ -82,7 +84,7 @@ function parseResults(result: unknown): AutomateResultReel[] {
 }
 
 export function AutomateView() {
-  const { form, setForm, jobId, results, reels, set } = useAuto()
+  const { form, setForm, jobId, results, reels, projects: autoProjects, set } = useAuto()
   const job = useJobs((s) => (jobId ? s.jobs[jobId] : undefined))
   const projects = useEditor((s) => s.projects)
   const settings = useApp((s) => s.settings)
@@ -109,15 +111,17 @@ export function AutomateView() {
           set({ results: res })
           const pids = [...new Set(res.map((r) => r.project_id).filter(Boolean))]
           const map: Record<string, Reel> = {}
+          const pmap: Record<string, Project> = {}
           for (const pid of pids) {
             try {
               const p = await api().getProject(pid)
+              pmap[pid] = p
               for (const r of p.reels) map[r.id] = r
             } catch {
               /* thumbnails fall back to titles */
             }
           }
-          set({ reels: map })
+          set({ reels: map, projects: pmap })
           void useEditor.getState().loadProjects()
           toast('success', `${res.length} reels ready`)
         }
@@ -301,10 +305,12 @@ export function AutomateView() {
             </div>
             <ol className="stages">
               {STAGES.map((s, i) => {
-                const st = !job ? 'idle' : job.state === 'done' ? 'done' : i < stage ? 'done' : i === stage ? (job.state === 'error' ? 'error' : job.state === 'cancelled' ? 'idle' : 'active') : 'idle'
+                // build and render interleave per reel, so build stays active while reels render
+                const current = i === stage || (i === 2 && stage === 3)
+                const st = !job ? 'idle' : job.state === 'done' ? 'done' : current ? (job.state === 'error' ? 'error' : job.state === 'cancelled' ? 'idle' : 'active') : i < stage ? 'done' : 'idle'
                 const local = st === 'active' && job ? Math.max(0, Math.min(1, (job.progress - s.range[0]) / (s.range[1] - s.range[0]))) : st === 'done' ? 1 : 0
                 return (
-                  <li key={s.id} className={`stage st-${st}`}>
+                  <li key={s.id} className={`pstage st-${st}`}>
                     <span className="stage-icon">
                       {st === 'done' ? <Check size={14} aria-hidden /> : st === 'active' ? <Loader2 size={14} className="spin" aria-hidden /> : <s.icon size={14} aria-hidden />}
                     </span>
@@ -351,6 +357,7 @@ export function AutomateView() {
                     <div className="rcard-thumb">
                       <ThumbPreview
                         width={170}
+                        project={autoProjects[r.project_id] ?? null}
                         reel={reel ?? { language: 'or', cutaways: [], thumbnail: { style: i % 2 ? 'verse-card' : 'bold-gold', pose_t: 0, title: r.title, sub: '', verse: '' } }}
                       />
                       <span className="rcard-dur num">{duration(r.duration)}</span>

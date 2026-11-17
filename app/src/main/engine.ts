@@ -75,8 +75,10 @@ export class EngineManager extends EventEmitter {
       this.startWatch()
       return this.status
     }
-    if (p.adapter === 'mock' || !p.autoStartEngine) {
+    if (p.adapter === 'mock' || !p.autoStartEngine || process.env.VIKU_NO_ENGINE) {
       this.set({ state: 'stopped', message: p.adapter === 'mock' ? 'Mock data mode' : 'Engine not running' })
+      // keep watching: connect as soon as an engine started elsewhere answers
+      this.startWatch()
       return this.status
     }
     return this.spawnEngine()

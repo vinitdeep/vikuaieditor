@@ -182,15 +182,15 @@ export function reel(x: unknown): Reel {
     sfx: arr(r.sfx).map(sfx),
     style: {
       ...style,
-      caption_font: str(style.caption_font, 'Noto Sans'),
+      caption_font: str(style.caption_font, r.language === 'or' ? 'Noto Sans Oriya' : r.language === 'hi' ? 'Noto Sans Devanagari' : 'Noto Sans'),
       caption_size: num(style.caption_size, 64),
       title_style: str(style.title_style, 'gold-bar'),
       voice_gain_db: style.voice_gain_db === undefined ? undefined : num(style.voice_gain_db)
     },
     thumbnail: {
       ...th,
-      style: str(th.style, 'bold-gold'),
-      pose_t: num(th.pose_t),
+      style: str(th.style, 'frame'),
+      pose_t: th.pose_t === null || th.pose_t === undefined ? null : num(th.pose_t),
       title: str(th.title, str(r.title)),
       sub: str(th.sub, str(r.sub)),
       verse: str(th.verse)

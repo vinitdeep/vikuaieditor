@@ -90,4 +90,27 @@ export const useJobs = create<JobsState>((set, get) => ({
   }
 }))
 
+// SSE is the primary channel; poll jobs that have been quiet for a while so a dropped stream never strands one.
+function currentApi(): ReturnType<typeof api> | null {
+  try {
+    return api()
+  } catch {
+    return null
+  }
+}
+
+setInterval(() => {
+  const st = useJobs.getState()
+  const a = currentApi()
+  if (!a) return
+  const now = Date.now()
+  for (const id of st.order) {
+    const j = st.jobs[id]
+    if (!j || (j.state !== 'running' && j.state !== 'queued') || now - j.updatedAt < 4000) continue
+    void a.jobStatus(id).then((ev) => {
+      if (ev) useJobs.getState().ingest(ev)
+    })
+  }
+}, 2500)
+
 export const runningCount = (s: JobsState): number => s.order.filter((id) => s.jobs[id]?.state === 'running' || s.jobs[id]?.state === 'queued').length

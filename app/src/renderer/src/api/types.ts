@@ -90,6 +90,9 @@ export interface Cutaway {
   z0: number
   z1: number
   pan: [number, number]
+  /** engine extras: library id and the tags that matched */
+  lib_id?: string
+  why?: string[]
 }
 
 export interface Music {
@@ -115,7 +118,8 @@ export interface ReelStyle {
 
 export interface Thumbnail {
   style: string
-  pose_t: number
+  /** null = engine default (a third of the way in, ≥ 4.5 s) */
+  pose_t: number | null
   title: string
   sub: string
   verse: string

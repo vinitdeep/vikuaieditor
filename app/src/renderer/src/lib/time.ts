@@ -14,6 +14,11 @@ export function timecode(t: number, fps = 30): string {
 /** 1:12.4 / 12:03 compact */
 export function clock(t: number, decimals = 0): string {
   const a = Math.max(0, t)
+  if (a >= 3600) {
+    const h = Math.floor(a / 3600)
+    const rest = clock(a - h * 3600, decimals)
+    return `${h}:${rest.padStart(rest.length + (rest.indexOf(':') === 1 ? 1 : 0), '0')}`
+  }
   const m = Math.floor(a / 60)
   const s = a - m * 60
   const ss = decimals ? s.toFixed(decimals).padStart(3 + decimals, '0') : String(Math.floor(s)).padStart(2, '0')

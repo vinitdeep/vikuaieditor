@@ -15,8 +15,8 @@ import { AutomateView } from '@/components/automate/AutomateView'
 import { ActivityDrawer, ExportDialog, Splitter, Toasts } from '@/components/shell/Shell'
 import { SettingsDialog } from '@/components/shell/SettingsDialog'
 
-async function boot(): Promise<void> {
-  const a = await initApi()
+async function boot(onWait: (msg: string) => void): Promise<void> {
+  const a = await initApi(onWait)
   const app = useApp.getState()
   app.set({ apiKind: a.kind })
   a.subscribe((ev) => useJobs.getState().ingest(ev))
@@ -70,13 +70,14 @@ async function boot(): Promise<void> {
 export function App() {
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [waitMsg, setWaitMsg] = useState<string | null>(null)
   const mode = useApp((s) => s.mode)
   const layout = useApp((s) => s.layout)
   const setLayout = useApp((s) => s.setLayout)
   useHotkeys()
 
   useEffect(() => {
-    boot()
+    boot(setWaitMsg)
       .then(() => setReady(true))
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
   }, [])
@@ -86,7 +87,7 @@ export function App() {
       <div className="splash">
         <Logo size={44} />
         <div className="splash-name">Viku</div>
-        <div className="splash-sub">{error ? `Could not start: ${error}` : 'Sermon Reel Studio'}</div>
+        <div className="splash-sub">{error ? `Could not start: ${error}` : (waitMsg ?? 'Sermon Reel Studio')}</div>
         {!error && <div className="splash-bar" />}
       </div>
     )

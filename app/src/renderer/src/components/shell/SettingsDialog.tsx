@@ -202,7 +202,7 @@ export function SettingsDialog() {
                 <Cpu size={18} aria-hidden />
                 <div className="grow">
                   <div>
-                    {apiKind === 'mock' ? 'Mock data' : 'Live engine'} · {engine?.state ?? 'unknown'}
+                    {apiKind === 'mock' ? 'Mock data' : 'Live engine'} · {apiKind === 'mock' && engine?.state === 'checking' ? 'engine not connected' : (engine?.state ?? 'unknown')}
                     {health && ` · v${health.version}`}
                   </div>
                   <div className="small muted">

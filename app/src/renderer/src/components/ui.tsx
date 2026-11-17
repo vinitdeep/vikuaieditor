@@ -281,5 +281,5 @@ export function Thumb({ src, alt, className, seed = 0 }: { src: string; alt: str
       />
     )
   }
-  return <img ref={ref} className={className} src={src} alt={alt} draggable={false} loading="lazy" onError={() => setFailed(true)} />
+  return <img ref={ref} className={className} src={src} alt={alt} draggable={false} loading="lazy" decoding="async" onError={() => setFailed(true)} />
 }

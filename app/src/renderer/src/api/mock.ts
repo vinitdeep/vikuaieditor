@@ -238,15 +238,23 @@ export class MockApi implements VikuApi {
   }
   async automate(body: AutomateRequest) {
     const n = body.count
+    // weights mirror the engine's scopes: analyze 45%, suggest 5%, then per reel build 40% / render 60%
+    const lang = body.language === 'auto' ? 'auto-detect → Odia' : body.language === 'hi' ? 'Hindi' : body.language === 'en' ? 'English' : 'Odia'
     const steps: Step[] = [
-      { msg: 'analyze: making 540p proxy', ms: 1300 },
-      { msg: 'analyze: 16 kHz audio, pauses, shot cuts', ms: 900 },
-      { msg: `analyze: transcribing (${body.language === 'auto' ? 'auto-detect → Odia' : body.language})`, ms: 2400 },
-      { msg: 'suggest: ranking 128 windows', ms: 1200 },
-      { msg: 'suggest: planning jump cuts', ms: 700 }
+      { msg: 'making 540p proxy', ms: 1100 },
+      { msg: 'waveform + pauses', ms: 600 },
+      { msg: 'finding camera cuts', ms: 600 },
+      { msg: `transcribing (${lang}, IndicConformer)`, ms: 2200 },
+      { msg: 'Viku Brain: ranking 128 windows', ms: 300 },
+      { msg: 'planning jump cuts', ms: 200 }
     ]
-    for (let i = 1; i <= n; i++) steps.push({ msg: `build: reel ${i}/${n} — captions, verses, cutaways`, ms: 900 })
-    for (let i = 1; i <= n; i++) steps.push({ msg: `render: reel ${i}/${n} — enhance, composite, encode`, ms: 1100 })
+    const per = 5000 / n
+    for (let i = 1; i <= n; i++) {
+      steps.push({ msg: `reel ${i}/${n} · captions: re-transcribing the joined clip`, ms: per * 0.25 })
+      steps.push({ msg: `reel ${i}/${n} · verse cards, cutaways, music`, ms: per * 0.15 })
+      steps.push({ msg: `reel ${i}/${n} · speech enhancement`, ms: per * 0.2 })
+      steps.push({ msg: `reel ${i}/${n} · rendering final`, ms: per * 0.4 })
+    }
     return this.job('automate', steps, () => {
       const cands = M.mockCandidates('p-btf').slice(0, n)
       // same shape as the engine: {project, reels:[{reel, title, score, path, thumbnail}]}
@@ -264,6 +272,10 @@ export class MockApi implements VikuApi {
     if (!this.timers.has(jobId)) return false
     this.timers.set(jobId, false)
     return true
+  }
+
+  async jobStatus() {
+    return null
   }
 
   async captionsFix(text: string) {

@@ -118,6 +118,14 @@ export class HttpApi implements VikuApi {
     }
   }
 
+  jobStatus = async (jobId: string) => {
+    try {
+      return N.jobEvent(await this.call('GET', `/jobs/${encodeURIComponent(jobId)}`, undefined, 4000))
+    } catch {
+      return null
+    }
+  }
+
   captionsFix = async (text: string, lang: Lang) => N.captionFix(await this.call('POST', '/captions/fix', { text, lang }), text)
   feedback = async (f: Parameters<VikuApi['feedback']>[0]) => {
     await this.call('POST', '/feedback', f)

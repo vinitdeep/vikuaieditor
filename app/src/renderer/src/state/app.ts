@@ -27,12 +27,12 @@ function loadLayout(): Layout {
     const raw = localStorage.getItem(LAYOUT_KEY)
     if (raw) {
       const p = JSON.parse(raw) as Partial<Layout>
-      return { left: p.left ?? 340, right: p.right ?? 330, bottom: p.bottom ?? 300 }
+      return { left: p.left ?? 340, right: p.right ?? 330, bottom: p.bottom ?? 330 }
     }
   } catch {
     /* ignore */
   }
-  return { left: 340, right: 330, bottom: 300 }
+  return { left: 340, right: 330, bottom: 330 }
 }
 
 interface AppState {

@@ -5,13 +5,14 @@ import { toast } from '@/state/app'
 import { useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
 import { usePlayback } from '@/state/playback'
-import { reelDuration } from '@/lib/reel'
-import { Button, Field, Section, Segmented, TextInput } from '../ui'
+import { poseTime, reelDuration } from '@/lib/reel'
+import { Button, Field, Section, Select, TextInput } from '../ui'
 import { ThumbPreview } from '../ThumbPreview'
 import { Row, TimeField } from './common'
 
 export function ThumbnailPanel({ reel }: { reel: Reel }) {
   const edit = useEditor((s) => s.edit)
+  const project = useEditor((s) => s.project)
   const th = reel.thumbnail
   const generate = async (): Promise<void> => {
     try {
@@ -25,18 +26,18 @@ export function ThumbnailPanel({ reel }: { reel: Reel }) {
     <>
       <Section title="Preview">
         <div className="thumb-stage">
-          <ThumbPreview reel={reel} width={168} />
+          <ThumbPreview reel={reel} width={168} project={project} />
         </div>
         <Row label="Style">
-          <Segmented
-            size="sm"
+          <Select
             ariaLabel="Thumbnail style"
             value={th.style}
             onChange={(v) => edit('Thumbnail style', (r) => void (r.thumbnail.style = v))}
             options={[
+              { id: 'frame', label: 'Frame' },
               { id: 'bold-gold', label: 'Bold gold' },
               { id: 'clean-white', label: 'Clean' },
-              { id: 'verse-card', label: 'Verse' }
+              { id: 'verse-card', label: 'Verse card' }
             ]}
           />
         </Row>
@@ -53,7 +54,7 @@ export function ThumbnailPanel({ reel }: { reel: Reel }) {
         </Field>
         <Row label="Pose frame">
           <span className="row gap">
-            <TimeField label="Pose time" value={th.pose_t} max={reelDuration(reel)} onChange={(v) => edit('Pose time', (r) => void (r.thumbnail.pose_t = v), 'pose')} />
+            <TimeField label="Pose time" value={poseTime(reel)} max={reelDuration(reel)} onChange={(v) => edit('Pose time', (r) => void (r.thumbnail.pose_t = v), 'pose')} />
             <Button size="sm" variant="ghost" icon={Crosshair} title="Use the playhead frame" onClick={() => edit('Pose time', (r) => void (r.thumbnail.pose_t = Math.round(usePlayback.getState().t * 100) / 100))}>
               Playhead
             </Button>

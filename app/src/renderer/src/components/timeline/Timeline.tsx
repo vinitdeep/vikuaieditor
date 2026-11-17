@@ -41,8 +41,8 @@ export const TRACKS: TrackDef[] = [
   { id: 'verse', label: 'Verse', icon: BookOpen, h: 26 },
   { id: 'cutaway', label: 'Cutaways', icon: ImageIcon, h: 40 },
   { id: 'caption', label: 'Captions', icon: Captions, h: 28 },
-  { id: 'video', label: 'Video', icon: Film, h: 58 },
-  { id: 'voice', label: 'Voice', icon: Mic, h: 44 },
+  { id: 'video', label: 'Video', icon: Film, h: 54 },
+  { id: 'voice', label: 'Voice', icon: Mic, h: 40 },
   { id: 'music', label: 'Music', icon: Music2, h: 30 },
   { id: 'sfx', label: 'SFX', icon: AudioLines, h: 26 }
 ]

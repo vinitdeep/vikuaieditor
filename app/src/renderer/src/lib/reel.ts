@@ -232,3 +232,10 @@ export function ensureCrops(reel: Reel): void {
   const next = placed.map((p, i) => ({ t0: round(p.t0), t1: round(p.t1), ...cropFor(reel, i) }))
   reel.crops = next
 }
+
+/** Thumbnail pose time; mirrors the engine default when unset. */
+export function poseTime(reel: Pick<Reel, 'segments' | 'thumbnail'>): number {
+  const dur = reelDuration(reel)
+  if (reel.thumbnail.pose_t !== null) return reel.thumbnail.pose_t
+  return Math.max(0, Math.min(Math.max(4.5, dur / 3), dur - 0.1))
+}

@@ -112,7 +112,7 @@ function CandidateCard({ c, rank, rejected, kept }: { c: Candidate; rank: number
       </div>
       <div className="reasons">
         {c.reasons.map((r) => (
-          <span key={r} className={`reason${/low content|crowd/.test(r) ? ' neg' : ''}`}>
+          <span key={r} className={`reason${/^(crowd|low content|filler|repeat)/i.test(r) ? ' neg' : ''}`}>
             {r}
           </span>
         ))}

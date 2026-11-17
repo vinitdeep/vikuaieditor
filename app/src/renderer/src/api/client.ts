@@ -44,6 +44,8 @@ export interface VikuApi {
   thumbnail(reelId: string): Promise<JobRef>
   automate(body: AutomateRequest): Promise<JobRef>
   cancelJob(jobId: string): Promise<boolean>
+  /** poll one job (fallback when SSE is quiet); null when unknown */
+  jobStatus(jobId: string): Promise<JobEvent | null>
 
   captionsFix(text: string, lang: Lang): Promise<CaptionFix>
   feedback(f: Feedback): Promise<void>

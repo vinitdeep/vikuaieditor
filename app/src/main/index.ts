@@ -158,7 +158,8 @@ if (!gotLock) {
     registerIpc()
     createMainWindow()
     if (process.env.VIKU_OPEN_SIGNIN) signin.open()
-    if (!process.env.VIKU_NO_ENGINE) void engine.ensure()
+    // VIKU_NO_ENGINE=1: never spawn the engine (still connects to one that is already running)
+    void engine.ensure()
   })
 }
 

@@ -188,7 +188,7 @@ export function ExportDialog() {
       <div className="export-grid">
         {reel && (
           <div className="export-thumb">
-            <ThumbPreview reel={reel} width={130} />
+            <ThumbPreview reel={reel} width={130} project={project} />
           </div>
         )}
         <div className="export-form">
@@ -200,7 +200,7 @@ export function ExportDialog() {
           </div>
           <div className="irow">
             <span className="irow-label">Reels</span>
-            <span className="irow-ctl">
+            <span className="irow-ctl wrap">
               <label className="radio">
                 <input type="radio" checked={!all} onChange={() => setAll(false)} /> This reel
               </label>

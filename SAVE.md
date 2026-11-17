@@ -29,3 +29,19 @@ Details: `engine/README.md`.
   (the user was already signed in). No local LLM titles.
 - Wide-crop decision follows static_tracks.py (2–98 % spread > 250 px); a stray second face can widen a still shot.
 - Full-sermon analyze (2h26m) not timed yet; ASR is CPU-only (~1 s per 6 s chunk → roughly 25–40 min for a full sermon).
+
+## App
+**State (2026-11-17): desktop UI complete for Phases 1–2 screens; tested with mock data AND against the live engine.**
+`app/` = Electron 45 + React 19 + TS strict + Vite 8 (electron-vite). Build, typecheck and lint clean. Details: `app/README.md`.
+- Manual editor: Browser (Media / Transcript select→Make reel / Suggestions keep-reject→/feedback / Library / Bible),
+  9:16 viewer with house-style overlay preview + Source 16:9 crop box, context inspector (Reel, Clip, Caption with
+  /captions/fix flags, Verse, Cutaway incl. Gemini prompt, Audio, Thumbnail with real pose frame), magnetic timeline
+  (7 tracks, blade/trim/select, reorder, ripple delete, snapping, skimming, undo/redo, drag from library), autosave (PUT).
+- Automate wizard + stage progress + results; Activity drawer; Settings; Export dialog; Sign-in window (AI Studio
+  WebContentsView with download + CDP capture and prompt queue, HeyGen device code, eBible download).
+- Live-verified: project/reel load, crops px↔0..1, multi-range proxy playback, waveform, suggest job over SSE → 8 candidates,
+  lossless project round-trip (no engine field dropped), engine auto-spawn on start + kill on quit.
+- Run: `cd app && npm install && npm run dev`. Screenshots: `npm run build && npm run screenshots` (`-- --live` for the engine)
+  → `app/screenshots/`. Mock media for screenshots: `npm run mock:media` (gitignored `app/public/mock/`).
+- Next: engine thumbnail param for the library grid (full PNGs are slow), installer (Phase 4), thumbnail designer styles
+  once the engine supports them, verify AI Studio capture end-to-end with a signed-in Google account.

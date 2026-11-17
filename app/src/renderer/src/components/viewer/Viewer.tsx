@@ -14,7 +14,6 @@ import {
   SkipForward,
   Smartphone
 } from 'lucide-react'
-import { api } from '@/api'
 import type { Project, Reel } from '@/api/types'
 import { useApp } from '@/state/app'
 import { useEditor, useReel } from '@/state/editor'
@@ -22,30 +21,11 @@ import { usePlayback } from '@/state/playback'
 import { cropAt, cropFor, cropRect, layout, placedAt, reelDuration, reelToSource } from '@/lib/reel'
 import { clamp, timecode } from '@/lib/time'
 import { Empty, IconButton, Segmented, Select } from '../ui'
+import { mediaSources, type MediaSrc } from '@/lib/media'
 import { CaptionLayer, CreditLine, CutawayLayer, SafeZones, TitleHook, VerseLayer, cutawayInfluence } from './Overlays'
 
 const FPS = 30
 type Zoom = 'fit' | '25' | '33' | '50'
-
-interface MediaSrc {
-  url: string
-  /** source second at file time 0 */
-  offset: number
-  start: number
-  end: number
-}
-
-/** Engine proxies only analysed ranges: pick the proxy covering a source time, else the original video. */
-function mediaSources(project: Project | null): MediaSrc[] {
-  if (!project) return []
-  const out: MediaSrc[] = project.proxies.map((p) => ({ url: api().mediaUrl(p.path), offset: p.start, start: p.start, end: p.end }))
-  if (!out.length && project.proxy) {
-    const off = project.proxy_offset || 0
-    out.push({ url: api().mediaUrl(project.proxy), offset: off, start: off, end: off > 0 ? Infinity : project.duration || Infinity })
-  }
-  if (project.video_path) out.push({ url: api().mediaUrl(project.video_path), offset: 0, start: 0, end: Infinity })
-  return out
-}
 
 export interface MediaCtl {
   video: React.RefObject<HTMLVideoElement | null>
