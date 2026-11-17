@@ -14,13 +14,13 @@ type Handler = (ev: JobEvent) => void
 interface JobsState {
   jobs: Record<string, Job>
   order: string[]
-  track: (ref: JobRef, label: string, handlers?: { onDone?: Handler; onError?: Handler; onEvent?: Handler }) => void
+  track: (ref: JobRef, label: string, handlers?: { onDone?: Handler; onError?: Handler; onEvent?: Handler; onCancel?: Handler }) => void
   ingest: (ev: JobEvent) => void
   cancel: (id: string) => Promise<void>
   clearFinished: () => void
 }
 
-const handlers = new Map<string, { onDone?: Handler; onError?: Handler; onEvent?: Handler }>()
+const handlers = new Map<string, { onDone?: Handler; onError?: Handler; onEvent?: Handler; onCancel?: Handler }>()
 
 const LABELS: Record<string, string> = {
   analyze: 'Analyze sermon',
@@ -52,6 +52,13 @@ export const useJobs = create<JobsState>((set, get) => ({
       },
       order: get().order.includes(ref.job) ? get().order : [ref.job, ...get().order]
     })
+    // a fast job can finish (or fail) before the caller had its id: replay the terminal event to the handlers
+    if (existing && h && (existing.state === 'done' || existing.state === 'error' || existing.state === 'cancelled')) {
+      handlers.delete(ref.job)
+      if (existing.state === 'done') h.onDone?.(existing)
+      else if (existing.state === 'cancelled') h.onCancel?.(existing)
+      else if (h.onError) h.onError(existing)
+    }
   },
   ingest: (ev) => {
     const prev = get().jobs[ev.job]
@@ -73,6 +80,9 @@ export const useJobs = create<JobsState>((set, get) => ({
       handlers.delete(ev.job)
       if (h?.onError) h.onError(ev)
       else toast('error', `${job.label} failed: ${ev.message}`)
+    } else if (ev.state === 'cancelled') {
+      handlers.delete(ev.job)
+      h?.onCancel?.(ev)
     }
   },
   cancel: async (id) => {

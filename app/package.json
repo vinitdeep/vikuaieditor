@@ -12,7 +12,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "lint": "eslint .",
     "mock:media": "node scripts/make-mock-media.mjs",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "fetch:uv": "node scripts/fetch-uv.mjs",
+    "dist": "npm run build && node scripts/fetch-uv.mjs && electron-builder --win nsis --publish never",
+    "dist:dir": "npm run build && node scripts/fetch-uv.mjs && electron-builder --win dir --publish never"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -21,6 +24,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
     "electron": "^45.3.3",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "eslint": "^10.15.0",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -39,5 +43,6 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zustand": "^5.1.0"
-  }
+  },
+  "author": "Viku"
 }

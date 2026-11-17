@@ -53,6 +53,7 @@ interface AppState {
   exportOpen: boolean
   shortcutsOpen: boolean
   onboardingOpen: boolean
+  aboutOpen: boolean
   tool: Tool
   snapping: boolean
   skimming: boolean
@@ -86,6 +87,7 @@ export const useApp = create<AppState>((set, get) => ({
   exportOpen: false,
   shortcutsOpen: false,
   onboardingOpen: false,
+  aboutOpen: false,
   tool: 'select',
   snapping: true,
   skimming: false,

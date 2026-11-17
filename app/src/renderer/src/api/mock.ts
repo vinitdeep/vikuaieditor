@@ -7,6 +7,9 @@ import type {
   JobEvent,
   JobRef,
   Lang,
+  LicenceItem,
+  ModelInstallRequest,
+  ModelItem,
   Project,
   Reel,
   Seg,
@@ -35,6 +38,16 @@ export class MockApi implements VikuApi {
   constructor() {
     this.mediaBase = new URL('mock/', document.baseURI).href
   }
+
+  private models: ModelItem[] = [
+    { id: 'ffmpeg', name: 'FFmpeg 9.0.2 (gyan.dev essentials)', purpose: 'Video and audio processing', size_mb: 115, licence: 'GPL-3.0', licence_url: 'https://www.gnu.org/licenses/gpl-3.0.html', required: true, installed: true, source: 'managed', path: '', gated: false, partial_mb: 0, needs_token: false },
+    { id: 'deep-filter', name: 'DeepFilterNet 3 (deep-filter 0.5.6)', purpose: 'Speech enhancement on every reel', size_mb: 27, licence: 'MIT / Apache-2.0', licence_url: 'https://github.com/Rikorose/DeepFilterNet', required: true, installed: true, source: 'managed', path: '', gated: false, partial_mb: 0, needs_token: false },
+    { id: 'indic-conformer', name: 'IndicConformer 600M multilingual', purpose: 'Odia and Hindi speech recognition', size_mb: 2556, licence: 'MIT', licence_url: 'https://huggingface.co/ai4bharat/indic-conformer-600m-multilingual', required: true, installed: false, source: null, path: '', gated: true, partial_mb: 0, needs_token: true, accept_url: 'https://huggingface.co/ai4bharat/indic-conformer-600m-multilingual' },
+    { id: 'e5-small', name: 'multilingual-e5-small (ONNX)', purpose: 'Viku Brain: clip finder, image and verse matching by meaning', size_mb: 487, licence: 'MIT', licence_url: 'https://huggingface.co/intfloat/multilingual-e5-small', required: true, installed: false, source: null, path: '', gated: false, partial_mb: 120, needs_token: false },
+    { id: 'fonts', name: 'Noto Sans Oriya / Devanagari / Latin', purpose: 'Caption fonts', size_mb: 2, licence: 'OFL-1.1', licence_url: 'https://openfontlicense.org', required: true, installed: true, source: 'managed', path: '', gated: false, partial_mb: 0, needs_token: false },
+    { id: 'whisper-base-en', name: 'Whisper base.en (faster-whisper)', purpose: 'English speech recognition', size_mb: 148, licence: 'MIT', licence_url: 'https://github.com/openai/whisper', required: false, installed: false, source: null, path: '', gated: false, partial_mb: 0, needs_token: false },
+    { id: 'u2net-human-seg', name: 'U-2-Net human segmentation', purpose: 'Thumbnail cut-out of the speaker', size_mb: 176, licence: 'Apache-2.0 / MIT', licence_url: 'https://github.com/xuebinqin/U-2-Net', required: false, installed: false, source: null, path: '', gated: false, partial_mb: 0, needs_token: false }
+  ]
 
   private emit(ev: JobEvent): void {
     for (const l of this.listeners) l(ev)
@@ -330,6 +343,63 @@ export class MockApi implements VikuApi {
     const n = ref.trim().toLowerCase()
     return M.MOCK_BIBLE.find((v) => v.lang === lang && v.ref.toLowerCase().startsWith(n)) ?? M.MOCK_BIBLE.find((v) => v.ref.toLowerCase().startsWith(n)) ?? null
   }
+  async listModels() {
+    await wait(120)
+    return clone(this.models)
+  }
+
+  async installModels(body: ModelInstallRequest) {
+    const ids = body.ids?.length ? body.ids : this.models.filter((m) => m.required && !m.installed).map((m) => m.id)
+    const todo = this.models.filter((m) => ids.includes(m.id) && !m.installed)
+    const gated = todo.find((m) => m.needs_token && (!body.hf_token || body.hf_token === 'hf_bad') && !body.source_dir)
+    const id = `job-models-${this.seq++}`
+    const kind = 'models_install'
+    const total = todo.reduce((a, m) => a + m.size_mb, 0) || 1
+    this.timers.set(id, true)
+    void (async () => {
+      await wait(80)
+      let done = todo.reduce((a, m) => a + m.partial_mb, 0)
+      for (const m of todo) {
+        if (m === gated) {
+          this.timers.delete(id)
+          this.emit({ job: id, kind, progress: done / total, message: `hf_auth_required: ${m.name} is gated on Hugging Face`, state: 'error', code: 'hf_auth_required' })
+          return
+        }
+        while (m.partial_mb < m.size_mb) {
+          await wait(200)
+          if (!this.timers.get(id)) {
+            this.emit({ job: id, kind, progress: done / total, message: 'cancelled', state: 'cancelled' })
+            return
+          }
+          const step = Math.min(m.size_mb - m.partial_mb, Math.max(8, m.size_mb / 12))
+          m.partial_mb += step
+          done += step
+          this.emit({ job: id, kind, progress: done / total, message: `${m.name.split(' (')[0]} ${Math.round(done)} / ${Math.round(total)} MB`, state: 'running', result: { bytes_done: done * 1e6, bytes_total: total * 1e6 } })
+        }
+        Object.assign(m, { installed: true, partial_mb: 0, source: 'managed', needs_token: false })
+      }
+      this.timers.delete(id)
+      this.emit({ job: id, kind, progress: 1, message: 'done', state: 'done', result: { installed: todo.map((m) => m.id) } })
+    })()
+    return { job: id, kind }
+  }
+
+  async removeModels(ids: string[]) {
+    await wait(100)
+    for (const m of this.models) if (ids.includes(m.id)) Object.assign(m, { installed: false, source: null, partial_mb: 0 })
+  }
+
+  async licences(): Promise<LicenceItem[]> {
+    await wait(100)
+    return [
+      { name: 'fastapi', licence: 'MIT', kind: 'python', version: '0.120.0', url: 'https://github.com/fastapi/fastapi' },
+      { name: 'torch', licence: 'BSD-3-Clause', kind: 'python', version: '2.9.0+cpu', url: 'https://github.com/pytorch/pytorch' },
+      { name: 'onnxruntime', licence: 'MIT', kind: 'python', version: '1.23.0' },
+      { name: 'faster-whisper', licence: 'MIT', kind: 'python' },
+      ...this.models.map((m) => ({ name: m.name, licence: m.licence, url: m.licence_url, kind: m.id === 'fonts' ? 'font' : m.id === 'ffmpeg' || m.id === 'deep-filter' ? 'tool' : 'model' }))
+    ]
+  }
+
   async bibleDownload() {
     return this.job(
       'bible_download',

@@ -12,6 +12,9 @@ import type {
   Lang,
   LangOpt,
   LibraryImage,
+  LicenceItem,
+  ModelInstallRequest,
+  ModelItem,
   MusicTrack,
   Project,
   ProjectSummary,
@@ -63,6 +66,14 @@ export interface VikuApi {
   listMusic(): Promise<MusicTrack[]>
   heygenMusic(intent: string): Promise<JobRef>
   listSfx(): Promise<SfxItem[]>
+
+  /** tools + models (GET /models) */
+  listModels(): Promise<ModelItem[]>
+  /** job: download / copy + verify (byte progress in the job result) */
+  installModels(body: ModelInstallRequest): Promise<JobRef>
+  removeModels(ids: string[]): Promise<void>
+  /** third-party licences of everything the engine ships or downloads (GET /licences) */
+  licences(): Promise<LicenceItem[]>
 
   authStatus(): Promise<AuthStatus>
   heygenLogin(): Promise<JobRef>

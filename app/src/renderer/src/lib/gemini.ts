@@ -1,35 +1,34 @@
 import { create } from 'zustand'
-import type { CaptureEvent } from '@shared/ipc'
+import type { CaptureEvent, GenMeta, PromptItem } from '@shared/ipc'
 import { api } from '@/api'
-import type { Reel } from '@/api/types'
+import type { Cutaway, Reel } from '@/api/types'
 import { toast } from '@/state/app'
 import { saveNow, useEditor } from '@/state/editor'
 import { cutawayPrompt, readableName, useLibraryIndex } from './cutaways'
 
-/** prompt id → the cutaway it should fill when AI Studio produces the image (matched by start time: indices shift) */
-interface Pending {
-  reelId: string
-  t0: number
-}
+/**
+ * AI Studio generation for empty cutaways.
+ * The prompt queue lives in the main process and is persisted to %APPDATA%\Viku\gemini-queue.json together with what
+ * each prompt is for (reel id, cutaway index + start time, slug). So a reload or a restart keeps the link: queued
+ * prompts still show as queued on their cutaways, and a capture that arrived while the editor was closed is attached
+ * on the next start (resumeQueue).
+ */
 
 interface GenState {
   /** key = reelId@t0 → prompt id in the Sign-in window's queue */
   queued: Record<string, string>
-  set: (key: string, promptId: string | null) => void
+  setAll: (q: Record<string, string>) => void
 }
 
-export const useGen = create<GenState>((set, get) => ({
+export const useGen = create<GenState>((set) => ({
   queued: {},
-  set: (key, promptId) => {
-    const q = { ...get().queued }
-    if (promptId) q[key] = promptId
-    else delete q[key]
-    set({ queued: q })
-  }
+  setAll: (queued) => set({ queued })
 }))
 
-const pending = new Map<string, Pending>()
 export const genKey = (reelId: string, t0: number): string => `${reelId}@${t0.toFixed(2)}`
+
+/** prompt ids being attached right now (capture event + resume can race) */
+const attaching = new Set<string>()
 
 function captionTextUnder(reel: Reel, t0: number, t1: number): string {
   return reel.captions
@@ -61,14 +60,10 @@ export async function generateForCutaway(reelId: string, index: number, promptOv
     return
   }
   const prompt = promptOverride?.trim() || cutawayPrompt(c, captionTextUnder(reel, c.t0, c.t1))
+  const meta: GenMeta = { reelId, index, t0: c.t0, slug: c.need?.slug }
   try {
-    const before = new Set((await bridge.signin.list()).map((i) => i.id))
-    const items = await bridge.signin.queue([{ prompt, name: plannedName(reel, index) }])
-    const added = items.find((i) => !before.has(i.id))
-    if (added) {
-      pending.set(added.id, { reelId, t0: c.t0 })
-      useGen.getState().set(key, added.id)
-    }
+    const items = await bridge.signin.queue([{ prompt, name: plannedName(reel, index), meta }])
+    syncQueue(items)
     await bridge.signin.open('gemini')
     toast('info', 'Prompt queued in AI Studio — press “Send next” in the Sign-in window. The image lands on the cutaway by itself.')
   } catch (e) {
@@ -84,51 +79,102 @@ export async function generateAllForReel(reelId: string): Promise<void> {
   for (const i of idx) await generateForCutaway(reelId, i)
 }
 
-/** Forget a queued generation (prompt removed from the queue). */
-export function syncQueue(ids: Set<string>): void {
-  for (const [pid, p] of pending) {
-    if (!ids.has(pid)) {
-      pending.delete(pid)
-      useGen.getState().set(genKey(p.reelId, p.t0), null)
-    }
+/** Rebuild the "queued" badges from the (persisted) queue: every prompt still waiting for its image. */
+export function syncQueue(items: PromptItem[]): void {
+  const q: Record<string, string> = {}
+  for (const i of items) {
+    if (i.meta && (i.status === 'queued' || i.status === 'sent')) q[genKey(i.meta.reelId, i.meta.t0)] = i.id
   }
+  useGen.getState().setAll(q)
+}
+
+/** After a reload / restart: show queued prompts and attach captures that arrived while the editor was not listening. */
+export async function resumeQueue(): Promise<void> {
+  const bridge = window.viku
+  if (!bridge) return
+  let items: PromptItem[]
+  try {
+    items = await bridge.signin.list()
+  } catch {
+    return
+  }
+  syncQueue(items)
+  const waiting = items.filter((i) => i.status === 'captured' && i.file && i.meta && !i.meta.attached)
+  for (const i of waiting) await handleCapture({ promptId: i.id, meta: i.meta, file: i.file as string, via: i.via ?? 'download', width: 0, height: 0 })
+  const open = items.filter((i) => i.meta && (i.status === 'queued' || i.status === 'sent')).length
+  if (open) toast('info', `${open} AI Studio prompt${open === 1 ? ' is' : 's are'} still waiting for an image — open the Sign-in window to continue.`)
+}
+
+function cutawayIndex(cutaways: Cutaway[], meta: GenMeta): number {
+  const byTime = cutaways.findIndex((x) => Math.abs(x.t0 - meta.t0) < 0.02)
+  if (byTime >= 0) return byTime
+  // the cutaway moved: fall back to the index when it is still an empty one
+  const c = cutaways[meta.index]
+  return c && !c.img ? meta.index : -1
 }
 
 export async function handleCapture(ev: CaptureEvent): Promise<void> {
-  if (!ev.promptId) return
-  const target = pending.get(ev.promptId)
-  if (!target) return
-  pending.delete(ev.promptId)
-  useGen.getState().set(genKey(target.reelId, target.t0), null)
+  const bridge = window.viku
+  if (!ev.promptId || !ev.meta || ev.meta.attached || attaching.has(ev.promptId)) return
+  attaching.add(ev.promptId)
+  try {
+    await attach(ev.promptId, ev.meta, ev.file)
+  } finally {
+    attaching.delete(ev.promptId)
+    if (bridge) syncQueue(await bridge.signin.list().catch(() => []))
+  }
+}
+
+async function attach(promptId: string, meta: GenMeta, file: string): Promise<void> {
+  const name = file.split(/[\\/]/).pop()
   const st = useEditor.getState()
-  const reel = st.project?.reels.find((r) => r.id === target.reelId)
-  const index = reel ? reel.cutaways.findIndex((x) => Math.abs(x.t0 - target.t0) < 0.02) : -1
+  const openReel = st.project?.reels.find((r) => r.id === meta.reelId)
+  let reel: Reel | undefined = openReel
+  if (!reel) {
+    // the reel's project is not open: attach through the engine directly
+    const projectId = meta.reelId.split('~')[0]
+    try {
+      reel = (await api().getProject(projectId)).reels.find((r) => r.id === meta.reelId)
+    } catch {
+      reel = undefined
+    }
+  }
+  const index = reel ? cutawayIndex(reel.cutaways, meta) : -1
   if (!reel || index < 0) {
-    toast('warn', `Captured ${ev.file.split(/[\\/]/).pop()}, but its cutaway is gone — the file is in the captures folder.`)
+    toast('warn', `Captured ${name}, but its cutaway is gone — the file is in the captures folder.`)
+    await window.viku?.signin.markAttached(promptId)
     return
   }
   // the engine reads the saved project: flush local edits first so the index matches
-  if (st.dirty) await saveNow()
-  let fromEngine = null
+  if (openReel && st.dirty) await saveNow()
+  let fromEngine: Cutaway | null = null
   try {
-    fromEngine = await api().attachCutawayImage(reel.id, index, ev.file)
+    fromEngine = await api().attachCutawayImage(reel.id, index, file)
   } catch (e) {
+    if (!openReel) {
+      toast('warn', `Engine could not file ${name} (${e instanceof Error ? e.message : String(e)}) — it will be retried next start.`)
+      return
+    }
     toast('warn', `Engine could not file the image (${e instanceof Error ? e.message : String(e)}) — placed it locally.`)
   }
-  useEditor.getState().editReel(reel.id, 'Generated image', (r) => {
-    const c = r.cutaways[index]
-    if (!c) return
-    if (fromEngine) {
-      Object.assign(c, fromEngine)
-      if (!fromEngine.need) delete c.need
-    } else {
-      c.img = ev.file
-      if (c.need) {
-        c.need_done = c.need
-        delete c.need
+  if (openReel) {
+    useEditor.getState().editReel(reel.id, 'Generated image', (r) => {
+      const c = r.cutaways[index]
+      if (!c) return
+      if (fromEngine) {
+        Object.assign(c, fromEngine)
+        if (!fromEngine.need) delete c.need
+      } else {
+        c.img = file
+        if (c.need) {
+          c.need_done = c.need
+          delete c.need
+        }
       }
-    }
-  })
+    })
+  }
+  await window.viku?.signin.markAttached(promptId)
   if (fromEngine) void useLibraryIndex.getState().load(true)
-  toast('success', `Image placed on cutaway ${index + 1}${reel.cutaways[index].need ? ` (${readableName(reel.cutaways[index].need?.slug ?? '')})` : ''}`)
+  const slug = meta.slug ?? reel.cutaways[index]?.need?.slug ?? ''
+  toast('success', `Image placed on cutaway ${index + 1}${slug ? ` (${readableName(slug)})` : ''}${openReel ? '' : ` of reel ${reel.title || reel.id}`}`)
 }

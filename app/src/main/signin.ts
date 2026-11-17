@@ -1,12 +1,13 @@
 import { BrowserWindow, WebContentsView, clipboard, session, shell, type Session, type WebContents } from 'electron'
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
-import { basename, extname, join } from 'node:path'
+import { basename, dirname, extname, join } from 'node:path'
 import { imageInfo } from './imageSize'
 import {
   IPC,
   type CaptureEvent,
   type CaptureVia,
+  type GenMeta,
   type GeminiViewState,
   type PromptItem,
   type Rect,
@@ -44,8 +45,37 @@ export class SignInManager {
     private loadPage: (win: BrowserWindow, page: 'signin') => void,
     private broadcast: Broadcast,
     private preload: string,
-    private icon?: string
-  ) {}
+    private icon: string | undefined,
+    /** %APPDATA%\Viku\gemini-queue.json: the prompt queue survives reloads and restarts */
+    private queueFile: () => string
+  ) {
+    this.load()
+  }
+
+  // ---------- persistence ----------
+
+  private load(): void {
+    try {
+      const f = this.queueFile()
+      if (!existsSync(f)) return
+      const data = JSON.parse(readFileSync(f, 'utf8')) as { items?: PromptItem[] }
+      this.items = (data.items ?? []).filter((i) => i && typeof i.id === 'string' && typeof i.prompt === 'string')
+    } catch {
+      /* unreadable queue: start empty */
+    }
+  }
+
+  private save(): void {
+    try {
+      const f = this.queueFile()
+      mkdirSync(dirname(f), { recursive: true })
+      const tmp = `${f}.tmp`
+      writeFileSync(tmp, JSON.stringify({ version: 1, saved: new Date().toISOString(), items: this.items }, null, 2), 'utf8')
+      renameSync(tmp, f)
+    } catch {
+      /* non-fatal: the queue still works in memory */
+    }
+  }
 
   open(card?: SignInCard): void {
     if (this.win && !this.win.isDestroyed()) {
@@ -296,7 +326,7 @@ export class SignInManager {
       target.via = via
       this.emitQueue()
     }
-    const ev: CaptureEvent = { promptId: target?.id, file: path, via, width, height }
+    const ev: CaptureEvent = { promptId: target?.id, meta: target?.meta, file: path, via, width, height }
     this.broadcast(IPC.signinCaptureEvt, ev)
     this.toast({ kind: 'success', text: `Captured ${basename(path)} (${width}×${height}, ${via})` })
     return path
@@ -304,11 +334,20 @@ export class SignInManager {
 
   // ---------- prompt queue ----------
 
-  queue(add: { prompt: string; name: string; folder?: string }[]): PromptItem[] {
+  queue(add: { prompt: string; name: string; folder?: string; meta?: GenMeta }[]): PromptItem[] {
     for (const a of add) {
-      this.items.push({ id: randomUUID(), prompt: a.prompt, name: a.name, folder: a.folder, status: 'queued' })
+      this.items.push({ id: randomUUID(), prompt: a.prompt, name: a.name, folder: a.folder, meta: a.meta, status: 'queued', queuedAt: Date.now() })
     }
     this.emitQueue()
+    return this.items
+  }
+
+  markAttached(id: string): PromptItem[] {
+    const it = this.items.find((i) => i.id === id)
+    if (it?.meta) {
+      it.meta = { ...it.meta, attached: true }
+      this.emitQueue()
+    }
     return this.items
   }
 
@@ -383,6 +422,7 @@ export class SignInManager {
   }
 
   private emitQueue(): void {
+    this.save()
     this.broadcast(IPC.signinQueueEvt, this.items)
   }
 

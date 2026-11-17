@@ -12,16 +12,21 @@ async function waitForEngine(onWait?: (msg: string) => void): Promise<void> {
   const bridge = window.viku
   if (!bridge) return
   const s = await bridge.engine.status()
-  if (s.state !== 'checking' && s.state !== 'starting') return
+  if (s.state !== 'checking' && s.state !== 'starting' && s.state !== 'setup') return
   onWait?.(s.state === 'starting' ? 'Starting the engine…' : 'Looking for the engine…')
   await new Promise<void>((done) => {
-    const timer = setTimeout(finish, 45000)
+    // first-launch setup (bootstrap) can take minutes: the timer only runs outside it
+    let timer = s.state === 'setup' ? null : setTimeout(finish, 45000)
     const off = bridge.engine.onStatus((n) => {
+      if (n.state === 'setup') {
+        if (timer) clearTimeout(timer)
+        timer = null
+      } else if (!timer && (n.state === 'starting' || n.state === 'checking')) timer = setTimeout(finish, 90000)
       if (n.state === 'starting') onWait?.('Starting the engine…')
       if (n.state === 'running' || n.state === 'error' || n.state === 'stopped') finish()
     })
     function finish(): void {
-      clearTimeout(timer)
+      if (timer) clearTimeout(timer)
       off()
       done()
     }

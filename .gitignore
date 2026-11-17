@@ -12,3 +12,4 @@ data/music/
 data/projects/
 *.log
 .env
+vendor/

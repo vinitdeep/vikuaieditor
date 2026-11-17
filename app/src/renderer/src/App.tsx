@@ -4,7 +4,7 @@ import { toast, useApp } from '@/state/app'
 import { currentReel, useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
 import { usePlayback } from '@/state/playback'
-import { handleCapture, syncQueue } from '@/lib/gemini'
+import { handleCapture, resumeQueue, syncQueue } from '@/lib/gemini'
 import { useLibraryIndex } from '@/lib/cutaways'
 import { useTranscriptSel } from '@/state/transcriptSel'
 import { useHotkeys } from '@/lib/hotkeys'
@@ -20,6 +20,9 @@ import { SettingsDialog } from '@/components/shell/SettingsDialog'
 import { ShortcutsSheet } from '@/components/shell/ShortcutsSheet'
 import { Onboarding } from '@/components/shell/Onboarding'
 import { EngineBanner } from '@/components/shell/EngineBanner'
+import { SetupScreen } from '@/components/shell/SetupScreen'
+import { AboutDialog } from '@/components/shell/AboutDialog'
+import type { EngineStatus } from '@shared/ipc'
 
 async function boot(onWait: (msg: string) => void): Promise<void> {
   const a = await initApi(onWait)
@@ -43,7 +46,7 @@ async function boot(onWait: (msg: string) => void): Promise<void> {
       }
     })
     bridge.signin.onCapture((ev) => void handleCapture(ev))
-    bridge.signin.onQueue((items) => syncQueue(new Set(items.filter((i) => i.status !== 'failed').map((i) => i.id))))
+    bridge.signin.onQueue((items) => syncQueue(items))
     bridge.signin.onToast((t) => toast(t.kind, t.text))
     bridge.signin.onGeminiState((g) => useApp.getState().set({ gemini: g }))
     void bridge.signin.geminiState().then((g) => useApp.getState().set({ gemini: g }))
@@ -66,6 +69,8 @@ async function boot(onWait: (msg: string) => void): Promise<void> {
   await useEditor.getState().loadProjects()
   const first = useEditor.getState().projects[0]
   if (first) await useEditor.getState().openProject(first.id)
+  // AI Studio prompts queued before a reload / restart: badges back on their cutaways, late captures attached
+  if (a.kind === 'live' || params.has('debug')) void resumeQueue()
 
   // refresh sign-in chips when the window regains focus
   window.addEventListener('focus', () => {
@@ -84,16 +89,28 @@ export function App() {
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [waitMsg, setWaitMsg] = useState<string | null>(null)
+  // first launch of the installed app: the engine environment is being created (bootstrap.ps1)
+  const [setup, setSetup] = useState<EngineStatus | null>(null)
   const mode = useApp((s) => s.mode)
   const layout = useApp((s) => s.layout)
   const setLayout = useApp((s) => s.setLayout)
   useHotkeys()
 
   useEffect(() => {
+    const bridge = window.viku
+    if (!bridge) return
+    const show = (st: EngineStatus): void => setSetup(st.state === 'setup' || (st.state === 'error' && st.setup?.error) ? st : null)
+    void bridge.engine.status().then(show)
+    return bridge.engine.onStatus(show)
+  }, [])
+
+  useEffect(() => {
     boot(setWaitMsg)
       .then(() => setReady(true))
       .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
   }, [])
+
+  if (setup && (!ready || setup.state === 'setup')) return <SetupScreen status={setup} />
 
   if (!ready) {
     return (
@@ -138,6 +155,7 @@ export function App() {
       <ExportDialog />
       <ShortcutsSheet />
       <Onboarding />
+      <AboutDialog />
       <Toasts />
     </div>
   )

@@ -18,6 +18,8 @@ import type {
   Lang,
   LangOpt,
   LibraryImage,
+  LicenceItem,
+  ModelItem,
   Music,
   MusicTrack,
   Project,
@@ -285,7 +287,78 @@ export function jobEvent(x: unknown): JobEvent | null {
   if (!job) return null
   const s = jobStates.find((v) => v === r.state) ?? 'running'
   const message = s === 'error' && r.error ? str(r.error) : str(r.message)
-  return { job, kind: str(r.kind, 'job'), progress: Math.max(0, Math.min(1, num(r.progress))), message, state: message === 'cancelled' && s === 'error' ? 'cancelled' : s, result: r.result }
+  const ev: JobEvent = { job, kind: str(r.kind, 'job'), progress: Math.max(0, Math.min(1, num(r.progress))), message, state: message === 'cancelled' && s === 'error' ? 'cancelled' : s, result: r.result }
+  if (r.error) ev.error = str(r.error)
+  const code = errorCode(r)
+  if (code) ev.code = code
+  return ev
+}
+
+const ERROR_CODES = ['hf_auth_required', 'network', 'checksum'] as const
+
+/** A failure's code: an explicit field, a "code: message" prefix, or recognised wording of older engines. */
+export function errorCode(r: Record<string, unknown>): string | undefined {
+  const res = rec(r.result)
+  const explicit = r.code ?? r.error_code ?? res.code ?? res.error_code ?? rec(r.detail).code
+  if (typeof explicit === 'string' && explicit) return explicit
+  const text = str(r.error ?? r.message ?? r.detail)
+  const m = text.match(/^\[?([a-z_]+)\]?[:\s]/)
+  if (m && (ERROR_CODES as readonly string[]).includes(m[1])) return m[1]
+  if (/needs sign-in|HTTP 40[13]|gated|hf_token|token/i.test(text) && /hugging ?face|huggingface\.co|gated/i.test(text)) return 'hf_auth_required'
+  if (/checksum|sha-?256 mismatch|corrupt/i.test(text)) return 'checksum'
+  if (/download failed|internet|timed? ?out|connection|getaddrinfo|unreachable|URLError/i.test(text)) return 'network'
+  return undefined
+}
+
+export function modelItem(x: unknown): ModelItem {
+  const r = rec(x)
+  const gated = Boolean(r.gated)
+  const installed = Boolean(r.installed)
+  return {
+    ...r,
+    id: str(r.id),
+    name: str(r.name, str(r.id)),
+    purpose: str(r.purpose),
+    size_mb: num(r.size_mb),
+    licence: str(r.licence ?? r.license),
+    licence_url: str(r.licence_url ?? r.license_url),
+    required: Boolean(r.required),
+    installed,
+    source: r.source === null || r.source === undefined ? null : str(r.source),
+    path: str(r.path),
+    gated,
+    partial_mb: num(r.partial_mb),
+    needs_token: r.needs_token === undefined ? false : Boolean(r.needs_token) && !installed,
+    accept_url: r.accept_url ? str(r.accept_url) : undefined
+  }
+}
+
+export function modelList(x: unknown): ModelItem[] {
+  const list = Array.isArray(x) ? x : arr(rec(x).items ?? rec(x).models)
+  return list.map(modelItem).filter((m) => m.id)
+}
+
+export function licenceList(x: unknown): LicenceItem[] {
+  const r = rec(x)
+  const list: unknown[] = Array.isArray(x) ? x : arr(r.items ?? r.licences ?? r.licenses)
+  // also accept {group: [...]} maps (e.g. {"python": [...], "models": [...]})
+  const flat: { item: unknown; kind?: string }[] = list.length
+    ? list.map((item) => ({ item }))
+    : Object.entries(r).flatMap(([k, v]) => (Array.isArray(v) ? v.map((item) => ({ item, kind: k })) : []))
+  return flat
+    .map(({ item, kind }) => {
+      const o = rec(item)
+      const name = str(o.name ?? o.package ?? o.id)
+      return {
+        name,
+        licence: str(o.licence ?? o.license ?? o.spdx, 'unknown'),
+        url: o.url ?? o.licence_url ?? o.license_url ?? o.homepage ? str(o.url ?? o.licence_url ?? o.license_url ?? o.homepage) : undefined,
+        version: o.version ? str(o.version) : undefined,
+        kind: o.kind ?? o.type ?? kind ? str(o.kind ?? o.type ?? kind) : undefined,
+        text: o.text ? str(o.text) : undefined
+      }
+    })
+    .filter((l) => l.name)
 }
 
 export function waveform(x: unknown, start: number, end: number): Waveform {

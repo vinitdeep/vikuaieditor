@@ -173,6 +173,21 @@ export class HttpApi implements VikuApi {
     }
   }
 
+  listModels = async () => N.modelList(await this.call('GET', '/models', undefined, 15000))
+  installModels = async (body: Parameters<VikuApi['installModels']>[0]) => {
+    // only send what is set: the token travels once, in this request body, and is not kept by the app
+    const b: Record<string, unknown> = {}
+    if (body.ids?.length) b.ids = body.ids
+    if (body.source_dir) b.source_dir = body.source_dir
+    if (body.hf_token) b.hf_token = body.hf_token
+    if (body.mirror_url) b.mirror_url = body.mirror_url
+    return N.jobRef(await this.call('POST', '/models/install', b), 'models_install')
+  }
+  removeModels = async (ids: string[]) => {
+    await this.call('POST', '/models/remove', { ids })
+  }
+  licences = async () => N.licenceList(await this.call('GET', '/licences', undefined, 15000))
+
   authStatus = async () => N.authStatus(await this.call('GET', '/auth/status'))
   heygenLogin = async () => N.jobRef(await this.call('POST', '/auth/heygen/login', {}), 'heygen_login')
 

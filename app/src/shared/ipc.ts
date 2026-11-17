@@ -13,17 +13,37 @@ export interface Prefs {
   capturesDir: string
   /** first-run onboarding finished (re-openable from Settings → General) */
   onboarded: boolean
+  /**
+   * bundled = the installed app runs the engine it ships (resources/engine, environment in <install>/engine-env,
+   * created by bootstrap.ps1 on first launch); custom = engineCommand in engineCwd (development / own setup)
+   */
+  engineSource: 'bundled' | 'custom'
+  /** optional base URL of a models mirror, sent with every POST /models/install as mirror_url */
+  modelsMirror: string
 }
 
-export type EngineState = 'checking' | 'starting' | 'running' | 'stopped' | 'error'
+export type EngineState = 'checking' | 'setup' | 'starting' | 'running' | 'stopped' | 'error'
+
+/** First-launch engine setup (bootstrap.ps1 PROGRESS lines) */
+export interface SetupStatus {
+  pct: number
+  message: string
+  /** set when bootstrap ended with ERROR */
+  error?: string
+  done?: boolean
+  log: string[]
+}
 
 export interface EngineStatus {
   state: EngineState
   url: string
   /** true when this app spawned the engine process (and will kill it on quit) */
   spawned: boolean
+  /** the packaged app runs its own bundled engine */
+  bundled: boolean
   message?: string
   log: string[]
+  setup?: SetupStatus
 }
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE'
@@ -51,6 +71,18 @@ export interface Rect {
 
 export type PromptStatus = 'queued' | 'sent' | 'captured' | 'failed'
 
+/** What a queued AI Studio prompt is for (persisted with the queue so a capture still lands after a restart). */
+export interface GenMeta {
+  reelId: string
+  /** cutaway index when queued (indices can shift; t0 is the stable key) */
+  index: number
+  /** cutaway start, reel seconds */
+  t0: number
+  slug?: string
+  /** set once the capture was attached to the cutaway */
+  attached?: boolean
+}
+
 export interface PromptItem {
   id: string
   prompt: string
@@ -62,12 +94,16 @@ export interface PromptItem {
   file?: string
   via?: CaptureVia
   error?: string
+  meta?: GenMeta
+  /** ms since epoch */
+  queuedAt?: number
 }
 
 export type CaptureVia = 'download' | 'network'
 
 export interface CaptureEvent {
   promptId?: string
+  meta?: GenMeta
   file: string
   via: CaptureVia
   width: number
@@ -104,10 +140,30 @@ export interface FileFilter {
 
 export type Unsubscribe = () => void
 
+export interface AppInfo {
+  name: string
+  version: string
+  electron: string
+  chrome: string
+  node: string
+  packaged: boolean
+  /** Electron userData (= %APPDATA%\Viku unless VIKU_DATA / VIKU_USER_DATA) */
+  userData: string
+  /** bundled engine environment (<install>/engine-env), when packaged */
+  engineEnv?: string
+  /** bundled uv version line (resources/uv/VERSION.txt) */
+  uv?: string
+  /** licence texts shipped with the app shell: [{name, licence, text}] */
+  shellLicences: { name: string; licence: string; url?: string; text?: string }[]
+}
+
 /** API exposed on window.viku by the preload script (both windows). */
 export interface VikuBridge {
   platform: string
   versions: { app: string; electron: string; chrome: string }
+  app: {
+    info(): Promise<AppInfo>
+  }
   prefs: {
     get(): Promise<Prefs>
     set(patch: Partial<Prefs>): Promise<Prefs>
@@ -117,6 +173,8 @@ export interface VikuBridge {
     restart(): Promise<EngineStatus>
     /** spawn the engine now, even when auto-start is off */
     start(): Promise<EngineStatus>
+    /** run the bundled engine setup (bootstrap.ps1) again, then start the engine */
+    setupRetry(): Promise<EngineStatus>
     request(req: EngineRequest): Promise<EngineResponse>
     onStatus(cb: (s: EngineStatus) => void): Unsubscribe
     /** raw SSE payloads from GET /events (already JSON-parsed) */
@@ -135,7 +193,9 @@ export interface VikuBridge {
     setGeminiBounds(bounds: Rect | null): Promise<void>
     geminiNav(action: 'back' | 'forward' | 'reload' | 'home'): Promise<void>
     geminiState(): Promise<GeminiViewState>
-    queue(items: { prompt: string; name: string; folder?: string }[]): Promise<PromptItem[]>
+    queue(items: { prompt: string; name: string; folder?: string; meta?: GenMeta }[]): Promise<PromptItem[]>
+    /** mark a captured prompt as attached to its cutaway (persisted) */
+    markAttached(id: string): Promise<PromptItem[]>
     list(): Promise<PromptItem[]>
     sendNext(): Promise<SendResult>
     remove(id: string): Promise<PromptItem[]>
@@ -149,6 +209,9 @@ export interface VikuBridge {
 }
 
 export const IPC = {
+  appInfo: 'app:info',
+  engineSetupRetry: 'engine:setup-retry',
+  signinMarkAttached: 'signin:mark-attached',
   prefsGet: 'prefs:get',
   prefsSet: 'prefs:set',
   engineStatus: 'engine:status',

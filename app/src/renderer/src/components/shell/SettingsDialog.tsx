@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Check, Compass, Cpu, FolderOpen, Keyboard, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { Compass, Cpu, FolderOpen, Info, Keyboard, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import type { Prefs } from '@shared/ipc'
 import { api } from '@/api'
 import type { ExportPreset, Settings } from '@/api/types'
 import { toast, useApp } from '@/state/app'
 import { Button, IconButton, Segmented, Tabs, Toggle } from '../ui'
 import { Modal } from './Shell'
+import { ModelsPanel } from './ModelsPanel'
 
-type Tab = 'general' | 'folders' | 'export' | 'engine'
+type Tab = 'general' | 'folders' | 'export' | 'models' | 'engine'
 
 function FolderRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
@@ -65,7 +66,7 @@ export function SettingsDialog() {
       if (prefs && prefsDirty && window.viku) {
         const before = await window.viku.prefs.get()
         await window.viku.prefs.set(prefs)
-        if (before.adapter !== prefs.adapter || before.engineUrl !== prefs.engineUrl) {
+        if (before.adapter !== prefs.adapter || before.engineUrl !== prefs.engineUrl || before.engineSource !== prefs.engineSource) {
           toast('info', 'Data source changed — reloading')
           setTimeout(() => location.reload(), 600)
         }
@@ -77,14 +78,6 @@ export function SettingsDialog() {
     }
   }
 
-  const ready = health?.offline_ready
-  const models: [string, boolean | undefined, string][] = [
-    ['Speech recognition (IndicConformer / Whisper)', ready?.asr, 'asr'],
-    ['Speech enhancement (DeepFilterNet3)', ready?.denoise, 'denoise'],
-    ['Viku Brain embeddings (multilingual-e5-small)', ready?.embed, 'embed'],
-    ['Offline Bibles (IRV ory · IRV hin2017 · WEB)', ready?.bible, 'bible'],
-    ['Illustration library index', ready?.library, 'library']
-  ]
 
   return (
     <Modal
@@ -109,10 +102,11 @@ export function SettingsDialog() {
           { id: 'general', label: 'General' },
           { id: 'folders', label: 'Folders' },
           { id: 'export', label: 'Export presets' },
-          { id: 'engine', label: 'Engine & models' }
+          { id: 'models', label: 'Models' },
+          { id: 'engine', label: 'Engine' }
         ]}
       />
-      {!draft && tab !== 'engine' ? (
+      {!draft && tab !== 'engine' && tab !== 'models' ? (
         <div className="muted pad">Settings are unavailable until the engine answers.</div>
       ) : (
         <div className="settings-body">
@@ -156,6 +150,9 @@ export function SettingsDialog() {
                   </Button>
                   <Button size="sm" variant="ghost" icon={Keyboard} onClick={() => set({ settingsOpen: false, shortcutsOpen: true })}>
                     Keyboard shortcuts
+                  </Button>
+                  <Button size="sm" variant="ghost" icon={Info} onClick={() => set({ settingsOpen: false, aboutOpen: true })}>
+                    About &amp; licences
                   </Button>
                 </span>
               </div>
@@ -207,6 +204,28 @@ export function SettingsDialog() {
               </Button>
             </div>
           )}
+          {tab === 'models' && (
+            <>
+              {prefs && (
+                <div className="irow">
+                  <span className="irow-label">Models mirror</span>
+                  <span className="irow-ctl">
+                    <input
+                      className="input mono"
+                      value={prefs.modelsMirror}
+                      placeholder="Optional — e.g. https://models.mychurch.org/viku (blank = official sources)"
+                      onChange={(e) => patchPrefs({ modelsMirror: e.target.value.trim() })}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      spellCheck={false}
+                      aria-label="Models mirror URL"
+                    />
+                  </span>
+                </div>
+              )}
+              <p className="rule-note small">A mirror is a web folder with the same files as the official sources (useful for a church network or slow internet). Every file is still checked against its fingerprint. Save first, then install.</p>
+              <ModelsPanel />
+            </>
+          )}
           {tab === 'engine' && (
             <>
               <div className="engine-card">
@@ -231,15 +250,6 @@ export function SettingsDialog() {
                   Restart engine
                 </Button>
               </div>
-              <div className="models">
-                {models.map(([label, ok, id]) => (
-                  <div key={id} className="model-row">
-                    <span className={`model-dot ${ok ? 'ok' : 'no'}`}>{ok ? <Check size={11} /> : <X size={11} />}</span>
-                    <span className="grow">{label}</span>
-                    <span className="small muted">{ok ? 'offline ready' : 'not installed'}</span>
-                  </div>
-                ))}
-              </div>
               {prefs && (
                 <>
                   <div className="irow">
@@ -258,6 +268,23 @@ export function SettingsDialog() {
                       />
                     </span>
                   </div>
+                  {(
+                    <div className="irow">
+                      <span className="irow-label">Engine</span>
+                      <span className="irow-ctl">
+                        <Segmented
+                          size="sm"
+                          ariaLabel="Engine source"
+                          value={prefs.engineSource}
+                          onChange={(v) => patchPrefs({ engineSource: v })}
+                          options={[
+                            { id: 'bundled', label: 'Installed with Viku' },
+                            { id: 'custom', label: 'Custom command' }
+                          ]}
+                        />
+                      </span>
+                    </div>
+                  )}
                   <div className="irow">
                     <span className="irow-label">Engine URL</span>
                     <span className="irow-ctl">

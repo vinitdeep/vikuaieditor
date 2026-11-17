@@ -3,32 +3,28 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
-  Brain,
-  Captions,
   Check,
   Church,
   Clapperboard,
   Cpu,
   FolderOpen,
   HardDrive,
-  Images,
   Loader2,
   Music2,
   Play,
   RefreshCw,
   Sparkles,
-  Type,
-  Volume2,
   Wand2,
   X,
   type LucideIcon
 } from 'lucide-react'
 import { api } from '@/api'
-import type { Health, LangOpt, Settings } from '@/api/types'
+import type { LangOpt, Settings } from '@/api/types'
 import { toast, useApp } from '@/state/app'
 import { useJobs } from '@/state/jobs'
 import { Button, IconButton, Segmented } from '../ui'
 import { Logo } from '../Logo'
+import { ModelsPanel, useModels } from './ModelsPanel'
 
 const STEPS = ['Welcome', 'Data folder', 'Engine & models', 'Sign-ins', 'Your church', 'Done'] as const
 
@@ -215,33 +211,6 @@ function DataFolder({ draft, patch }: { draft: Settings | null; patch: (p: Parti
   )
 }
 
-interface ModelRow {
-  id: string
-  icon: LucideIcon
-  label: string
-  enables: string
-  ok: boolean | undefined
-  fix?: string
-}
-
-function modelRows(h: Health | null): ModelRow[] {
-  const r = h?.offline_ready
-  const d = h?.details ?? {}
-  const n = (k: string): number | undefined => (typeof d[k] === 'number' ? (d[k] as number) : undefined)
-  const b = (k: string): boolean | undefined => (typeof d[k] === 'boolean' ? (d[k] as boolean) : undefined)
-  const rows: ModelRow[] = [
-    { id: 'asr', icon: Captions, label: 'Speech recognition', enables: 'Transcripts and captions in Odia and Hindi (IndicConformer)', ok: b('asr_indic') ?? r?.asr, fix: 'Download the IndicConformer model into models/' },
-    { id: 'whisper', icon: Captions, label: 'English recognition', enables: 'English sermons (Whisper)', ok: b('asr_whisper_en'), fix: 'Optional — only needed for English sermons' },
-    { id: 'denoise', icon: Volume2, label: 'Speech enhancement', enables: 'Clean, even voice on every reel (DeepFilterNet3)', ok: r?.denoise },
-    { id: 'embed', icon: Brain, label: 'Viku Brain', enables: 'Finds reel-worthy moments; matches illustrations and verses by meaning', ok: r?.embed, fix: 'Without it the clip finder falls back to keywords' },
-    { id: 'bible', icon: BookOpen, label: 'Offline Bibles', enables: 'Verse cards and lookup — IRV Odia, IRV Hindi, WEB', ok: r?.bible, fix: 'Download them in the next step (one time)' },
-    { id: 'library', icon: Images, label: 'Illustration library', enables: `Cutaways picked automatically${n('library_images') !== undefined ? ` · ${n('library_images')} images` : ''}`, ok: r?.library, fix: 'Add images in Library, or generate them in AI Studio' },
-    { id: 'music', icon: Music2, label: 'Music beds', enables: `Background music under every reel${n('music_tracks') !== undefined ? ` · ${n('music_tracks')} tracks` : ''}`, ok: n('music_tracks') === undefined ? undefined : (n('music_tracks') ?? 0) > 0 },
-    { id: 'fonts', icon: Type, label: 'Caption fonts', enables: 'Noto Sans Oriya / Devanagari for captions', ok: b('fonts'), fix: 'Downloaded on first render when online' }
-  ]
-  return rows.filter((x) => x.ok !== undefined || ['asr', 'denoise', 'embed', 'bible', 'library'].includes(x.id))
-}
-
 function EngineModels() {
   const engine = useApp((s) => s.engine)
   const health = useApp((s) => s.health)
@@ -258,6 +227,7 @@ function EngineModels() {
     } finally {
       setBusy(false)
     }
+    void useModels.getState().load()
   }
   const start = async (): Promise<void> => {
     setBusy(true)
@@ -269,13 +239,11 @@ function EngineModels() {
       else void refresh()
     }
   }
-  const rows = modelRows(health)
-  const ready = rows.filter((r) => r.ok).length
 
   return (
     <>
       <Head kicker="Step 3 of 5" title="Engine & offline models">
-        The engine does the heavy work on this PC. Here is what is ready — anything missing only switches its feature off.
+        The engine does the heavy work on this PC. Download the required models once — after that Viku works without internet.
       </Head>
       <div className={`ob-engine ${running ? 'ok' : 'down'}`}>
         <span className="ob-engine-icon">{engine?.state === 'starting' ? <Loader2 size={18} className="spin" /> : <Cpu size={18} />}</span>
@@ -295,23 +263,8 @@ function EngineModels() {
           </Button>
         )}
       </div>
-      <div className="ob-models">
-        <div className="ob-models-head small muted">
-          {health ? `${ready} of ${rows.length} ready` : 'Start the engine to check models'}
-        </div>
-        {rows.map((r) => (
-          <div key={r.id} className={`ob-model ${r.ok ? 'ok' : r.ok === false ? 'no' : 'unk'}`}>
-            <span className="ob-model-icon">
-              <r.icon size={15} aria-hidden />
-            </span>
-            <span className="ob-model-text">
-              <b>{r.label}</b>
-              <span>{r.enables}</span>
-              {!r.ok && r.fix && health && <span className="ob-fix">{r.fix}</span>}
-            </span>
-            <span className={`ob-state ${r.ok ? 'ok' : r.ok === false ? 'no' : 'unk'}`}>{r.ok ? 'Ready' : r.ok === false ? 'Missing' : '—'}</span>
-          </div>
-        ))}
+      <div className="ob-models-panel">
+        <ModelsPanel compact />
       </div>
     </>
   )

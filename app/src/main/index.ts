@@ -1,24 +1,26 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, shell, screen } from 'electron'
-import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { bundlePaths } from './bundle'
 import { EngineManager } from './engine'
 import { loadPrefs, publicPrefs, savePrefs } from './prefs'
 import { SignInManager } from './signin'
 import { handleThumbs, registerThumbScheme } from './thumbs'
-import { IPC, type EngineRequest, type FileFilter, type Prefs, type Rect, type SignInCard } from '../shared/ipc'
+import { IPC, type AppInfo, type EngineRequest, type FileFilter, type GenMeta, type Prefs, type Rect, type SignInCard } from '../shared/ipc'
 
 const isDev = !app.isPackaged && Boolean(process.env.ELECTRON_RENDERER_URL)
 const PRELOAD = join(__dirname, '../preload/index.js')
 const ICON = join(__dirname, '../../resources/icon.png')
 
 app.setName('Viku')
-// isolated profile for tests / screenshots
+// isolated profile for tests / screenshots; otherwise the app shares the engine's data folder (%APPDATA%\Viku, or VIKU_DATA)
 if (process.env.VIKU_USER_DATA) app.setPath('userData', process.env.VIKU_USER_DATA)
+else if (process.env.VIKU_DATA) app.setPath('userData', process.env.VIKU_DATA)
 if (process.platform === 'win32') app.setAppUserModelId('org.viku.sermonreelstudio')
 // small cached JPEGs of library images (must be registered before ready)
 registerThumbScheme()
 
-const engine = new EngineManager(publicPrefs)
+const engine = new EngineManager(publicPrefs, app.isPackaged)
 let mainWin: BrowserWindow | null = null
 let quitting = false
 
@@ -36,7 +38,52 @@ function loadPage(win: BrowserWindow, page: 'index' | 'signin'): void {
   else void win.loadFile(join(__dirname, `../renderer/${page}.html`), query ? { search: query } : undefined)
 }
 
-const signin = new SignInManager(() => publicPrefs().capturesDir, loadPage, broadcast, PRELOAD, existsSync(ICON) ? ICON : undefined)
+const signin = new SignInManager(
+  () => publicPrefs().capturesDir,
+  loadPage,
+  broadcast,
+  PRELOAD,
+  existsSync(ICON) ? ICON : undefined,
+  () => join(app.getPath('userData'), 'gemini-queue.json')
+)
+
+function readText(p: string): string | undefined {
+  try {
+    return readFileSync(p, 'utf8')
+  } catch {
+    return undefined
+  }
+}
+
+function appInfo(): AppInfo {
+  const packaged = app.isPackaged
+  const b = packaged ? bundlePaths() : null
+  const uvDir = packaged ? join(process.resourcesPath, 'uv') : resolve(app.getAppPath(), 'vendor', 'uv')
+  const installDir = dirname(app.getPath('exe'))
+  const uvVersion = readText(join(uvDir, 'VERSION.txt'))?.split(/\r?\n/)[0]?.trim()
+  return {
+    name: 'Viku',
+    version: app.getVersion(),
+    electron: process.versions.electron ?? '',
+    chrome: process.versions.chrome ?? '',
+    node: process.versions.node ?? '',
+    packaged,
+    userData: app.getPath('userData'),
+    engineEnv: b?.env,
+    uv: uvVersion ? `uv ${uvVersion}` : undefined,
+    shellLicences: [
+      { name: 'Electron', licence: 'MIT', url: 'https://github.com/electron/electron/blob/main/LICENSE', text: packaged ? readText(join(installDir, 'LICENSE.electron.txt')) : undefined },
+      { name: 'Chromium (inside Electron)', licence: 'BSD-3-Clause and others', url: 'https://source.chromium.org/chromium/chromium/src/+/main:LICENSE' },
+      { name: 'uv (bundled package manager)', licence: 'MIT OR Apache-2.0', url: 'https://github.com/astral-sh/uv', text: readText(join(uvDir, 'LICENSE-MIT')) },
+      { name: 'React / React DOM', licence: 'MIT', url: 'https://github.com/facebook/react/blob/main/LICENSE' },
+      { name: 'Zustand', licence: 'MIT', url: 'https://github.com/pmndrs/zustand/blob/main/LICENSE' },
+      { name: 'Immer', licence: 'MIT', url: 'https://github.com/immerjs/immer/blob/main/LICENSE' },
+      { name: 'Lucide icons', licence: 'ISC', url: 'https://github.com/lucide-icons/lucide/blob/main/LICENSE' },
+      { name: 'Inter (UI font)', licence: 'OFL-1.1', url: 'https://github.com/rsms/inter/blob/master/LICENSE.txt' },
+      { name: 'Noto Sans Oriya / Devanagari (UI fonts)', licence: 'OFL-1.1', url: 'https://github.com/notofonts/notofonts.github.io/blob/main/LICENSE' }
+    ]
+  }
+}
 
 function boundsOnScreen(b: Rect | undefined): Rect | undefined {
   if (!b) return undefined
@@ -97,12 +144,14 @@ function createMainWindow(): void {
 }
 
 function registerIpc(): void {
+  ipcMain.handle(IPC.appInfo, () => appInfo())
+  ipcMain.handle(IPC.engineSetupRetry, () => engine.setupRetry())
   ipcMain.handle(IPC.prefsGet, () => publicPrefs())
   ipcMain.handle(IPC.prefsSet, (_e, patch: Partial<Prefs>) => {
     const before = publicPrefs()
     savePrefs(patch)
     const after = publicPrefs()
-    if (before.engineUrl !== after.engineUrl) void engine.restart()
+    if (before.engineUrl !== after.engineUrl || before.engineSource !== after.engineSource) void engine.restart()
     return after
   })
   ipcMain.handle(IPC.engineStatus, () => engine.status)
@@ -138,7 +187,8 @@ function registerIpc(): void {
   ipcMain.handle(IPC.signinBounds, (_e, b: Rect | null) => signin.setGeminiBounds(b))
   ipcMain.handle(IPC.signinNav, (_e, a: 'back' | 'forward' | 'reload' | 'home') => signin.nav(a))
   ipcMain.handle(IPC.signinState, () => signin.state())
-  ipcMain.handle(IPC.signinQueue, (_e, items: { prompt: string; name: string; folder?: string }[]) => signin.queue(items))
+  ipcMain.handle(IPC.signinQueue, (_e, items: { prompt: string; name: string; folder?: string; meta?: GenMeta }[]) => signin.queue(items))
+  ipcMain.handle(IPC.signinMarkAttached, (_e, id: string) => signin.markAttached(id))
   ipcMain.handle(IPC.signinList, () => signin.list())
   ipcMain.handle(IPC.signinSendNext, () => signin.sendNext())
   ipcMain.handle(IPC.signinRemove, (_e, id: string) => signin.remove(id))

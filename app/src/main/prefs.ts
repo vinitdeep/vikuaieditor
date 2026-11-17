@@ -10,52 +10,68 @@ interface Stored extends Prefs {
 function defaults(): Stored {
   // In dev the app lives at <root>/app, the engine at <root>/engine.
   const appRoot = app.isPackaged ? resolve(process.resourcesPath) : resolve(app.getAppPath())
+  const port = Number(process.env.VIKU_PORT) || 8765
   return {
     adapter: 'auto',
-    engineUrl: 'http://127.0.0.1:8765',
+    engineUrl: `http://127.0.0.1:${port}`,
     engineCommand: 'uv run viku-engine',
-    engineCwd: resolve(appRoot, '..', 'engine'),
+    engineCwd: app.isPackaged ? join(appRoot, 'engine') : resolve(appRoot, '..', 'engine'),
     autoStartEngine: true,
     capturesDir: join(app.getPath('userData'), 'captures', 'pending'),
-    onboarded: false
+    onboarded: false,
+    engineSource: app.isPackaged ? 'bundled' : 'custom',
+    modelsMirror: ''
   }
 }
 
-let cache: Stored | null = null
+/** Only what the user changed is written to prefs.json; defaults are recomputed at every start. */
+let raw: Partial<Stored> | null = null
 
 function file(): string {
   return join(app.getPath('userData'), 'prefs.json')
 }
 
-export function loadPrefs(): Stored {
-  if (cache) return cache
-  const base = defaults()
+function readRaw(): Partial<Stored> {
+  if (raw) return raw
   try {
     if (existsSync(file())) {
-      const parsed = JSON.parse(readFileSync(file(), 'utf8')) as Partial<Stored>
-      cache = { ...base, ...parsed }
-      return cache
+      raw = JSON.parse(readFileSync(file(), 'utf8')) as Partial<Stored>
+      return raw
     }
   } catch {
     /* corrupt prefs: fall back to defaults */
   }
-  cache = base
-  return cache
+  raw = {}
+  return raw
+}
+
+export function loadPrefs(): Stored {
+  const merged: Stored = { ...defaults(), ...readRaw() }
+  // an explicit port for this run (tests, a second engine) wins over the stored URL
+  if (process.env.VIKU_PORT) merged.engineUrl = `http://127.0.0.1:${Number(process.env.VIKU_PORT)}`
+  // the packaged app never runs `uv run` from a folder unless the user picked a custom engine
+  if (app.isPackaged && merged.engineSource !== 'custom') merged.engineSource = 'bundled'
+  return merged
 }
 
 export function savePrefs(patch: Partial<Stored>): Stored {
-  const next: Stored = { ...loadPrefs(), ...patch }
-  cache = next
+  const d = defaults()
+  const next: Partial<Stored> = { ...readRaw(), ...patch }
+  // drop values equal to their default, so a later version's defaults apply
+  for (const k of Object.keys(next) as (keyof Stored)[]) {
+    if (k !== 'windowBounds' && JSON.stringify(next[k]) === JSON.stringify(d[k])) delete next[k]
+  }
+  raw = next
   try {
     mkdirSync(app.getPath('userData'), { recursive: true })
     writeFileSync(file(), JSON.stringify(next, null, 2), 'utf8')
   } catch {
     /* non-fatal */
   }
-  return next
+  return loadPrefs()
 }
 
 export function publicPrefs(): Prefs {
-  const { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir, onboarded } = loadPrefs()
-  return { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir, onboarded }
+  const { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir, onboarded, engineSource, modelsMirror } = loadPrefs()
+  return { adapter, engineUrl, engineCommand, engineCwd, autoStartEngine, capturesDir, onboarded, engineSource, modelsMirror }
 }

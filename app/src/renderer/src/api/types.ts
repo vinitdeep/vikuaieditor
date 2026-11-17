@@ -224,6 +224,51 @@ export interface JobEvent {
   message: string
   state: JobState
   result?: unknown
+  /** raw error text (state error) */
+  error?: string
+  /** machine-readable failure: hf_auth_required | network | checksum | … */
+  code?: string
+}
+
+/** GET /models item: a tool or model the engine needs (or can use) */
+export interface ModelItem {
+  id: string
+  name: string
+  purpose: string
+  size_mb: number
+  licence: string
+  licence_url: string
+  required: boolean
+  installed: boolean
+  /** managed | settings | legacy | bundled | system … */
+  source: string | null
+  path: string
+  gated: boolean
+  /** MB already downloaded into the resumable .part files */
+  partial_mb: number
+  /** gated on Hugging Face and no token configured: the user must accept the terms + give a token (or a folder) */
+  needs_token: boolean
+  /** model page where the terms are accepted */
+  accept_url?: string
+}
+
+export interface ModelInstallRequest {
+  ids?: string[]
+  source_dir?: string
+  /** Hugging Face read token, sent once with this request (the app never stores it) */
+  hf_token?: string
+  mirror_url?: string
+}
+
+/** GET /licences item */
+export interface LicenceItem {
+  name: string
+  licence: string
+  url?: string
+  version?: string
+  /** python package | model | tool | font | data … */
+  kind?: string
+  text?: string
 }
 
 export interface JobRef {

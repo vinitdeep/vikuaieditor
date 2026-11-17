@@ -16,6 +16,9 @@ const bridge: VikuBridge = {
     electron: process.versions.electron ?? '',
     chrome: process.versions.chrome ?? ''
   },
+  app: {
+    info: () => ipcRenderer.invoke(IPC.appInfo)
+  },
   prefs: {
     get: () => ipcRenderer.invoke(IPC.prefsGet),
     set: (patch) => ipcRenderer.invoke(IPC.prefsSet, patch)
@@ -24,6 +27,7 @@ const bridge: VikuBridge = {
     status: () => ipcRenderer.invoke(IPC.engineStatus),
     restart: () => ipcRenderer.invoke(IPC.engineRestart),
     start: () => ipcRenderer.invoke(IPC.engineStart),
+    setupRetry: () => ipcRenderer.invoke(IPC.engineSetupRetry),
     request: (req) => ipcRenderer.invoke(IPC.engineRequest, req),
     onStatus: (cb) => on(IPC.engineStatusEvt, cb),
     onEvent: (cb) => on(IPC.engineEvent, cb)
@@ -42,6 +46,7 @@ const bridge: VikuBridge = {
     geminiNav: (action) => ipcRenderer.invoke(IPC.signinNav, action),
     geminiState: () => ipcRenderer.invoke(IPC.signinState),
     queue: (items) => ipcRenderer.invoke(IPC.signinQueue, items),
+    markAttached: (id) => ipcRenderer.invoke(IPC.signinMarkAttached, id),
     list: () => ipcRenderer.invoke(IPC.signinList),
     sendNext: () => ipcRenderer.invoke(IPC.signinSendNext),
     remove: (id) => ipcRenderer.invoke(IPC.signinRemove, id),

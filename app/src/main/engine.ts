@@ -1,7 +1,8 @@
 import { spawn, execFile, type ChildProcess } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { existsSync } from 'node:fs'
-import type { EngineRequest, EngineResponse, EngineStatus, Prefs } from '../shared/ipc'
+import type { EngineRequest, EngineResponse, EngineStatus, Prefs, SetupStatus } from '../shared/ipc'
+import { bundlePaths, runBootstrap, setupNeeded } from './bundle'
 
 const LOG_LINES = 200
 
@@ -18,16 +19,72 @@ export class EngineManager extends EventEmitter {
   private sseRetry: NodeJS.Timeout | null = null
   private watch: NodeJS.Timeout | null = null
   private stopping = false
+  private setupRun: Promise<boolean> | null = null
   status: EngineStatus
 
-  constructor(private prefs: () => Prefs) {
+  constructor(
+    private prefs: () => Prefs,
+    private packaged: boolean
+  ) {
     super()
-    this.status = { state: 'checking', url: prefs().engineUrl, spawned: false, log: [] }
+    this.status = { state: 'checking', url: prefs().engineUrl, spawned: false, bundled: this.bundled(), log: [] }
+  }
+
+  /** the installed app runs the engine it ships (unless the user chose a custom engine in Settings) */
+  bundled(): boolean {
+    return this.packaged && this.prefs().engineSource !== 'custom'
   }
 
   private set(patch: Partial<EngineStatus>): void {
-    this.status = { ...this.status, ...patch, url: this.prefs().engineUrl, log: this.log.slice(-40) }
+    this.status = { ...this.status, ...patch, url: this.prefs().engineUrl, bundled: this.bundled(), log: this.log.slice(-40) }
     this.emit('status', this.status)
+  }
+
+  /**
+   * First launch of the installed app: bootstrap.ps1 builds <install>/engine-env (Python 3.11 + packages from uv.lock).
+   * Shows as state 'setup' with the PROGRESS lines; returns false when it failed.
+   */
+  private runSetup(): Promise<boolean> {
+    if (this.setupRun) return this.setupRun
+    const setup: SetupStatus = { pct: 0, message: 'Preparing the Viku engine…', log: [] }
+    const push = (): void => this.set({ state: 'setup', message: setup.message, setup: { ...setup, log: setup.log.slice(-60) } })
+    push()
+    this.pushLog('$ bootstrap.ps1 (first-run engine setup)')
+    this.setupRun = runBootstrap((l) => {
+      if (l.kind === 'progress') {
+        setup.pct = Math.max(setup.pct, l.pct ?? setup.pct)
+        setup.message = l.message
+      } else if (l.kind === 'ready') {
+        setup.pct = 100
+        setup.message = 'Engine environment ready'
+      } else if (l.kind === 'error') {
+        setup.error = l.message
+      }
+      setup.log.push(l.kind === 'progress' ? `${l.pct}% ${l.message}` : l.message)
+      this.pushLog(l.message)
+      push()
+    }).then((err) => {
+      this.setupRun = null
+      if (err) {
+        setup.error = err
+        this.set({ state: 'error', message: `Engine setup failed: ${err}`, setup: { ...setup, log: setup.log.slice(-60) } })
+        return false
+      }
+      setup.done = true
+      this.set({ setup: { ...setup, log: setup.log.slice(-60) } })
+      return true
+    })
+    return this.setupRun
+  }
+
+  /** "Try again" on the setup screen: rerun the bootstrap even when the stamp says it is current. */
+  async setupRetry(): Promise<EngineStatus> {
+    await this.kill()
+    this.stopping = false
+    if (!this.bundled()) return this.ensure()
+    const ok = await this.runSetup()
+    if (!ok) return this.status
+    return this.spawnEngine()
   }
 
   private pushLog(chunk: string): void {
@@ -75,6 +132,14 @@ export class EngineManager extends EventEmitter {
       this.startWatch()
       return this.status
     }
+    if (this.bundled() && !process.env.VIKU_NO_ENGINE && p.adapter !== 'mock' && setupNeeded()) {
+      // the installed app's engine environment is missing (first launch) or from another version
+      const ok = await this.runSetup()
+      if (!ok) {
+        this.startWatch()
+        return this.status
+      }
+    }
     if (p.adapter === 'mock' || !p.autoStartEngine || process.env.VIKU_NO_ENGINE) {
       this.set({ state: 'stopped', message: p.adapter === 'mock' ? 'Mock data mode' : 'Engine not running' })
       // keep watching: connect as soon as an engine started elsewhere answers
@@ -86,19 +151,30 @@ export class EngineManager extends EventEmitter {
 
   private async spawnEngine(): Promise<EngineStatus> {
     const p = this.prefs()
-    if (!existsSync(p.engineCwd)) {
-      this.set({ state: 'error', message: `Engine folder not found: ${p.engineCwd}` })
+    const bundled = this.bundled()
+    const b = bundled ? bundlePaths() : null
+    const cwd = b ? b.engineDir : p.engineCwd
+    if (b && !existsSync(b.engineExe)) {
+      if (!(await this.runSetup())) return this.status
+    }
+    if (!existsSync(cwd)) {
+      this.set({ state: 'error', message: `Engine folder not found: ${cwd}` })
       return this.status
     }
-    this.pushLog(`$ ${p.engineCommand}   (in ${p.engineCwd})`)
+    let port = ''
+    try {
+      port = new URL(p.engineUrl).port
+    } catch {
+      /* keep the engine's default */
+    }
+    this.pushLog(b ? `$ ${b.engineExe}` : `$ ${p.engineCommand}   (in ${p.engineCwd})`)
     this.set({ state: 'starting', message: 'Starting engine…', spawned: true })
     try {
-      const child = spawn(p.engineCommand, {
-        cwd: p.engineCwd,
-        shell: true,
-        windowsHide: true,
-        env: { ...process.env, PYTHONUTF8: '1', PYTHONUNBUFFERED: '1' }
-      })
+      const env = { ...process.env, PYTHONUTF8: '1', PYTHONUNBUFFERED: '1', ...(port ? { VIKU_PORT: port } : {}) }
+      // bundled: run the venv's console script directly (no shell, path may contain spaces)
+      const child = b
+        ? spawn(b.engineExe, [], { cwd, windowsHide: true, env })
+        : spawn(p.engineCommand, { cwd, shell: true, windowsHide: true, env })
       this.proc = child
       child.stdout?.on('data', (d: Buffer) => this.pushLog(d.toString('utf8')))
       child.stderr?.on('data', (d: Buffer) => this.pushLog(d.toString('utf8')))
@@ -131,6 +207,7 @@ export class EngineManager extends EventEmitter {
     if (this.watch) return
     this.watch = setInterval(() => {
       void this.health(2000).then((ok) => {
+        if (this.status.state === 'setup') return
         if (ok && this.status.state !== 'running') {
           this.set({ state: 'running', message: 'Engine is running' })
           this.startEvents()
@@ -202,8 +279,11 @@ export class EngineManager extends EventEmitter {
       this.startWatch()
       return this.status
     }
-    if (this.proc) return this.status
+    if (this.proc || this.setupRun) return this.status
     this.stopping = false
+    if (this.bundled() && setupNeeded()) {
+      if (!(await this.runSetup())) return this.status
+    }
     return this.spawnEngine()
   }
 
