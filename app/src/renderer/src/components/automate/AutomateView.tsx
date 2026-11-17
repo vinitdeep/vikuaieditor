@@ -32,7 +32,7 @@ import { Button, IconButton, LangBadge, Progress, Segmented, Toggle } from '../u
 import { ThumbPreview } from '../ThumbPreview'
 import { resultPath } from '../inspector/ReelPanel'
 
-/** single-reel runs stop after "Find clips" and show this many to choose from */
+/** "Find clips" runs stop after the clip finder and show this many to choose from */
 export const PICK_COUNT = 5
 
 interface Picks {
@@ -40,7 +40,11 @@ interface Picks {
   items: Candidate[]
 }
 
+/** pick = find the best clips and choose which one becomes the reel · make = make N reels straight away */
+export type AutoKind = 'pick' | 'make'
+
 interface AutoState {
+  kind: AutoKind
   form: AutomateRequest
   jobId: string | null
   /** run = make N reels in one go · pick = finding clips to choose from · build = making the picked clip */
@@ -57,6 +61,7 @@ interface AutoState {
 }
 
 export const useAuto = create<AutoState>((set, get) => ({
+  kind: 'pick',
   form: { video_path: '', language: 'auto', count: 3, max_seconds: 60, illustrations: 'library', music: 'library', thumbnails: true, framing: 'follow' },
   jobId: null,
   phase: 'run',
@@ -69,6 +74,11 @@ export const useAuto = create<AutoState>((set, get) => ({
   setForm: (p) => set({ form: { ...get().form, ...p } }),
   set: (p) => set(p)
 }))
+
+const AUTO_TABS = [
+  { id: 'pick' as const, label: `Find ${PICK_COUNT} clips to choose from`, detail: 'See the best clips with title + length, preview, then make the one you pick', icon: Sparkles },
+  { id: 'make' as const, label: 'Make reels', detail: 'Viku picks the best clips and makes the reels straight away', icon: Wand2 }
+]
 
 // The engine's /automate job scopes progress: analyze 0–0.45, suggest 0.45–0.5, then per reel build (40%) + render (60%).
 const STAGES = [
@@ -395,7 +405,7 @@ function ResultCard({ r, index, reel, project, playing, onPlay }: { r: AutomateR
 }
 
 export function AutomateView() {
-  const { form, setForm, jobId, phase, picks, built, buildingId, results, reels, projects: autoProjects, set } = useAuto()
+  const { kind, form, setForm, jobId, phase, picks, built, buildingId, results, reels, projects: autoProjects, set } = useAuto()
   const job = useJobs((s) => (jobId ? s.jobs[jobId] : undefined))
   const projects = useEditor((s) => s.projects)
   const settings = useApp((s) => s.settings)
@@ -403,7 +413,7 @@ export function AutomateView() {
   const stage = job ? stageOf(job.message, job.progress, phase) : -1
   const [playing, setPlaying] = useState<string | null>(null)
   const [previewing, setPreviewing] = useState<string | null>(null)
-  const single = form.count === 1
+  const choosing = kind === 'pick'
   const waitingForPick = phase === 'pick' && job?.state === 'done' && Boolean(picks?.items.length)
   const picksRef = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -464,12 +474,12 @@ export function AutomateView() {
     if (fromS !== null || toS !== null) body.range = [fromS ?? 0, toS ?? 1e9]
     // the same video was analysed before: continue in its project (keeps the transcript and earlier reels)
     if (sameVideo) body.project_id = sameVideo.id
-    // one reel: find the best clips first and let the editor choose which one becomes the reel
-    if (single) body.pick = PICK_COUNT
+    // "Find clips" tab: find the best clips first and let the editor choose which one becomes the reel
+    if (choosing) body.pick = PICK_COUNT
     setForm({ range: body.range })
     try {
       const ref = await api().automate(body)
-      set({ jobId: ref.job, phase: single ? 'pick' : 'run', picks: null, built: {}, buildingId: null, results: [], reels: {} })
+      set({ jobId: ref.job, phase: choosing ? 'pick' : 'run', picks: null, built: {}, buildingId: null, results: [], reels: {} })
       setPreviewing(null)
       useJobs.getState().track(ref, `Automate · ${form.video_path.split(/[\\/]/).pop()}`, {
         onDone: async (ev) => {
@@ -486,7 +496,7 @@ export function AutomateView() {
           set({ results: res })
           await loadProjects(res.map((r) => r.project_id))
           void useEditor.getState().loadProjects()
-          toast('success', `${res.length} reels ready`)
+          toast('success', `${res.length} reel${res.length === 1 ? '' : 's'} ready`)
         }
       })
     } catch (e) {
@@ -561,6 +571,25 @@ export function AutomateView() {
 
         <div className="auto-grid" hidden={collapsed}>
           <section className="auto-card setup" aria-label="Setup">
+            <div className="auto-tabs" role="tablist" aria-label="What Automate makes">
+              {AUTO_TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={kind === t.id}
+                  className={`auto-tab${kind === t.id ? ' on' : ''}`}
+                  disabled={Boolean(running)}
+                  onClick={() => set({ kind: t.id })}
+                >
+                  <t.icon size={16} aria-hidden />
+                  <span>
+                    <b>{t.id === 'make' ? `Make ${form.count} reel${form.count === 1 ? '' : 's'}` : t.label}</b>
+                    <span className="small muted">{t.detail}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
             <div className="step">
               <span className="step-n">1</span>
               <div className="step-body">
@@ -614,19 +643,20 @@ export function AutomateView() {
               <span className="step-n">3</span>
               <div className="step-body">
                 <h3>Reels</h3>
-                <div className="auto-row">
-                  <span className="muted">How many</span>
-                  <span className="stepper">
-                    <button type="button" aria-label="Fewer reels" onClick={() => setForm({ count: Math.max(1, form.count - 1) })}>
-                      −
-                    </button>
-                    <span className="num">{form.count}</span>
-                    <button type="button" aria-label="More reels" onClick={() => setForm({ count: Math.min(12, form.count + 1) })}>
-                      +
-                    </button>
-                  </span>
-                </div>
-                {single && <div className="part-hint muted small">One reel: Viku first shows the {PICK_COUNT} best clips with their title and length — you choose which one it makes.</div>}
+                {!choosing && (
+                  <div className="auto-row">
+                    <span className="muted">How many</span>
+                    <span className="stepper">
+                      <button type="button" aria-label="Fewer reels" onClick={() => setForm({ count: Math.max(1, form.count - 1) })}>
+                        −
+                      </button>
+                      <span className="num">{form.count}</span>
+                      <button type="button" aria-label="More reels" onClick={() => setForm({ count: Math.min(12, form.count + 1) })}>
+                        +
+                      </button>
+                    </span>
+                  </div>
+                )}
                 <div className="auto-row">
                   <span className="muted" title="Each reel lands between 90 % and 100 % of this length (after jump cuts), unless the sermon part is too short">Reel length</span>
                   <input
@@ -734,8 +764,8 @@ export function AutomateView() {
                   Cancel
                 </Button>
               ) : (
-                <Button variant="primary" className="run-btn" icon={single ? Sparkles : Wand2} onClick={() => void run()} disabled={!form.video_path}>
-                  {single ? `Find ${PICK_COUNT} clips to choose from` : `Make ${form.count} reels`}
+                <Button variant="primary" className="run-btn" icon={choosing ? Sparkles : Wand2} onClick={() => void run()} disabled={!form.video_path}>
+                  {choosing ? `Find ${PICK_COUNT} clips to choose from` : `Make ${form.count} reel${form.count === 1 ? '' : 's'}`}
                 </Button>
               )}
             </div>

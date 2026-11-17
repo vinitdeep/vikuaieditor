@@ -9,6 +9,13 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
 - Verified live (dev): simulated .crdownload -> rename in Downloads filed as `browser-mode-test.jpg`, queue item -> captured via browser; an image with no waiting prompt ignored; typecheck + lint clean. Not yet: a real AI Studio download end-to-end, installer rebuild.
 - **Length cap 10 s - 5 min** (Automate slider 10-300 s, step 5 below 1 min / 15 above; label "2 min 30 s"). Before this the slider was cosmetic: the engine ignored max_seconds and always used 20-60 s windows + a 60 s planner cap. Now `AutomateReq.max_seconds` / `SuggestReq.max_seconds` (10-300, default 60, 422 outside) -> `clipfinder.length_bounds(cap)` = (min window max(5, min(20, cap/2)), cap, ideal 0.75 cap) -> `build_windows`, `planner.plan(max_len)`, `ranker.raw_features(target)` (duration_fit = same 45 +/- 25 shape scaled to the target). 60 s gives exactly the old bounds. Caps > 60 s keep at most 16 evenly spaced ends per start; windows never span a > 10 s hole between cues (un-analysed gaps). Live: 6d0d / 4f96 at 10 s -> 6-9 s reels; at 60 s unchanged; at 300 s still ~28-34 s (the cap is a maximum; the ranker prefers those). tests/test_length_cap.py; 62 passed.
 
+## Session 8b (2026-11-17): Automate tabs — "Find 5 clips to choose from" | "Make N reels"
+- User asked for two tabs instead of "How many = 1 means picker". `useAuto.kind: 'pick' | 'make'` (default pick).
+  Tab 1 hides How many and sends `pick: 5`; tab 2 shows How many (1-12) and makes the reels straight away — 1 reel
+  included (no pick). Tabs are disabled while a run is going. Engine unchanged.
+- Verified: `node scripts/e2e-auto-tabs.mjs` (mock adapter, no engine): tab 1 sent pick=5 -> 5 clip cards; tab 2
+  "Make 1 reel" sent count 1, no pick -> 1 reel made; 0 console errors. Screenshots `tabs-01..03`.
+
 ## Session 8 (2026-11-17): auto framing — the 9:16 crop follows the speaker (Automate + Manual)
 - User asked: auto framing that keeps the subject centred, in both modes. Before: one still crop per shot; a walking
   speaker got a WIDE crop letterboxed over a blurred fill (TAPP reel ~3: speaker at 47 % size, face a median 222 px

@@ -740,3 +740,76 @@
 .pstage.st-waiting .stage-detail {
   color: var(--gold);
 }
+
+/* two kinds of run: find clips to choose from | make reels straight away */
+.auto-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-3);
+}
+
+.auto-tab {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-2);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+
+.auto-tab > svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.auto-tab > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.auto-tab b {
+  font-size: var(--fs-md);
+  color: var(--text-1);
+}
+
+.auto-tab:hover:not(:disabled):not(.on) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.auto-tab.on {
+  background: var(--gold-soft);
+  border-color: var(--gold-line);
+}
+
+.auto-tab.on > svg,
+.auto-tab.on b {
+  color: var(--gold);
+}
+
+.auto-tab:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.auto-tab:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+
+@media (max-width: 640px) {
+  .auto-tabs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

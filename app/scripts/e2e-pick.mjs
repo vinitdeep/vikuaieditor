@@ -85,7 +85,7 @@ let failed = null
 try {
   await st(() => window.__viku.useApp.getState().set({ mode: 'automate' }))
   await page.waitForSelector('.automate', { timeout: 10000 })
-  await st(([v, len]) => window.__viku.useAuto.getState().setForm({ video_path: v, language: 'auto', count: 1, max_seconds: len }), [VIDEO, LEN])
+  await st(([v, len]) => { const a = window.__viku.useAuto.getState(); a.set({ kind: 'pick' }); a.setForm({ video_path: v, language: 'auto', max_seconds: len }) }, [VIDEO, LEN])
   await page.fill('input[aria-label="Sermon part from"]', FROM)
   await page.fill('input[aria-label="Sermon part to"]', TO)
   await sleep(500)
