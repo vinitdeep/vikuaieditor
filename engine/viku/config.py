@@ -65,8 +65,11 @@ def default_settings() -> dict:
         },
         "allow_system_tools": True,   # use an ffmpeg on PATH when it is new enough and no managed copy exists
         "legacy_tools": False,        # opt-in: fall back to the dev machine's old venvs (legacy_paths())
-        "hf_token": "",               # Hugging Face read token (IndicConformer is a gated repo)
-        "model_mirrors": {},          # {model id: base URL} replaces the download URL prefix
+        # Hugging Face read token (IndicConformer is a gated repo): POST {"hf_token": "..."} stores it DPAPI-encrypted
+        # as `hf_token_dpapi` (never plaintext on disk, never returned by GET /settings); {"hf_token": null} clears it.
+        "hf_token_dpapi": "",
+        "models_mirror_url": "",      # base URL replacing https://huggingface.co/ for every HF item (church mirror)
+        "model_mirrors": {},          # {model id: base URL} replaces one item's download URL prefix
         "export_presets": {
             "reel": {"width": 1080, "height": 1920, "fps": 30, "crf": 18, "audio_kbps": 192,
                      "lufs": -14.0, "true_peak": -1.5},
@@ -87,6 +90,25 @@ def _merge(base: dict, over: dict) -> dict:
     return out
 
 
+_mem_token = ""  # session-only token when DPAPI is unavailable (non-Windows)
+SECRET_KEYS = ("hf_token", "hf_token_dpapi", "hf_token_set")
+
+
+def _write(d: dict) -> None:
+    (data_dir() / "settings.json").write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def _absorb_token(d: dict, token) -> None:
+    """Move a plaintext token into the DPAPI field (None / "" -> handled by the caller)."""
+    global _mem_token
+    from . import vault
+    try:
+        d["hf_token_dpapi"] = vault.protect(token)
+    except vault.VaultUnavailable:
+        _mem_token = token
+        d["hf_token_dpapi"] = ""
+
+
 def settings() -> dict:
     global _cache
     with _lock:
@@ -98,18 +120,49 @@ def settings() -> dict:
             for k, v in list(saved.get("paths", {}).items()):
                 if not v:
                     saved["paths"].pop(k)
+            plain = saved.pop("hf_token", None)
             _cache = _merge(d, saved)
+            if plain:  # migrate an older plaintext token to DPAPI and rewrite the file without it
+                _absorb_token(_cache, plain)
+            if plain is not None:
+                _write(_cache)
         return json.loads(json.dumps(_cache))
 
 
 def save_settings(patch: dict) -> dict:
-    global _cache
+    """Merge `patch` into the settings. `hf_token`: non-empty string = store (DPAPI), null = clear, "" = unchanged
+    (so the app can round-trip GET -> POST). `hf_token_dpapi` / `hf_token_set` from clients are ignored."""
+    global _cache, _mem_token
+    patch = dict(patch or {})
+    token = patch.pop("hf_token", "")
+    patch.pop("hf_token_dpapi", None)
+    patch.pop("hf_token_set", None)
     cur = settings()
-    new = _merge(cur, patch or {})
+    new = _merge(cur, patch)
+    if token is None:
+        new["hf_token_dpapi"], _mem_token = "", ""
+    elif isinstance(token, str) and token.strip():
+        _absorb_token(new, token.strip())
     with _lock:
-        (data_dir() / "settings.json").write_text(json.dumps(new, ensure_ascii=False, indent=1), encoding="utf-8")
+        _write(new)
         _cache = new
     return settings()
+
+
+def hf_token() -> str:
+    """The stored Hugging Face token (decrypted in memory only), else env HF_TOKEN / HUGGING_FACE_HUB_TOKEN."""
+    from . import vault
+    return (vault.unprotect(settings().get("hf_token_dpapi", "")) or _mem_token or os.environ.get("HF_TOKEN")
+            or os.environ.get("HUGGING_FACE_HUB_TOKEN") or "")
+
+
+def public_settings() -> dict:
+    """Settings for GET /settings: secrets removed, `hf_token_set` tells whether a token is stored."""
+    s = settings()
+    for k in SECRET_KEYS:
+        s.pop(k, None)
+    s["hf_token_set"] = bool(hf_token())
+    return s
 
 
 def path(key: str) -> str:

@@ -36,7 +36,7 @@ async def _inv(_: Request, e: projects.Invalid):
 
 @app.exception_handler(JobError)
 async def _je(_: Request, e: JobError):
-    return JSONResponse({"error": str(e)}, status_code=400)
+    return JSONResponse({"error": str(e), "code": e.code, **e.info}, status_code=400)
 
 
 def job_ref(j: Job) -> dict:
@@ -92,13 +92,18 @@ def models_list():
 class ModelsReq(BaseModel):
     ids: list[str] | None = None   # None = every required item that is missing
     source_dir: str | None = None  # install from a local folder (offline) instead of downloading
+    hf_token: str | None = None    # stored DPAPI-encrypted in settings, sent as Authorization: Bearer to huggingface.co
+    mirror_url: str | None = None  # base URL replacing https://huggingface.co/ (saved as models_mirror_url on success)
 
 
 @app.post("/models/install")
 def models_install(b: ModelsReq | None = None):
     from . import models
     b = b or ModelsReq()
-    return job_ref(MANAGER.submit("models_install", lambda job: models.install(job, b.ids, b.source_dir),
+    if b.hf_token and b.hf_token.strip():
+        config.save_settings({"hf_token": b.hf_token})
+    return job_ref(MANAGER.submit("models_install",
+                                  lambda job: models.install(job, b.ids, b.source_dir, mirror_url=b.mirror_url),
                                   {"ids": b.ids}))
 
 
@@ -111,12 +116,13 @@ def models_remove(b: ModelsReq):
 # ---------------------------------------------------------------- settings --
 @app.get("/settings")
 def get_settings():
-    return config.settings()
+    return config.public_settings()
 
 
 @app.post("/settings")
 def post_settings(patch: dict[str, Any]):
-    return config.save_settings(patch)
+    config.save_settings(patch)
+    return config.public_settings()
 
 
 # ---------------------------------------------------------------- projects --

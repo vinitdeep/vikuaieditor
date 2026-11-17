@@ -26,7 +26,13 @@ class Cancelled(Exception):
 
 
 class JobError(Exception):
-    """An expected failure with a user-readable message."""
+    """An expected failure with a user-readable message. `code` is a stable machine-readable reason for the app
+    (e.g. "hf_auth_required", "network", "checksum"), `info` extra JSON fields (e.g. {"accept_url": ...})."""
+
+    def __init__(self, message: str = "", code: str | None = None, info: dict | None = None):
+        super().__init__(message)
+        self.code = code
+        self.info = info or {}
 
 
 class Job:
@@ -40,6 +46,8 @@ class Job:
         self.state = "queued"
         self.result: Any = None
         self.error: str | None = None
+        self.error_code: str | None = None
+        self.error_info: dict = {}
         self.created = time.time()
         self._cancel = threading.Event()
         self._procs: list[subprocess.Popen] = []
@@ -131,7 +139,8 @@ class Job:
 
     def as_dict(self) -> dict:
         return {"job": self.id, "kind": self.kind, "progress": self.progress, "message": self.message,
-                "state": self.state, "result": self.result, "error": self.error, "meta": self.meta}
+                "state": self.state, "result": self.result, "error": self.error, "error_code": self.error_code,
+                "error_info": self.error_info, "meta": self.meta}
 
 
 def Path_name(a) -> str:
@@ -188,11 +197,12 @@ class JobManager:
                 job.update(1.0, "done")
             except Cancelled:
                 job.state = "error"
-                job.error = "cancelled"
+                job.error = job.error_code = "cancelled"
                 job.update(None, "cancelled")
             except JobError as e:
                 job.state = "error"
                 job.error = str(e)
+                job.error_code, job.error_info = e.code, e.info
                 job.update(None, f"error: {e}")
             except Exception as e:  # noqa: BLE001
                 job.state = "error"

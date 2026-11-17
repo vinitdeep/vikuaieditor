@@ -2,8 +2,11 @@
 
     GET  /models                 -> [item]  {id, name, purpose, size_mb, licence, licence_url, required, installed,
                                              source ("managed"|"system"|"legacy"|"bundled"|null), path, gated}
-    POST /models/install {ids, source_dir?}  -> job (byte progress; resumable HTTP Range downloads; SHA-256 verify;
-                                             verified files are moved into place with os.replace)
+    POST /models/install {ids, source_dir?, hf_token?, mirror_url?}  -> job (byte progress; resumable HTTP Range
+                                             downloads; SHA-256 verify; verified files are moved into place with
+                                             os.replace). Failed jobs carry `error_code`: "hf_auth_required" (HTTP
+                                             401/403 from huggingface.co; error_info.accept_url = the model page whose
+                                             terms the user must accept), "network", "checksum".
     POST /models/remove  {ids}   -> deletes the managed copy
 
 Layout under <data>: tools/ffmpeg/{ffmpeg,ffprobe}.exe, tools/deep-filter/deep-filter.exe,
@@ -12,8 +15,10 @@ models/cutout/u2net_human_seg.onnx, fonts/*. Partial downloads live in <data>/do
 
 Every file is pinned (URL with a fixed revision / release tag, size, sha256). `source_dir` installs from a local folder
 instead (offline install from a USB stick / another PC), still SHA-verified. Gated Hugging Face repos (IndicConformer)
-need a read token: settings `hf_token` or env HF_TOKEN / HUGGING_FACE_HUB_TOKEN; a mirror
-can replace any item's URL prefix: settings `model_mirrors: {id: "https://host/path/"}` (file URL = mirror + path).
+need a read token: stored DPAPI-encrypted in settings (`hf_token_dpapi`, see config.hf_token) or env HF_TOKEN /
+HUGGING_FACE_HUB_TOKEN; it is sent only to huggingface.co as `Authorization: Bearer` and never logged. Mirrors:
+settings `models_mirror_url` (one base URL that replaces https://huggingface.co/ for every HF item, i.e.
+<mirror>/<repo>/resolve/<revision>/<path>) and `model_mirrors: {id: "https://host/path/"}` (file URL = mirror + path).
 
 Tool resolution (`ffmpeg()`, `ffprobe()`, `deep_filter()`): explicit settings.paths.* -> managed copy -> system PATH
 (ffmpeg only, when settings.allow_system_tools and the build is new enough: >= 6 with libass + libx264) -> legacy
@@ -39,7 +44,8 @@ from . import config
 from .jobs import CREATE_NO_WINDOW, Job, JobError
 
 MANIFESTS = Path(__file__).resolve().parent / "manifests"
-HF = "https://huggingface.co/{repo}/resolve/{rev}/"
+HF_ROOT = "https://huggingface.co/"
+HF = HF_ROOT + "{repo}/resolve/{rev}/"
 NOTO = "https://raw.githubusercontent.com/notofonts/notofonts.github.io/983116fbb1e1c231cf33f1f4ec0f9456055fe1e1/fonts/"
 UA = {"User-Agent": "viku-engine/0.1 (model manager)"}
 CHUNK = 1 << 20
@@ -50,8 +56,9 @@ def _hf_manifest(name: str) -> tuple[str, list[dict]]:
     return HF.format(repo=m["repo"], rev=m["revision"]), m["files"]
 
 
-def _items() -> dict[str, dict]:
-    """Item specs. files: [{path (relative to dest), url, size, sha256}] or archive: {url, size, sha256, members}."""
+def _items(mirror_url: str | None = None) -> dict[str, dict]:
+    """Item specs. files: [{path (relative to dest), url, size, sha256}] or archive: {url, size, sha256, members}.
+    `mirror_url` (else settings.models_mirror_url) replaces https://huggingface.co/ in every HF item's URLs."""
     d = config.data_dir()
     items: dict[str, dict] = {}
 
@@ -85,6 +92,7 @@ def _items() -> dict[str, dict]:
         "purpose": "Odia and Hindi speech recognition (captions, transcript, language id).",
         "licence": "MIT", "licence_url": "https://huggingface.co/ai4bharat/indic-conformer-600m-multilingual",
         "dest": d / "models" / "indic-conformer-600m", "gated": True,
+        "accept_url": "https://huggingface.co/ai4bharat/indic-conformer-600m-multilingual",
         "files": [dict(f, url=base + f["path"]) for f in files],
         "notice": "ai4bharat/indic-conformer-600m-multilingual @ 2a77d305 - MIT License - (c) AI4Bharat\n",
     }
@@ -154,10 +162,17 @@ def _items() -> dict[str, dict]:
         "notice": "U-2-Net human segmentation (Qin et al. 2020) - Apache License 2.0 - https://github.com/xuebinqin/U-2-Net\n"
                   "ONNX export: rembg by Daniel Gatis - MIT License - https://github.com/danielgatis/rembg\n",
     }
+    hf_mirror = (mirror_url if mirror_url is not None else config.settings().get("models_mirror_url") or "").strip()
     for k, it in items.items():
         it["id"] = k
+        it["hf"] = any(f["url"].startswith(HF_ROOT) for f in it.get("files", []))
+        if hf_mirror and it["hf"]:
+            for f in it["files"]:
+                f["url"] = hf_mirror.rstrip("/") + "/" + f["url"][len(HF_ROOT):]
+            it["mirrored"] = True
         mirror = (config.settings().get("model_mirrors") or {}).get(k)
         if mirror:
+            it["mirrored"] = True
             for f in it.get("files", []):
                 f["url"] = mirror.rstrip("/") + "/" + f["path"]
             if "archive" in it:
@@ -301,12 +316,18 @@ def item_state(it: dict) -> tuple[bool, str | None, str]:
 
 
 def list_items() -> list[dict]:
+    """`needs_token`: downloading this item from huggingface.co needs an HF read token whose account accepted the
+    terms at `accept_url` (false once it is installed or a mirror serves it). `token_set`: a token is stored."""
     out = []
+    token = bool(config.hf_token())
     for k, it in _items().items():
         inst, src, p = item_state(it)
+        gated = bool(it.get("gated"))
         out.append({"id": k, "name": it["name"], "purpose": it["purpose"], "size_mb": round(it["size"] / 1e6, 1),
                     "licence": it["licence"], "licence_url": it["licence_url"], "required": it["required"],
-                    "installed": inst, "source": src, "path": p, "gated": bool(it.get("gated")),
+                    "installed": inst, "source": src, "path": p, "gated": gated,
+                    "needs_token": gated and not inst and not it.get("mirrored"),
+                    "accept_url": it.get("accept_url"), "token_set": token if gated else None,
                     "partial_mb": round(_partial_bytes(k) / 1e6, 1)})
     out.sort(key=lambda x: ORDER.index(x["id"]) if x["id"] in ORDER else 99)
     return out
@@ -330,7 +351,11 @@ def _partial_bytes(item_id: str) -> int:
 
 
 def hf_token() -> str:
-    return config.settings().get("hf_token") or os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN") or ""
+    return config.hf_token()
+
+
+def _is_hf(url: str) -> bool:
+    return urlparse(url).hostname == "huggingface.co"
 
 
 class _NoAuthRedirect(urllib.request.HTTPRedirectHandler):
@@ -370,8 +395,10 @@ class _Progress:
             self.job.result = {"bytes_done": self.done, "bytes_total": self.total}
 
 
-def _download(url: str, part: Path, size: int, sha: str, prog: _Progress, job: Job) -> None:
-    """Resumable download into `part` (HTTP Range), then SHA-256 verify. Raises JobError on mismatch."""
+def _download(url: str, part: Path, size: int, sha: str, prog: _Progress, job: Job,
+              accept_url: str | None = None) -> None:
+    """Resumable download into `part` (HTTP Range), then SHA-256 verify. Raises JobError with code
+    hf_auth_required / network / checksum."""
     part.parent.mkdir(parents=True, exist_ok=True)
     have = part.stat().st_size if part.exists() else 0
     if have > size:
@@ -387,8 +414,9 @@ def _download(url: str, part: Path, size: int, sha: str, prog: _Progress, job: J
         hdr = dict(UA)
         if have:
             hdr["Range"] = f"bytes={have}-"
-        if urlparse(url).hostname == "huggingface.co" and hf_token():
-            hdr["Authorization"] = "Bearer " + hf_token()
+        token = hf_token() if _is_hf(url) else ""
+        if token:  # only ever to huggingface.co; _NoAuthRedirect drops it on the CDN redirect
+            hdr["Authorization"] = "Bearer " + token
         try:
             with _opener.open(urllib.request.Request(url, headers=hdr), timeout=60) as r:
                 if have and r.status != 206:  # server ignored Range: start over
@@ -406,26 +434,36 @@ def _download(url: str, part: Path, size: int, sha: str, prog: _Progress, job: J
                         have += len(b)
                         prog.add(len(b))
         except urllib.error.HTTPError as e:
-            if e.code in (401, 403):
-                raise JobError(f"{url.split('/resolve/')[0]} needs sign-in (HTTP {e.code}). This model is gated on "
-                               "Hugging Face: create a free account, accept the model's terms on its page, then paste a "
-                               "read token in Settings (hf_token) - or install it from a folder (source_dir) / a mirror "
-                               "(settings.model_mirrors).") from None
+            if e.code in (401, 403) and _is_hf(url):
+                page = accept_url or url.split("/resolve/")[0]
+                why = ("the stored token was refused - check it is a valid read token and that this account accepted "
+                       "the model's terms" if token else "no Hugging Face token is stored")
+                raise JobError(f"Hugging Face refused the download (HTTP {e.code}): {why}. This model is gated: sign in "
+                               f"at huggingface.co, accept the terms on {page}, create a read token and enter it in "
+                               "Setup - or install from a folder (source_dir) or a mirror (mirror_url).",
+                               code="hf_auth_required",
+                               info={"accept_url": page, "http_status": e.code, "token_sent": bool(token)}) from None
             if e.code == 416 and have >= size:
                 break
             tries += 1
-            if tries > 4:
-                raise JobError(f"download failed ({e.code}): {url}") from None
+            if tries > 4 or e.code in (401, 403, 404, 410):
+                raise JobError(f"download failed (HTTP {e.code}) from {urlparse(url).hostname}: "
+                               f"{url.rsplit('/', 1)[-1]}", code="network",
+                               info={"http_status": e.code, "host": urlparse(url).hostname}) from None
             time.sleep(2 * tries)
         except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as e:
             tries += 1
             if tries > 4:
-                raise JobError(f"download failed ({e}): {url} - check the internet connection and retry; "
-                               "the partial file is kept and resumes") from None
+                reason = getattr(e, "reason", e)
+                raise JobError(f"download failed ({reason}) from {urlparse(url).hostname} - check the internet "
+                               "connection and retry; the partial file is kept and resumes", code="network",
+                               info={"host": urlparse(url).hostname}) from None
             time.sleep(2 * tries)
     if have != size or h.hexdigest() != sha:
         part.unlink(missing_ok=True)
-        raise JobError(f"checksum mismatch for {url.rsplit('/', 1)[-1]} - the download was corrupted, retry")
+        raise JobError(f"checksum mismatch for {url.rsplit('/', 1)[-1]} - the download was corrupted or the mirror "
+                       "serves a different file; retry", code="checksum",
+                       info={"file": url.rsplit("/", 1)[-1], "expected_sha256": sha, "got_bytes": have})
 
 
 def _from_local(src_dirs: list[Path], rel: str, part: Path, size: int, sha: str, prog: _Progress, job: Job) -> bool:
@@ -457,7 +495,7 @@ def _install_one(it: dict, prog: _Progress, job: Job, src_dirs: list[Path]) -> N
         part = zpath.with_name(zpath.name + ".part")
         if not (zpath.is_file() and zpath.stat().st_size == a["size"]):
             if not _from_local(src_dirs, zpath.name, part, a["size"], a["sha256"], prog, job):
-                _download(a["url"], part, a["size"], a["sha256"], prog, job)
+                _download(a["url"], part, a["size"], a["sha256"], prog, job, it.get("accept_url"))
             os.replace(part, zpath)
         else:
             prog.add(a["size"])
@@ -487,7 +525,7 @@ def _install_one(it: dict, prog: _Progress, job: Job, src_dirs: list[Path]) -> N
             part = st / (f["path"] + ".part")
             if not _from_local(src_dirs + [Path(s) for s in it.get("local_sources", [])], f["path"], part, f["size"],
                                f["sha256"], prog, job):
-                _download(f["url"], part, f["size"], f["sha256"], prog, job)
+                _download(f["url"], part, f["size"], f["sha256"], prog, job, it.get("accept_url"))
         # every file verified -> move into place (same volume: os.replace is atomic per file)
         for f in todo:
             p = dest / f["path"]
@@ -503,8 +541,13 @@ def _install_one(it: dict, prog: _Progress, job: Job, src_dirs: list[Path]) -> N
 _install_lock = threading.Lock()
 
 
-def install(job: Job, ids: list[str] | None, source_dir: str | None = None) -> dict:
-    items = _items()
+def install(job: Job, ids: list[str] | None, source_dir: str | None = None, mirror_url: str | None = None) -> dict:
+    mirror_url = (mirror_url or "").strip() or None
+    if mirror_url and not re.match(r"https?://", mirror_url):
+        raise JobError(f"mirror_url must start with http:// or https:// (got {mirror_url!r})", code="bad_request")
+    if source_dir and not Path(source_dir).is_dir():
+        raise JobError(f"source_dir is not a folder: {source_dir}", code="bad_request")
+    items = _items(mirror_url)
     ids = ids or [k for k in ORDER if items[k]["required"]]
     bad = [k for k in ids if k not in items]
     if bad:
@@ -520,6 +563,8 @@ def install(job: Job, ids: list[str] | None, source_dir: str | None = None) -> d
             _install_one(it, prog, job, src_dirs)
             done.append(it["id"])
     _sys_cache.clear()
+    if mirror_url and any(items[k].get("hf") for k in done):  # the mirror worked: remember it for later installs
+        config.save_settings({"models_mirror_url": mirror_url})
     return {"installed": done, "already": [k for k in ids if k not in done], "bytes": total,
             "items": [x for x in list_items() if x["id"] in ids]}
 
