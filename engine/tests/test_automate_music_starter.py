@@ -33,7 +33,7 @@ def test_automate_result_title_is_the_stored_reel_title(monkeypatch, tmp_path):
     from viku.media import ff
     monkeypatch.setattr(ff, "probe", lambda path: {"duration": 600.0, "fps": 30.0, "width": 1920, "height": 1080})
     monkeypatch.setattr(automate.analyze, "run", lambda pid, job, rng=None: None)
-    monkeypatch.setattr(automate, "suggest_job", lambda pid, job, count=3, rng=None: [
+    monkeypatch.setattr(automate, "suggest_job", lambda pid, job, count=3, rng=None, max_seconds=60.0: [
         {"id": "s1", "score": 0.84, "title": "ताकि वो परमेश्वर में आए!", "segments": [[10.0, 40.0]]}])
 
     def fake_autobuild(rid, job, steps=None):   # the hook writer + title gate pick another line

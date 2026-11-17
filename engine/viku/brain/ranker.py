@@ -8,7 +8,7 @@ Raw features per window (`raw_features`; NaN when the input is missing, e.g. no 
   ends_on_hope, ends_negative  hope / judgement words in the last 2 cues
   call_response            share of cues that are only amen / hallelujah / yes fillers
   asr_conf                 mean ASR confidence
-  duration_fit             closeness to ~45 s
+  duration_fit             closeness to the target length (~45 s for a 60 s cap: 0.75 x the cap)
 Embedding features (multilingual-e5-small, "passage: " + window text):
   semantic                 cos(kept centroid) - cos(rejected centroid)
   pc1..pcK                 projection on the seed's top-K principal components
@@ -84,7 +84,7 @@ def scripture_names(txt: str) -> int:
 
 
 def raw_features(items: list[dict], default_lang: str, db: np.ndarray | None = None, med: float = 0.0,
-                 thr: float = -99.0, frame: float = 0.02) -> dict:
+                 thr: float = -99.0, frame: float = 0.02, target: float = 45.0) -> dict:
     s, e = items[0]["start"], items[-1]["end"]
     dur = max(e - s, 1e-3)
     mins = dur / 60
@@ -107,7 +107,8 @@ def raw_features(items: list[dict], default_lang: str, db: np.ndarray | None = N
     confs = [it["conf"] for it in items if it.get("conf") is not None]
     if confs:
         f["asr_conf"] = float(np.mean(confs))
-    f["duration_fit"] = max(0.0, 1 - abs(dur - 45) / 25)
+    # same shape as the trained 45 +/- 25 s, scaled to the requested length
+    f["duration_fit"] = max(0.0, 1 - abs(dur - target) / (25 * target / 45))
     return f
 
 

@@ -6,7 +6,7 @@ Rules
   - a cue whose word set overlaps the previous kept cue by > 60 % (Jaccard) is a repeat (the first is kept)
   - the first and last cue are always kept (hook + punchline)
   - a cue is dropped only if both of its edges sit in a pause >= 0.25 s, so every cut lands in silence
-  - segment edges are snapped into the pause (0.12 s of air kept), the result is capped at 60 s
+  - segment edges are snapped into the pause (0.12 s of air kept), the result is capped at max_len (default 60 s)
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ def _jaccard(a: str, b: str) -> float:
     return len(x & y) / max(len(x | y), 1)
 
 
-def plan(items: list[dict], pauses: list, lang: str) -> list[list[float]]:
+def plan(items: list[dict], pauses: list, lang: str, max_len: float = MAX_LEN) -> list[list[float]]:
     from .clipfinder import is_filler
     if not items:
         return []
@@ -66,12 +66,12 @@ def plan(items: list[dict], pauses: list, lang: str) -> list[list[float]]:
         segs.append([round(s, 3), round(e, 3)])
         k = j + 1
     # cap length: drop leading segments first (keep the punchline), then trim the first at a pause
-    while sum(b - a for a, b in segs) > MAX_LEN and len(segs) > 1:
+    while sum(b - a for a, b in segs) > max_len and len(segs) > 1:
         segs.pop(0)
-    if segs and segs[0][1] - segs[0][0] > MAX_LEN:
+    if segs and segs[0][1] - segs[0][0] > max_len:
         e = segs[0][1]
-        cands = [p for p in pz if p[1] >= e - MAX_LEN and p[1] < e - 5]
-        segs[0][0] = round(max(cands[0][0], cands[0][1] - AIR), 3) if cands else round(e - MAX_LEN, 3)
+        cands = [p for p in pz if p[1] >= e - max_len and p[1] < e - min(5.0, max_len / 2)]
+        segs[0][0] = round(max(cands[0][0], cands[0][1] - AIR), 3) if cands else round(e - max_len, 3)
     # merge segments separated by less than a frame
     out: list[list[float]] = []
     for s, e in segs:

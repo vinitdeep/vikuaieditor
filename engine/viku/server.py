@@ -12,7 +12,7 @@ import numpy as np
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import __version__, asr, automate, bible, config, library, music, projects
 from .brain import captions as capfix
@@ -198,13 +198,15 @@ def waveform(pid: str, start: float = 0.0, end: float | None = None, px: int = 1
 class SuggestReq(BaseModel):
     count: int = 8
     range: list[float] | None = None
+    max_seconds: float = Field(60.0, ge=10, le=300)   # reel length cap
 
 
 @app.post("/projects/{pid}/suggest")
 def suggest(pid: str, b: SuggestReq | None = None):
     projects.load(pid)
     b = b or SuggestReq()
-    j = MANAGER.submit("suggest", lambda job: automate.suggest_job(pid, job, b.count, b.range), {"project": pid})
+    j = MANAGER.submit("suggest", lambda job: automate.suggest_job(pid, job, b.count, b.range, b.max_seconds),
+                       {"project": pid})
     return job_ref(j)
 
 
@@ -301,12 +303,13 @@ class AutomateReq(BaseModel):
     range: list[float] | None = None
     project_id: str | None = None
     render: bool = True
+    max_seconds: float = Field(60.0, ge=10, le=300)   # reel length cap: 10 s - 5 min
 
 
 @app.post("/automate")
 def automate_ep(b: AutomateReq):
     j = MANAGER.submit("automate", lambda job: automate.run(job, b.video_path, b.language, b.count, b.range,
-                                                            b.project_id, render=b.render))
+                                                            b.project_id, render=b.render, max_seconds=b.max_seconds))
     return job_ref(j)
 
 

@@ -62,6 +62,14 @@ const STAGES = [
 
 const RENDER_RE = /render|encod|composit|thumbnail|loud|mix|enhanc|final/i
 
+/** reel length cap label: "45 s", "1 min", "2 min 30 s" */
+function capLabel(sec: number): string {
+  if (sec < 60) return `${sec} s`
+  const m = Math.floor(sec / 60)
+  const r = sec % 60
+  return r ? `${m} min ${r} s` : `${m} min`
+}
+
 function stageOf(message: string, progress: number): number {
   if (progress < 0.45) return 0
   if (progress < 0.5) return 1
@@ -335,7 +343,7 @@ export function AutomateView() {
                 {results.length} reel{results.length === 1 ? '' : 's'} ready
               </b>
               <span className="small muted ellipsis">
-                {fileName || 'Last run'} · {form.language === 'auto' ? 'auto language' : form.language.toUpperCase()} · ≤ {form.max_seconds} s
+                {fileName || 'Last run'} · {form.language === 'auto' ? 'auto language' : form.language.toUpperCase()} · ≤ {capLabel(form.max_seconds)}
                 {job ? ` · finished in ${took(job.updatedAt - job.startedAt)}` : ''}
               </span>
             </div>
@@ -416,15 +424,15 @@ export function AutomateView() {
                   <span className="muted">Length cap</span>
                   <input
                     type="range"
-                    min={15}
-                    max={60}
-                    step={5}
+                    min={10}
+                    max={300}
+                    step={form.max_seconds < 60 ? 5 : 15}
                     value={form.max_seconds}
                     aria-label="Maximum length"
                     className="range-plain"
                     onChange={(e) => setForm({ max_seconds: Number(e.target.value) })}
                   />
-                  <span className="num cap-val">≤ {form.max_seconds} s</span>
+                  <span className="num cap-val">≤ {capLabel(form.max_seconds)}</span>
                 </div>
                 <div className="auto-row part-row">
                   <span className="muted">Sermon part</span>
@@ -566,7 +574,7 @@ export function AutomateView() {
             {!job && (
               <div className="pipe-idle">
                 <AudioWaveform size={18} aria-hidden />
-                <span>Every reel ends on an encouraging line, stays under {form.max_seconds} s and follows your house style.</span>
+                <span>Every reel ends on an encouraging line, stays under {capLabel(form.max_seconds)} and follows your house style.</span>
               </div>
             )}
           </section>

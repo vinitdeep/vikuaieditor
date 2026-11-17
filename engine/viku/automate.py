@@ -9,12 +9,12 @@ from .jobs import Job, JobError
 from .media import analyze, reel
 
 
-def suggest_job(pid: str, job: Job, count: int = 8, rng: list | None = None) -> list[dict]:
+def suggest_job(pid: str, job: Job, count: int = 8, rng: list | None = None, max_seconds: float = 60.0) -> list[dict]:
     p = projects.load(pid)
     if not p.get("transcript"):
         raise JobError("no transcript yet - run /analyze first")
     job.update(0.05, "building windows")
-    sug = clipfinder.suggest(p, count=count, rng=rng, job=job)
+    sug = clipfinder.suggest(p, count=count, rng=rng, job=job, max_seconds=max_seconds)
 
     def upd(pp):
         pp["suggestions"] = sug
@@ -23,7 +23,7 @@ def suggest_job(pid: str, job: Job, count: int = 8, rng: list | None = None) -> 
 
 
 def run(job: Job, video_path: str = "", language: str = "or", count: int = 3, rng: list | None = None,
-        project_id: str | None = None, name: str = "", render: bool = True) -> dict:
+        project_id: str | None = None, name: str = "", render: bool = True, max_seconds: float = 60.0) -> dict:
     if project_id:
         p = projects.load(project_id)
     else:
@@ -34,7 +34,7 @@ def run(job: Job, video_path: str = "", language: str = "or", count: int = 3, rn
     with job.scope(0.0, 0.45):
         analyze.run(pid, job, rng)
     with job.scope(0.45, 0.5):
-        sug = suggest_job(pid, job, count=count, rng=rng)
+        sug = suggest_job(pid, job, count=count, rng=rng, max_seconds=max_seconds)
     out = []
     n = max(len(sug), 1)
     for i, s in enumerate(sug):

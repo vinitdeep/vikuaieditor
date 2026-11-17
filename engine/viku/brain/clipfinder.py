@@ -61,20 +61,36 @@ def framedb(p: dict) -> np.ndarray:
     return db
 
 
+MIN_CAP, MAX_CAP = 10.0, 300.0
+MAX_ENDS = 16  # per start, for caps above 60 s (keeps feature + embedding work near the 60 s cost)
+MAX_HOLE = 10.0  # a window never spans a longer gap between cues (an un-analysed stretch, a song, a break)
+
+
+def length_bounds(max_seconds: float = 60.0) -> tuple[float, float, float]:
+    """Reel length cap (10 s - 5 min) -> (min window, max window, ideal length). 60 s -> (20, 60, 45) as before."""
+    cap = min(max(float(max_seconds or 60.0), MIN_CAP), MAX_CAP)
+    return max(5.0, min(20.0, cap * 0.5)), cap, cap * 0.75
+
+
 def build_windows(items: list[dict], min_len=20.0, max_len=60.0, end_gap=0.4) -> list[tuple[int, int]]:
     out = []
     n = len(items)
     for i in range(n):
         if i > 0 and items[i]["start"] - items[i - 1]["end"] < 0.25:
             continue  # start on a pause
+        ends = []
         for j in range(i, n):
             d = items[j]["end"] - items[i]["start"]
-            if d > max_len:
+            if d > max_len or (j > i and items[j]["start"] - items[j - 1]["end"] > MAX_HOLE):
                 break
             if d >= min_len:
                 gap = items[j + 1]["start"] - items[j]["end"] if j + 1 < n else 9.0
                 if gap >= end_gap:
-                    out.append((i, j))
+                    ends.append(j)
+        if max_len > 60.0 and len(ends) > MAX_ENDS:
+            # long caps: evenly spaced end points, always including the shortest and the longest
+            ends = [ends[round(k * (len(ends) - 1) / (MAX_ENDS - 1))] for k in range(MAX_ENDS)]
+        out.extend((i, j) for j in dict.fromkeys(ends))
     return out
 
 
@@ -161,12 +177,13 @@ def window_text(items: list[dict]) -> str:
     return " ".join(it["text"] for it in items)
 
 
-def score_windows(p: dict, wins: list[list[dict]], lang_default: str, job=None) -> tuple[np.ndarray, np.ndarray, list[dict], dict]:
+def score_windows(p: dict, wins: list[list[dict]], lang_default: str, job=None, target: float = 45.0
+                  ) -> tuple[np.ndarray, np.ndarray, list[dict], dict]:
     """Raw features + embeddings for every window -> ranker scores (z-scored within this sermon)."""
     db, med, thr = sermon_audio(p)
     rows = []
     for k, its in enumerate(wins):
-        rows.append(ranker.raw_features(its, lang_default, db if len(db) else None, med, thr, audio.FRAME))
+        rows.append(ranker.raw_features(its, lang_default, db if len(db) else None, med, thr, audio.FRAME, target))
         if job is not None and k % 200 == 0:
             job.check()
             job.update(0.1 + 0.4 * k / max(len(wins), 1), f"window features {k}/{len(wins)}")
@@ -184,7 +201,8 @@ def score_windows(p: dict, wins: list[list[dict]], lang_default: str, job=None) 
     return sc, contrib, rows, m
 
 
-def suggest(p: dict, count: int = 8, rng: list | None = None, job=None) -> list[dict]:
+def suggest(p: dict, count: int = 8, rng: list | None = None, job=None, max_seconds: float = 60.0) -> list[dict]:
+    min_len, max_len, target = length_bounds(max_seconds)
     items = sorted([t for t in p.get("transcript", []) if t.get("text")], key=lambda t: t["start"])
     if rng:
         items = [t for t in items if t["start"] >= rng[0] and t["end"] <= rng[1]]
@@ -193,10 +211,10 @@ def suggest(p: dict, count: int = 8, rng: list | None = None, job=None) -> list[
     lang_default = p["language"] if p["language"] != "auto" else "or"
     if p["language"] != "auto":
         items = [dict(t, lang=p["language"]) for t in items]
-    wins = build_windows(items)
+    wins = build_windows(items, min_len, max_len)
     if not wins:
-        wins = [(0, len(items) - 1)]
-    sc, contrib, rows, model = score_windows(p, [items[i:j + 1] for i, j in wins], lang_default, job)
+        wins = [(0, len(items) - 1)]  # the planner still caps it at max_len
+    sc, contrib, rows, model = score_windows(p, [items[i:j + 1] for i, j in wins], lang_default, job, target)
     # house rule: a reel ends on a finished (encouraging) line, never on a setup like "then I ..." / "but ..."
     dangling = np.array([is_dangling(items[j], lang_default) for _, j in wins])
     sc = np.where(dangling, sc * 0.6, sc)
@@ -220,7 +238,7 @@ def suggest(p: dict, count: int = 8, rng: list | None = None, job=None) -> list[
             L = it.get("lang", lang_default)
             langs[L] = langs.get(L, 0) + it["end"] - it["start"]
         lang = max(langs, key=langs.get)
-        segs = planner.plan(its, p.get("pauses", []), lang)
+        segs = planner.plan(its, p.get("pauses", []), lang, max_len)
         rs = ranker.reasons(contrib[k], model)
         title, flag = pick_title(its, lang, sermon, f"{_short_name(p)} · Clip {rank + 1}")
         out.append({"id": f"s{rank + 1}", "score": round(float(sc[k]), 4), "title": title, "title_flag": flag,
