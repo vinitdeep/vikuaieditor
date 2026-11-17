@@ -45,7 +45,10 @@ def test_find_suggestion_prefers_the_one_the_app_sends(monkeypatch):
 
 
 def test_build_suggestion_has_the_automate_result_shape(monkeypatch):
-    monkeypatch.setattr(automate, "build_reel", lambda pid, s, job, render: {"reel": f"{pid}~7", "title": s["title"],
-                                                                              "render": render})
+    monkeypatch.setattr(automate, "build_reel", lambda pid, s, job, render, framing="follow": {
+        "reel": f"{pid}~7", "title": s["title"], "render": render, "framing": framing})
     out = automate.build_suggestion(FakeJob(), "p1", {"id": "s2", "segments": [[0, 50]], "title": "T", "score": 1})
-    assert out == {"project": "p1", "reels": [{"reel": "p1~7", "title": "T", "render": True}]}
+    assert out == {"project": "p1", "reels": [{"reel": "p1~7", "title": "T", "render": True, "framing": "follow"}]}
+    out = automate.build_suggestion(FakeJob(), "p1", {"id": "s2", "segments": [[0, 50]], "title": "T", "score": 1},
+                                    framing="fixed")
+    assert out["reels"][0]["framing"] == "fixed"

@@ -50,6 +50,7 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
 | POST | /projects/{id}/suggest | job: clip finder → ranked candidate reels `[{id,score,title,segments:[[s,e]],reasons[],language}]` |
 | POST | /projects/{id}/reels | create reel from `{segments:[[s,e],...], title, sub}` (jump cut if >1 segment) |
 | POST | /reels/{id}/autobuild | job: captions (re-ASR on joined audio), verse detection, cutaway plan + library picks, music pick, sfx |
+| POST | /reels/{id}/framing | job: track the speaker for auto framing only → `crops` + `follow`, `framing:"follow"` (captions / cutaways / music untouched) |
 | POST | /reels/{id}/render | job: final mp4 (and thumbnail) → `exports/` |
 | POST | /reels/{id}/thumbnail | job: `{style, pose_t, title, sub, verse, renderer}` (all optional; auto pose + auto style) → thumbnail jpg |
 | POST | /automate | job: `{video_path, language, count}` → analyze → suggest → build → render N reels |
@@ -79,7 +80,10 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
  "transcript":[{"start","end","text","lang","conf"}],
  "reels":[{"id","title","sub","language",
    "segments":[[s,e],...],                       // absolute source seconds, in play order
-   "crops":[{"t0","t1","cx","cw","z"}],          // reel seconds, fixed per shot/segment
+   "framing":"follow"|"fixed",                   // auto framing (crop pans with the speaker) | still crop per shot; missing = fixed
+   "crops":[{"t0","t1","cx","cw","z","ax"}],     // reel seconds, per shot; cx/cw/ax in px of the 1280-wide framing frame
+                                                 // follow: frame x = path(source t) + (cx - ax)  (cx - ax = editor nudge)
+   "follow":[{"s","e","x":[...]}],               // follow paths by SOURCE seconds, x at 10 samples/s (1280-px), one per shot
    "captions":[{"t0","t1","text","flags":[]}],   // reel seconds
    "verses":[{"t0","t1","text","ref","top_y"}],
    "cutaways":[{"t0","t1","img","z0","z1","pan":[x,y]}],
@@ -97,7 +101,7 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
 - **Reel ids** are `<project id>~<n>`; exports go to `<project>/exports/<n>-<slug>.mp4` (+ `.jpg`).
 - **Extra endpoints**: `GET /jobs`, `GET /jobs/{id}`, `POST /jobs/{id}/cancel`, `GET /reels/{id}`, `POST /music/seed`.
 - **Request options**: analyze `{range:[s,e], steps:{proxy,shots,asr}}`; suggest `{count, range}`; autobuild `{steps:{captions,cutaways,music}}`;
-  automate `{video_path | project_id, language, count, range, render}`; library import `{paths, tags, seed}`; bible download `{langs}`.
+  automate `{video_path | project_id, language, count, range, render, max_seconds, pick, framing:"follow"|"fixed"}` (automate/build takes `framing` too); library import `{paths, tags, seed}`; bible download `{langs}`.
 - **Project JSON additions**: `width, height, proxy_offset` (proxy of a range starts at that source second), `proxies[]`, `peaks` (npy path),
   `analyzed[[s,e]]`, `suggestions[]`; transcript items carry `alt` (CTC text); reels carry `duration, jumps, src, voice, enhance`,
   captions `{flags, alt, conf}`, cutaways `{lib_id, why}`, verses `{attribution}`, exports `{path, thumbnail, width, height, duration, lufs, true_peak}`.

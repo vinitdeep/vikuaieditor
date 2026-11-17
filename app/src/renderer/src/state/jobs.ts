@@ -26,6 +26,8 @@ const LABELS: Record<string, string> = {
   analyze: 'Analyze sermon',
   suggest: 'Find clips (Viku Brain)',
   autobuild: 'Auto-build reel',
+  framing: 'Auto framing',
+  automate_build: 'Make the chosen reel',
   render: 'Render reel',
   thumbnail: 'Thumbnail',
   automate: 'Automate',

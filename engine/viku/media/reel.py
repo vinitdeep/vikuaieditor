@@ -1,7 +1,7 @@
 """Reel build + render.
 
 create()     POST /projects/{id}/reels  - segments (absolute source s, play order) -> draft reel
-autobuild()  POST /reels/{id}/autobuild - jump-cut join, fixed crops, speech enhancement, caption re-ASR,
+autobuild()  POST /reels/{id}/autobuild - jump-cut join, framing (auto follow or fixed crops), speech enhancement, caption re-ASR,
              verse detection, cutaway plan + library picks, music pick, SFX
 render()     POST /reels/{id}/render    - final 1080x1920 mp4 (+ thumbnail) into exports/
 
@@ -62,8 +62,11 @@ def create(pid: str, segments: list, title: str = "", sub: str = "", extra: dict
              "segments": segs, "duration": dur, "jumps": [], "crops": [], "captions": [], "verses": [],
              "cutaways": [], "music": None, "sfx": [], "style": {"caption_size": 74},
              "thumbnail": {"style": "frame", "pose_t": None, "title": title, "sub": sub, "verse": None},
-             "status": "draft", "exports": []}
+             "status": "draft", "exports": [],
+             "framing": "follow" if config.settings().get("auto_framing", True) else "fixed", "follow": []}
         r.update(extra or {})
+        if r.get("framing") not in ("follow", "fixed"):
+            r["framing"] = "follow"
         p["reels"].append(r)
         out["r"] = r
     projects.update(pid, add)
@@ -211,7 +214,7 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
     dur = round(sum(e - s for s, e in segs), 3)
 
     job.span(0.25, 0.55)
-    crops = framing.plan_crops(str(src), dur, jumps, job)
+    crops, follow = framing.plan_crops(str(src), dur, jumps, job, segs=segs, mode=r.get("framing", "follow"))
 
     job.span(0.55, 0.70)
     job.update(0.0, "speech enhancement")
@@ -222,7 +225,8 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
     enh_mode = enhance.enhance(str(raw48), str(enh), job)
 
     def upd1(rr):
-        rr.update({"src": str(src), "duration": dur, "jumps": jumps, "crops": crops, "voice": str(enh),
+        rr.update({"src": str(src), "duration": dur, "jumps": jumps, "crops": crops, "follow": follow,
+                   "voice": str(enh),
                    "enhance": enh_mode})
     _save_reel(rid, upd1)
 
@@ -291,6 +295,27 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
         rr["thumbnail"] = th
     _save_reel(rid, upd2)
     return projects.find_reel(rid)[1]
+
+
+def track_framing(rid: str, job: Job) -> dict:
+    """POST /reels/{id}/framing - (re)track the speaker for auto framing only: crops + follow paths, framing on.
+    Captions, cutaways, music and every other edit are left alone (an older reel gets auto framing this way)."""
+    p, r = projects.find_reel(rid)
+    d = projects.reel_dir(rid)
+    segs = r["segments"]
+    job.span(0.0, 0.3)
+    src = d / "src.mkv"
+    jumps = join_segments(p["video_path"], segs, src, job)
+    dur = round(sum(e - s for s, e in segs), 3)
+    job.span(0.3, 1.0)
+    crops, follow = framing.plan_crops(str(src), dur, jumps, job, segs=segs, mode="follow")
+
+    def upd(rr):
+        rr.update({"crops": crops, "follow": follow, "framing": "follow", "jumps": jumps})
+        if not rr.get("src"):
+            rr["src"] = str(src)
+    _save_reel(rid, upd)
+    return {"reel": rid, "shots": len(crops)}
 
 
 def T_short(name: str, n: int = 32) -> str:
@@ -379,8 +404,10 @@ def shade_png(path: Path):
     cv2.imwrite(str(path), img)
 
 
-def render_base(src: str, crops: list, dur: float, out: Path, job: Job, prog=(0.0, 1.0)) -> int:
-    """Pass 1: fixed-crop speaker -> graded 1080x1920 intermediate (no audio)."""
+def render_base(src: str, crops: list, dur: float, out: Path, job: Job, prog=(0.0, 1.0), mode: str = "fixed",
+                follow: list | None = None, segs: list | None = None) -> int:
+    """Pass 1: framed speaker (fixed crops, or the auto-framing follow path) -> graded 1080x1920 intermediate."""
+    offs = segment_offsets(segs or [])
     enc = job.popen([ff.ffmpeg(), "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
                      "-s", "1080x1920", "-r", str(FPS), "-i", "-",
                      "-vf", "unsharp=5:5:0.8:5:5:0,eq=contrast=1.05:saturation=1.08,vignette=angle=PI/4.5",
@@ -395,8 +422,10 @@ def render_base(src: str, crops: list, dur: float, out: Path, job: Job, prog=(0.
             if len(b) < n:
                 break
             f = np.frombuffer(b, np.uint8).reshape(720, 1280, 3)
-            c = framing.crop_at(crops, i / FPS)
-            enc.stdin.write(np.ascontiguousarray(framing.compose(f, c["cx"], c["cw"], c.get("z", 1.0))).tobytes())
+            t = i / FPS
+            c = framing.crop_at(crops, t)
+            x = framing.x_at(c, t, mode, follow or [], segs or [], offs)
+            enc.stdin.write(np.ascontiguousarray(framing.compose(f, x, c["cw"], c.get("z", 1.0))).tobytes())
             i += 1
             if i % FPS == 0:
                 job.check()
@@ -532,7 +561,8 @@ def _render(p: dict, r: dict, job: Job) -> dict:
 
     sub(0.08, 0.50)
     base = d / "base.mp4"
-    render_base(r["src"], r["crops"] or [{"t0": 0, "t1": dur, "cx": 640, "cw": 405, "z": 1.0}], dur, base, job)
+    render_base(r["src"], r["crops"] or [{"t0": 0, "t1": dur, "cx": 640, "cw": 405, "z": 1.0}], dur, base, job,
+                mode=r.get("framing", "fixed"), follow=r.get("follow") or [], segs=r["segments"])
 
     sub(0.50, 1.0)
     (d / "caps.ass").write_text(ass.build(r, dur, st.get("credit_line", "")), encoding="utf-8-sig")

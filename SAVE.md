@@ -9,6 +9,27 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
 - Verified live (dev): simulated .crdownload -> rename in Downloads filed as `browser-mode-test.jpg`, queue item -> captured via browser; an image with no waiting prompt ignored; typecheck + lint clean. Not yet: a real AI Studio download end-to-end, installer rebuild.
 - **Length cap 10 s - 5 min** (Automate slider 10-300 s, step 5 below 1 min / 15 above; label "2 min 30 s"). Before this the slider was cosmetic: the engine ignored max_seconds and always used 20-60 s windows + a 60 s planner cap. Now `AutomateReq.max_seconds` / `SuggestReq.max_seconds` (10-300, default 60, 422 outside) -> `clipfinder.length_bounds(cap)` = (min window max(5, min(20, cap/2)), cap, ideal 0.75 cap) -> `build_windows`, `planner.plan(max_len)`, `ranker.raw_features(target)` (duration_fit = same 45 +/- 25 shape scaled to the target). 60 s gives exactly the old bounds. Caps > 60 s keep at most 16 evenly spaced ends per start; windows never span a > 10 s hole between cues (un-analysed gaps). Live: 6d0d / 4f96 at 10 s -> 6-9 s reels; at 60 s unchanged; at 300 s still ~28-34 s (the cap is a maximum; the ranker prefers those). tests/test_length_cap.py; 62 passed.
 
+## Session 8 (2026-11-17): auto framing — the 9:16 crop follows the speaker (Automate + Manual)
+- User asked: auto framing that keeps the subject centred, in both modes. Before: one still crop per shot; a walking
+  speaker got a WIDE crop letterboxed over a blurred fill (TAPP reel ~3: speaker at 47 % size, face a median 222 px
+  off-centre of 1080).
+- Engine `media/framing.py`: `follow_path()` = dead zone 20 px of 1280 (forward + backward backlash averaged, so no
+  lag), zero-phase gaussian ease 0.4 s, clamped in frame, held still if it would move < 6 px; resets at every camera
+  cut + jump cut. `follow_tracks()` -> tight 9:16 crops with `ax` (anchor) + `reel["follow"]` paths by SOURCE seconds
+  (10 samples/s) so editor trims / splits / moves keep working. `x_at()` = path(source t) + (cx - ax). Reel field
+  `framing: "follow"|"fixed"` (new reels: `settings.auto_framing`, default on; old reels without it = fixed).
+  `plan_crops(..., segs, mode)` returns (crops, follow); fixed mode crops also get `ax`. render_base pans per frame.
+  `POST /reels/{id}/framing` (job `framing`) = track only, captions / cutaways / music untouched (old reels).
+  `/automate` + `/automate/build` take `framing`. tests/test_framing.py (78 pass).
+- App: Automate Options toggle "Auto framing — keep the speaker centred" (default on). Manual: Reel panel + segment
+  Framing section "Auto framing: Follow speaker | Fixed"; follow shows a Nudge slider (shifts that segment's follow);
+  old reels show "Track speaker". Reel preview + source crop box pan with the path (`lib/reel.ts` followAt /
+  framedCx / setFraming). Fixed a units bug: the UI divided engine crop px by the project width — the engine frame is
+  always 1280 wide (`FRAME_W` in api/http.ts).
+- Verified: real reel ~3 face off-centre median 46 px (was 222), full size; `scripts/e2e-framing.mjs` (screenshots
+  `framing-01..04`): Automate option, switch + Track speaker on reel ~3, preview pans, nudge moves it.
+- Known (pre-existing): rendering after changing segments in Manual without Auto-build uses the old joined clip.
+
 ## Session 7b (2026-11-17): single-reel Automate = choose 1 of the 5 best clips
 - User asked: with 1 reel, show 5 suggestions (title + length) after analysing and let them pick.
 - Engine: `AutomateReq.pick` (0-12): > 0 stops after analyze (0-0.9) + suggest (0.9-1) and returns

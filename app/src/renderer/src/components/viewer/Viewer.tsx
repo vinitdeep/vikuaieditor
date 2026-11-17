@@ -20,7 +20,7 @@ import { api } from '@/api'
 import { useApp } from '@/state/app'
 import { useEditor, useReel } from '@/state/editor'
 import { usePlayback } from '@/state/playback'
-import { cropAt, cropFor, cropRect, layout, placedAt, reelDuration, reelToSource } from '@/lib/reel'
+import { cropAt, cropFor, cropRect, framedCx, isFollowing, layout, placedAt, reelDuration, reelToSource } from '@/lib/reel'
 import { clamp, timecode } from '@/lib/time'
 import { Empty, IconButton, Segmented, Select } from '../ui'
 import { mediaSources, type MediaSrc } from '@/lib/media'
@@ -371,7 +371,7 @@ function StageContent(props: {
   const credit = useApp((s) => s.settings?.credit_line ?? '')
   const fillRef = useRef<HTMLCanvasElement>(null)
 
-  // reel framing: fixed crop + punch-in, scaled to width over a blurred fill
+  // reel framing: fixed crop or auto framing (follow path), + punch-in; wider than 9:16 scales to width over a blurred fill
   let videoStyle: React.CSSProperties = { left: 0, top: 0, width: '100%', height: '100%' }
   let wide = false
   if (isReel && reel) {
@@ -464,7 +464,8 @@ function StageContent(props: {
   )
 }
 
-/** 16:9 source with the fixed crop box of the segment under the source playhead; drag horizontally only. */
+/** 16:9 source with the crop box at the source playhead (auto framing: where the follow path frames it); drag
+ *  horizontally only. With auto framing a drag nudges the whole follow of that segment left / right. */
 function SourceCrop({ reel, srcT }: { reel: Reel | null; srcT: number }) {
   const edit = useEditor((s) => s.edit)
   const selection = useEditor((s) => s.selection)
@@ -486,7 +487,8 @@ function SourceCrop({ reel, srcT }: { reel: Reel | null; srcT: number }) {
     )
   }
   const crop = cropFor(reel, idx)
-  const r = cropRect(crop.cx, crop.cw)
+  const following = isFollowing(reel)
+  const r = cropRect(framedCx(reel, crop, srcT), crop.cw)
   const onDown = (e: React.PointerEvent): void => {
     e.preventDefault()
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
@@ -496,17 +498,19 @@ function SourceCrop({ reel, srcT }: { reel: Reel | null; srcT: number }) {
     if (!drag) return
     const stage = (e.currentTarget as HTMLElement).closest('.stage') as HTMLElement | null
     const w = stage?.clientWidth ?? 1
-    const cx = clamp(drag.cx0 + (e.clientX - drag.x0) / w, crop.cw / 2, 1 - crop.cw / 2)
+    // auto framing: cx only offsets the path (x = path + cx - ax), so it may sit anywhere; the frame itself is clamped
+    const cx = following ? clamp(drag.cx0 + (e.clientX - drag.x0) / w, 0, 1) : clamp(drag.cx0 + (e.clientX - drag.x0) / w, crop.cw / 2, 1 - crop.cw / 2)
     const placed = layout(reel.segments)[drag.idx]
     edit(
       'Move crop',
       (d) => {
         let c = d.crops.find((c) => Math.abs(c.t0 - placed.t0) < 0.02)
         if (!c) {
-          c = { t0: placed.t0, t1: placed.t1, cx, cw: crop.cw, z: crop.z }
+          c = { t0: placed.t0, t1: placed.t1, cx: drag.cx0, cw: crop.cw, z: crop.z, ...(crop.ax !== undefined ? { ax: crop.ax } : {}) }
           d.crops.push(c)
           d.crops.sort((a, b) => a.t0 - b.t0)
         }
+        if (following && c.ax === undefined) c.ax = c.cx // first nudge: the offset starts from the path itself
         c.cx = Math.round(cx * 1000) / 1000
       },
       `crop-${drag.idx}`
@@ -522,16 +526,21 @@ function SourceCrop({ reel, srcT }: { reel: Reel | null; srcT: number }) {
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={() => setDrag(null)}
-        title="Drag left / right to reframe (fixed crop, no tracking)"
+        title={following ? 'Auto framing follows the speaker — drag left / right to nudge this segment' : 'Drag left / right to reframe (fixed crop)'}
       >
         <span className="crop-label num">
-          Segment {idx + 1} · cx {crop.cx.toFixed(3)} · {crop.z > 1 ? `punch ${crop.z.toFixed(2)}` : '1.00'}
+          Segment {idx + 1} · {following ? `follow ${fmtNudge(crop)}` : `cx ${crop.cx.toFixed(3)}`} · {crop.z > 1 ? `punch ${crop.z.toFixed(2)}` : '1.00'}
         </span>
         <span className="crop-grip l" />
         <span className="crop-grip r" />
       </div>
     </>
   )
+}
+
+function fmtNudge(c: { cx: number; ax?: number }): string {
+  const d = c.cx - (c.ax ?? c.cx)
+  return Math.abs(d) < 0.0005 ? 'centred' : `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(3)}`
 }
 
 function Transport({ reel, project }: { reel: Reel | null; project: Project | null }) {

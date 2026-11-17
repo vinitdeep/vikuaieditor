@@ -62,7 +62,19 @@ export interface Crop {
   cw: number
   /** static punch-in, 1.0 or 1.12 for alternating jump-cut segments */
   z: number
+  /** auto framing anchor (0..1): with framing 'follow' the crop sits at path + (cx - ax), so moving cx nudges the follow */
+  ax?: number
 }
+
+/** auto framing: the camera centre (0..1 of source width) over one shot, by SOURCE seconds, FOLLOW_RATE samples / s */
+export interface FollowTrack {
+  s: number
+  e: number
+  x: number[]
+}
+
+/** 'follow' = auto framing (the 9:16 crop pans with the speaker), 'fixed' = one still crop per shot */
+export type Framing = 'follow' | 'fixed'
 
 export interface CaptionFlag {
   start: number
@@ -152,6 +164,8 @@ export interface Reel {
   language: Lang
   segments: Seg[]
   crops: Crop[]
+  framing: Framing
+  follow: FollowTrack[]
   captions: Caption[]
   verses: Verse[]
   cutaways: Cutaway[]
@@ -383,6 +397,8 @@ export interface AutomateRequest {
   project_id?: string
   /** > 0: stop after analyse + suggest and return this many clips to choose from (single-reel runs) */
   pick?: number
+  /** auto framing: the crop follows the speaker (default) or stays still per shot */
+  framing?: Framing
 }
 
 export interface AutomateResultReel {

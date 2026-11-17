@@ -23,10 +23,12 @@ def suggest_job(pid: str, job: Job, count: int = 8, rng: list | None = None, max
     return sug
 
 
-def build_reel(pid: str, s: dict, job: Job, render: bool = True) -> dict:
-    """One suggestion -> reel -> autobuild (-> render). Progress: build 0-0.4, render 0.4-1 of the current scope."""
+def build_reel(pid: str, s: dict, job: Job, render: bool = True, framing: str = "follow") -> dict:
+    """One suggestion -> reel -> autobuild (-> render). Progress: build 0-0.4, render 0.4-1 of the current scope.
+    framing: "follow" = auto framing (the crop pans with the speaker), "fixed" = one still crop per shot."""
     r = reel.create(pid, s["segments"], s["title"], "", {"suggestion": s["id"], "score": s["score"],
-                                                      "title_auto": True, "sub_auto": True})
+                                                      "title_auto": True, "sub_auto": True,
+                                                      "framing": framing if framing in ("follow", "fixed") else "follow"})
     with job.scope(0.0, 0.4 if render else 1.0):
         reel.autobuild(r["id"], job)
     res = {"reel": r["id"], "score": s["score"], "suggested_title": s["title"]}
@@ -42,7 +44,7 @@ def build_reel(pid: str, s: dict, job: Job, render: bool = True) -> dict:
 
 def run(job: Job, video_path: str = "", language: str = "or", count: int = 3, rng: list | None = None,
         project_id: str | None = None, name: str = "", render: bool = True, max_seconds: float = 60.0,
-        pick: int = 0) -> dict:
+        pick: int = 0, framing: str = "follow") -> dict:
     """pick > 0: stop after analyze + suggest and return the top `pick` suggestions for the editor to choose from
     ({"project", "stage": "pick", "suggestions"}); POST /automate/build then makes the chosen one."""
     if project_id:
@@ -65,7 +67,7 @@ def run(job: Job, video_path: str = "", language: str = "or", count: int = 3, rn
     n = max(len(sug), 1)
     for i, s in enumerate(sug):
         with job.scope(0.5 + 0.5 * i / n, 0.5 + 0.5 * (i + 1) / n):
-            out.append(build_reel(pid, s, job, render))
+            out.append(build_reel(pid, s, job, render, framing))
     return {"project": pid, "reels": out}
 
 
@@ -84,6 +86,6 @@ def find_suggestion(pid: str, suggestion_id: str = "", suggestion: dict | None =
     return s
 
 
-def build_suggestion(job: Job, pid: str, s: dict, render: bool = True) -> dict:
+def build_suggestion(job: Job, pid: str, s: dict, render: bool = True, framing: str = "follow") -> dict:
     """POST /automate/build: make the suggestion the editor picked. Same result shape as /automate."""
-    return {"project": pid, "reels": [build_reel(pid, s, job, render)]}
+    return {"project": pid, "reels": [build_reel(pid, s, job, render, framing)]}

@@ -211,6 +211,8 @@ export class MockApi implements VikuApi {
       sub: body.sub,
       segments: body.segments,
       crops,
+      framing: 'follow',
+      follow: body.segments.map(([s, e]) => ({ s, e, x: Array.from({ length: Math.max(2, Math.ceil((e - s) * 10) + 1) }, (_, i) => 0.5 + 0.1 * Math.sin((s + i / 10) / 2.5)) })),
       captions,
       verses: [],
       cutaways: [],
@@ -233,6 +235,19 @@ export class MockApi implements VikuApi {
       delete c.need
     }
     return clone(c)
+  }
+  async trackFraming(reelId: string) {
+    return this.job('framing', [{ msg: 'framing: finding the speaker', ms: 900 }], () => {
+      const { r } = this.findReel(reelId)
+      r.framing = 'follow'
+      // a gentle walk across the stage, one path per segment (source seconds, 10 samples / s)
+      r.follow = r.segments.map(([s, e]) => ({
+        s,
+        e,
+        x: Array.from({ length: Math.max(2, Math.ceil((e - s) * 10) + 1) }, (_, i) => 0.5 + 0.12 * Math.sin((s + i / 10) / 3))
+      }))
+      return { reel: reelId, shots: r.segments.length }
+    })
   }
   async autobuild(reelId: string) {
     return this.job(

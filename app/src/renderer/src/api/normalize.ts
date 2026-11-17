@@ -7,6 +7,7 @@ import type {
   CaptionFix,
   CaptionFlag,
   Crop,
+  FollowTrack,
   Cutaway,
   CutawayNeed,
   ExportItem,
@@ -134,7 +135,14 @@ const flag = (x: unknown): CaptionFlag => {
 
 const crop = (x: unknown): Crop => {
   const r = rec(x)
-  return { ...r, t0: num(r.t0), t1: num(r.t1), cx: num(r.cx, 0.5), cw: num(r.cw, 0.316), z: num(r.z, 1) }
+  const c: Crop = { ...r, t0: num(r.t0), t1: num(r.t1), cx: num(r.cx, 0.5), cw: num(r.cw, 0.316), z: num(r.z, 1) }
+  if (r.ax === undefined || r.ax === null) delete c.ax
+  else c.ax = num(r.ax, c.cx)
+  return c
+}
+const followTrack = (x: unknown): FollowTrack => {
+  const r = rec(x)
+  return { s: num(r.s), e: num(r.e), x: arr(r.x).map((v) => num(v)) }
 }
 const caption = (x: unknown): Caption => {
   const r = rec(x)
@@ -194,6 +202,9 @@ export function reel(x: unknown): Reel {
     language: lang(r.language),
     segments: segs(r.segments),
     crops: arr(r.crops).map(crop),
+    // reels made before auto framing have no field and no tracks: they stay on still crops
+    framing: r.framing === 'follow' || r.framing === 'fixed' ? r.framing : 'fixed',
+    follow: arr(r.follow).map(followTrack).filter((t) => t.e > t.s && t.x.length > 0),
     captions: arr(r.captions).map(caption),
     verses: arr(r.verses).map(verse),
     cutaways: arr(r.cutaways).map(cutaway),

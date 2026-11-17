@@ -6,7 +6,7 @@ import os
 import subprocess
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -237,6 +237,13 @@ def autobuild(rid: str, b: BuildReq | None = None):
     return job_ref(MANAGER.submit("autobuild", lambda job: reel.autobuild(rid, job, steps), {"reel": rid}))
 
 
+@app.post("/reels/{rid}/framing")
+def reel_framing(rid: str):
+    """Track the speaker and switch the reel to auto framing, leaving captions / cutaways / music untouched."""
+    projects.find_reel(rid)
+    return job_ref(MANAGER.submit("framing", lambda job: reel.track_framing(rid, job), {"reel": rid}))
+
+
 @app.post("/reels/{rid}/render")
 def render(rid: str):
     projects.find_reel(rid)
@@ -305,13 +312,14 @@ class AutomateReq(BaseModel):
     render: bool = True
     max_seconds: float = Field(60.0, ge=10, le=300)   # reel length: 10 s - 5 min
     pick: int = Field(0, ge=0, le=12)   # > 0: stop after suggest, return this many suggestions to choose from
+    framing: Literal["follow", "fixed"] = "follow"   # auto framing (crop follows the speaker) or still crops
 
 
 @app.post("/automate")
 def automate_ep(b: AutomateReq):
     j = MANAGER.submit("automate", lambda job: automate.run(job, b.video_path, b.language, b.count, b.range,
                                                             b.project_id, render=b.render, max_seconds=b.max_seconds,
-                                                            pick=b.pick))
+                                                            pick=b.pick, framing=b.framing))
     return job_ref(j)
 
 
@@ -320,6 +328,7 @@ class AutomateBuildReq(BaseModel):
     suggestion_id: str = ""
     suggestion: dict | None = None   # {id, segments, title, score} as shown to the editor (preferred)
     render: bool = True
+    framing: Literal["follow", "fixed"] = "follow"
 
 
 @app.post("/automate/build")
@@ -331,7 +340,7 @@ def automate_build(b: AutomateBuildReq):
         s = automate.find_suggestion(b.project_id, b.suggestion_id, b.suggestion)
     except JobError as e:
         raise HTTPException(404 if b.suggestion is None else 422, str(e)) from e
-    j = MANAGER.submit("automate_build", lambda job: automate.build_suggestion(job, b.project_id, s, b.render),
+    j = MANAGER.submit("automate_build", lambda job: automate.build_suggestion(job, b.project_id, s, b.render, b.framing),
                        {"project": b.project_id})
     return job_ref(j)
 

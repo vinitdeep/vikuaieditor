@@ -1,3 +1,4 @@
+/* global window, document -- page.evaluate callbacks run in the renderer */
 // End-to-end: Automate with 1 reel -> "Find 5 clips" -> 5 cards (title + length) -> preview one -> make one.
 // Runs the dev build (out/) against an engine that already answers on VIKU_PORT (default 8765), on the user's data.
 // Usage: npm run build && VIKU_PORT=8799 node scripts/e2e-pick.mjs [--video <path>] [--from 32:00 --to 36:00] [--len 60]

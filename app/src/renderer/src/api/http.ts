@@ -1,7 +1,7 @@
 import type { EngineRequest, EngineResponse, HttpMethod } from '@shared/ipc'
 import { ApiError, type VikuApi } from './client'
 import * as N from './normalize'
-import type { Candidate, JobEvent, Lang, MusicGenerateRequest, Project, Reel, Settings } from './types'
+import type { Candidate, Framing, JobEvent, Lang, MusicGenerateRequest, Project, Reel, Settings } from './types'
 
 /** Requests go through the main process (no CORS); falls back to fetch when opened outside Electron. */
 async function transport(base: string, req: EngineRequest): Promise<EngineResponse> {
@@ -24,6 +24,9 @@ async function transport(base: string, req: EngineRequest): Promise<EngineRespon
     return { ok: false, status: 0, data: null, error: e instanceof Error ? e.message : String(e) }
   }
 }
+
+/** width of the engine's framing frame: crops and follow paths are in its pixels */
+const FRAME_W = 1280
 
 const q = (params: Record<string, string | number>): string =>
   '?' +
@@ -58,20 +61,30 @@ export class HttpApi implements VikuApi {
     const list = Array.isArray(d) ? d : N.isRec(d) && Array.isArray(d.projects) ? d.projects : []
     return list.map(N.projectSummary)
   }
-  // The engine keeps crop cx/cw in source pixels; the UI works in 0..1 of the source width.
+  // The engine keeps crop cx/cw/ax and follow paths in pixels of its 1280-wide framing frame (every source is
+  // scaled to 1280x720 before framing, whatever its own size); the UI works in 0..1 of the source width.
   private cropsToUi(r: Reel, width: number, px: boolean): Reel {
     if (!px || width <= 0) return r
-    return { ...r, crops: r.crops.map((c) => ({ ...c, cx: c.cx / width, cw: c.cw / width })) }
+    return {
+      ...r,
+      crops: r.crops.map((c) => ({ ...c, cx: c.cx / width, cw: c.cw / width, ...(c.ax !== undefined ? { ax: c.ax / width } : {}) })),
+      follow: r.follow.map((t) => ({ ...t, x: t.x.map((v) => v / width) }))
+    }
   }
   private cropsToEngine(r: Reel, width: number, px: boolean): Reel {
     if (!px || width <= 0) return r
-    return { ...r, crops: r.crops.map((c) => ({ ...c, cx: Math.round(c.cx * width * 10) / 10, cw: Math.round(c.cw * width * 10) / 10 })) }
+    const e = (v: number): number => Math.round(v * width * 10) / 10
+    return {
+      ...r,
+      crops: r.crops.map((c) => ({ ...c, cx: e(c.cx), cw: e(c.cw), ...(c.ax !== undefined ? { ax: e(c.ax) } : {}) })),
+      follow: r.follow.map((t) => ({ ...t, x: t.x.map(e) }))
+    }
   }
   private adopt(p: Project): Project {
     const crops = p.reels.flatMap((r) => r.crops)
     const px = !crops.length || crops.some((c) => c.cx > 1.001 || c.cw > 1.001)
-    this.units.set(p.id, { width: p.width, px })
-    return { ...p, reels: p.reels.map((r) => this.cropsToUi(r, p.width, px)) }
+    this.units.set(p.id, { width: FRAME_W, px })
+    return { ...p, reels: p.reels.map((r) => this.cropsToUi(r, FRAME_W, px)) }
   }
 
   getProject = async (id: string) => {
@@ -85,7 +98,7 @@ export class HttpApi implements VikuApi {
   }
   createProject = async (body: { name: string; video_path: string; language: Lang | 'auto' }) => this.adopt(N.project(await this.call('POST', '/projects', body)))
   saveProject = async (p: Project) => {
-    const u = this.units.get(p.id) ?? { width: p.width, px: true }
+    const u = this.units.get(p.id) ?? { width: FRAME_W, px: true }
     const body = { ...p, reels: p.reels.map((r) => this.cropsToEngine(r, u.width, u.px)) }
     const d = await this.call('PUT', `/projects/${encodeURIComponent(p.id)}`, body)
     return N.isRec(d) && d.id ? this.adopt(N.project(d)) : p
@@ -116,15 +129,17 @@ export class HttpApi implements VikuApi {
     }
   }
   autobuild = async (reelId: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/autobuild`, {}), 'autobuild')
+  trackFraming = async (reelId: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/framing`, {}), 'framing')
   render = async (reelId: string, preset?: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/render`, preset ? { preset } : {}), 'render')
   thumbnail = async (reelId: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/thumbnail`, {}), 'thumbnail')
   automate = async (body: Parameters<VikuApi['automate']>[0]) => N.jobRef(await this.call('POST', '/automate', body), 'automate')
-  automateBuild = async (projectId: string, c: Candidate) =>
+  automateBuild = async (projectId: string, c: Candidate, framing: Framing = 'follow') =>
     N.jobRef(
       await this.call('POST', '/automate/build', {
         project_id: projectId,
         suggestion_id: c.id,
-        suggestion: { id: c.id, segments: c.segments, title: c.title, score: c.score }
+        suggestion: { id: c.id, segments: c.segments, title: c.title, score: c.score },
+        framing
       }),
       'automate_build'
     )

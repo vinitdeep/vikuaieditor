@@ -57,7 +57,7 @@ interface AutoState {
 }
 
 export const useAuto = create<AutoState>((set, get) => ({
-  form: { video_path: '', language: 'auto', count: 3, max_seconds: 60, illustrations: 'library', music: 'library', thumbnails: true },
+  form: { video_path: '', language: 'auto', count: 3, max_seconds: 60, illustrations: 'library', music: 'library', thumbnails: true, framing: 'follow' },
   jobId: null,
   phase: 'run',
   picks: null,
@@ -498,7 +498,7 @@ export function AutomateView() {
     if (!picks) return
     setPreviewing(null)
     try {
-      const ref = await api().automateBuild(picks.project_id, c)
+      const ref = await api().automateBuild(picks.project_id, c, form.framing ?? 'follow')
       set({ jobId: ref.job, phase: 'build', buildingId: c.id })
       const done = (): void => set({ buildingId: null })
       useJobs.getState().track(ref, `Automate · ${c.title || 'picked clip'}`, {
@@ -710,6 +710,13 @@ export function AutomateView() {
                       { id: 'heygen', label: 'HeyGen' },
                       { id: 'none', label: 'None' }
                     ]}
+                  />
+                </div>
+                <div className="auto-row">
+                  <Toggle
+                    checked={(form.framing ?? 'follow') === 'follow'}
+                    onChange={(v) => setForm({ framing: v ? 'follow' : 'fixed' })}
+                    label="Auto framing — keep the speaker centred"
                   />
                 </div>
                 <div className="auto-row">

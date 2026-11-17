@@ -11,6 +11,7 @@ import { duration } from '@/lib/time'
 import { LANGS } from '@/lib/lang'
 import { Button, Field, Progress, Section, Segmented, Select, Slider, TextInput } from '../ui'
 import { Row } from './common'
+import { FramingSwitch } from './FramingSwitch'
 
 /** engine render result: {path, thumbnail} (older shape: {output}) */
 export function resultPath(r: unknown): string | null {
@@ -118,6 +119,7 @@ export function ReelPanel({ reel }: { reel: Reel }) {
         <Row label="Caption font">
           <span className="muted">{reel.style.caption_font}</span>
         </Row>
+        <FramingSwitch reel={reel} />
       </Section>
 
       <Section title="Build & export">

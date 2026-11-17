@@ -1,5 +1,5 @@
 // Reel timeline math. Segments are absolute source seconds in play order; everything else is reel seconds.
-import type { Caption, Crop, Cutaway, Reel, Seg, Sfx, Verse } from '@/api/types'
+import type { Caption, Crop, Cutaway, FollowTrack, Framing, Reel, Seg, Sfx, Verse } from '@/api/types'
 
 export interface Placed {
   index: number
@@ -10,6 +10,11 @@ export interface Placed {
 
 export const DEFAULT_CW = 0.316 // 9:16 window of a 16:9 frame
 export const MIN_SEG = 0.25
+/** samples / s of the engine's auto-framing follow paths (media/framing.py FOLLOW_RATE) */
+export const FOLLOW_RATE = 10
+
+export type CropView = Pick<Crop, 'cx' | 'cw' | 'z' | 'ax'>
+type Framed = Pick<Reel, 'crops' | 'segments'> & Partial<Pick<Reel, 'framing' | 'follow'>>
 
 export function layout(segments: Seg[]): Placed[] {
   let acc = 0
@@ -39,18 +44,60 @@ export function reelToSource(reel: Pick<Reel, 'segments'>, t: number): { src: nu
   return { src: p.src[0] + off, index: p.index }
 }
 
-export function cropFor(reel: Pick<Reel, 'crops' | 'segments'>, index: number): Pick<Crop, 'cx' | 'cw' | 'z'> {
+const view = (c: Crop): CropView => (c.ax === undefined ? { cx: c.cx, cw: c.cw, z: c.z } : { cx: c.cx, cw: c.cw, z: c.z, ax: c.ax })
+
+export function cropFor(reel: Pick<Reel, 'crops' | 'segments'>, index: number): CropView {
   const placed = layout(reel.segments)
   const p = placed[index]
   const c = p ? reel.crops.find((c) => c.t0 <= p.t0 + 0.01 && c.t1 >= p.t1 - 0.01) ?? reel.crops[index] : reel.crops[index]
-  return c ? { cx: c.cx, cw: c.cw, z: c.z } : { cx: 0.5, cw: DEFAULT_CW, z: index % 2 ? 1.12 : 1 }
+  return c ? view(c) : { cx: 0.5, cw: DEFAULT_CW, z: index % 2 ? 1.12 : 1 }
 }
 
-export function cropAt(reel: Pick<Reel, 'crops' | 'segments'>, t: number): Pick<Crop, 'cx' | 'cw' | 'z'> {
-  const c = reel.crops.find((c) => t >= c.t0 && t < c.t1)
-  if (c) return { cx: c.cx, cw: c.cw, z: c.z }
-  const { index } = reelToSource(reel, t)
-  return cropFor(reel, Math.max(0, index))
+/** Auto-framing camera centre (0..1) at a source second, or null where no follow path covers it. */
+export function followAt(tracks: FollowTrack[] | undefined, srcT: number): number | null {
+  let best: FollowTrack | null = null
+  for (const tr of tracks ?? []) {
+    if (tr.s - 1e-3 <= srcT && srcT < tr.e + 1e-3 && (!best || tr.s > best.s)) best = tr
+  }
+  if (!best || !best.x.length) return null
+  const u = Math.min(Math.max((srcT - best.s) * FOLLOW_RATE, 0), best.x.length - 1)
+  const i = Math.floor(u)
+  const j = Math.min(i + 1, best.x.length - 1)
+  return best.x[i] + (best.x[j] - best.x[i]) * (u - i)
+}
+
+/** The crop centre actually framed at a source second: fixed cx, or with auto framing the follow path + nudge. */
+export function framedCx(reel: Partial<Pick<Reel, 'framing' | 'follow'>>, c: CropView, srcT: number): number {
+  if (reel.framing !== 'follow') return c.cx
+  const f = followAt(reel.follow, srcT)
+  if (f === null) return c.cx
+  const x = f + (c.cx - (c.ax ?? c.cx))
+  return Math.min(1 - c.cw / 2, Math.max(c.cw / 2, x))
+}
+
+/** True when the reel follows the speaker and has paths to follow (older reels need an Auto-build first). */
+export function isFollowing(reel: Partial<Pick<Reel, 'framing' | 'follow'>>): boolean {
+  return reel.framing === 'follow' && (reel.follow?.length ?? 0) > 0
+}
+
+export function cropAt(reel: Framed, t: number): CropView {
+  const found = reel.crops.find((c) => t >= c.t0 && t < c.t1)
+  const { src, index } = reelToSource(reel, t)
+  const c = found ? view(found) : cropFor(reel, Math.max(0, index))
+  return reel.framing === 'follow' ? { ...c, cx: framedCx(reel, c, src) } : c
+}
+
+/**
+ * Switch the reel between auto framing and still crops. To 'follow': every crop becomes a tight 9:16 window on its
+ * follow anchor (manual nudges are cleared). To 'fixed': crops keep their centre and width.
+ */
+export function setFraming(reel: Reel, mode: Framing): void {
+  reel.framing = mode
+  if (mode !== 'follow') return
+  for (const c of reel.crops) {
+    if (c.ax !== undefined) c.cx = c.ax
+    c.cw = DEFAULT_CW
+  }
 }
 
 export function editPoints(reel: Pick<Reel, 'segments'>): number[] {
@@ -78,7 +125,7 @@ export function activeAt<T extends { t0: number; t1: number }>(items: T[], t: nu
 export interface SegRef {
   old: number
   src: Seg
-  crop: Pick<Crop, 'cx' | 'cw' | 'z'>
+  crop: CropView
 }
 
 interface Anchor {

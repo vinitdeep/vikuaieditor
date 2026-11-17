@@ -88,6 +88,7 @@ def default_settings() -> dict:
             "reel": {"width": 1080, "height": 1920, "fps": 30, "crf": 18, "audio_kbps": 192,
                      "lufs": -14.0, "true_peak": -1.5},
         },
+        "auto_framing": True,         # new reels: the 9:16 crop follows the speaker (reel["framing"] = "follow")
         "music_gain_db": -19.0,
         "sfx_gain_db": -15.0,
     }

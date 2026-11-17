@@ -1,10 +1,17 @@
-"""Fixed framing: one crop per camera shot / jump-cut segment, scale + crop only.
+"""Speaker framing for the 9:16 reel: scale + crop only, never a synthetic zoom inside a shot.
 
-YuNet (OpenCV face detector, assets/yunet.onnx) runs ONLY to choose each crop (port of track.py +
-static_tracks.py). The crop never moves inside a shot:
-  - speaker stays put (2-98 % spread of his x <= 250 px): tight 9:16 crop (405 px of 1280) on his median
-  - speaker walks: a wider crop covering his path + margin, scaled to full width over a blurred fill
-Jump-cut segments alternate a static punch-in z = 1.0 / 1.12.
+YuNet (OpenCV face detector, assets/yunet.onnx) samples the speaker's face x at SAMPLE/s (port of track.py +
+static_tracks.py). Two modes, per reel (`reel["framing"]`):
+  - "follow" (auto framing, the default): a tight 9:16 crop that pans with the speaker so he stays centred. The
+    path is a camera operator's: sway inside a small dead zone never moves the frame, a walk is followed, and the
+    moves are eased (zero-phase, so the camera starts moving with him, not after him). Paths reset at every camera
+    cut and jump cut. They are stored by SOURCE time in `reel["follow"]` ([{"s","e","x"}], x at FOLLOW_RATE/s in
+    1280-px coords), so trims / splits / moves in the editor keep working without a rebuild.
+  - "fixed": one crop per shot that never moves:
+      speaker stays put (2-98 % spread of his x <= 250 px): tight 9:16 crop (405 px of 1280) on his median
+      speaker walks: a wider crop covering his path + margin, scaled to full width over a blurred fill
+Each crop carries `ax`, the follow anchor it was made from; in follow mode the frame is at path + (cx - ax), so
+dragging a crop in the editor offsets the whole follow. Jump-cut segments alternate a static punch-in z = 1.0 / 1.12.
 `compose()` turns a 1280x720 RGB frame into the 1080x1920 output with a given crop.
 """
 from __future__ import annotations
@@ -28,6 +35,9 @@ OW, OH = 1080, 1920
 SAMPLE = 6
 SW, SH = 640, 360
 STILL, MARGIN, PUNCH = 250, 320, 1.12
+FOLLOW_RATE = 10     # follow path samples per second (source time)
+DEAD = 20.0          # px of 1280 (~5 % of the output width): sway inside this never moves the frame
+EASE = 0.40          # s, sigma of the zero-phase gaussian that eases every move
 
 
 def track_faces(src: str, dur: float, job: Job, prog=(0.0, 1.0)) -> tuple[np.ndarray, list[int]]:
@@ -76,6 +86,40 @@ def track_faces(src: str, dur: float, job: Job, prog=(0.0, 1.0)) -> tuple[np.nda
     return np.array(raw, float), cuts
 
 
+def _clean(cx_s: np.ndarray) -> np.ndarray:
+    """Face x per sample with gaps filled (linear, held at the ends) and single-sample glitches removed."""
+    n = len(cx_s)
+    if n == 0:
+        return np.array([W / 2])
+    xs = cx_s.astype(float).copy()
+    hit = ~np.isnan(xs)
+    idx = np.arange(n)
+    xs = np.interp(idx, idx[hit], xs[hit]) if hit.any() else np.full(n, W / 2)
+    k = 1
+    pad = np.pad(xs, k, mode="edge")
+    return np.array([np.median(pad[j:j + 2 * k + 1]) for j in range(n)])
+
+
+def shot_edges(n: int, cam_cuts: list[int], jumps: list[float], dur: float) -> tuple[list[float], list[float]]:
+    """-> (edges in reel seconds [0, cuts..., dur], punch-in z per shot)."""
+    cam_t = {round(c / SAMPLE, 3) for c in cam_cuts if 0 < c < n}
+    cam_t = {t for t in cam_t if all(abs(t - j) > 0.3 for j in jumps)}  # a join is itself a cut
+    cut_t = sorted(cam_t | {round(t, 3) for t in jumps if 0 < t < dur})
+    edges_t = [0.0] + [t for t in cut_t if t < dur - 1e-3] + [round(dur, 3)]
+    seg_z = []
+    for t in edges_t[:-1]:
+        k = sum(1 for j in jumps if j <= t + 1e-6)
+        seg_z.append(PUNCH if (jumps and k % 2) else 1.0)
+    return edges_t, seg_z
+
+
+def _shot_samples(xs: np.ndarray, t0: float, t1: float) -> np.ndarray:
+    n = len(xs)
+    a, b = int(t0 * SAMPLE), max(int(np.ceil(t1 * SAMPLE)), int(t0 * SAMPLE) + 1)
+    seg = xs[min(a, n - 1):min(b, n)] if n else np.array([W / 2])
+    return seg if len(seg) else np.array([xs[-1] if n else W / 2])
+
+
 def static_crops(cx_s: np.ndarray, cam_cuts: list[int], jumps: list[float], dur: float) -> list[dict]:
     """Per-shot fixed crops in reel seconds: [{"t0","t1","cx","cw","z"}]."""
     n = len(cx_s)
@@ -83,23 +127,12 @@ def static_crops(cx_s: np.ndarray, cam_cuts: list[int], jumps: list[float], dur:
     hit = ~np.isnan(xs)
     idx = np.arange(n)
     xs = np.interp(idx, idx[hit], xs[hit]) if hit.any() else np.full(n, W / 2)
-    # times: camera cuts at sample precision, jumps exact
-    cam_t = {round(c / SAMPLE, 3) for c in cam_cuts if 0 < c < n}
-    cam_t = {t for t in cam_t if all(abs(t - j) > 0.3 for j in jumps)}  # a join is itself a cut
-    cut_t = sorted(cam_t | {round(t, 3) for t in jumps if 0 < t < dur})
-    edges_t = [0.0] + cut_t + [round(dur, 3)]
-    seg_z = []
-    for t in edges_t[:-1]:
-        k = sum(1 for j in jumps if j <= t + 1e-6)
-        seg_z.append(PUNCH if (jumps and k % 2) else 1.0)
+    edges_t, seg_z = shot_edges(n, cam_cuts, jumps, dur)
     crops = []
     for (t0, t1), z in zip(zip(edges_t[:-1], edges_t[1:]), seg_z):
         if t1 - t0 < 1e-3:
             continue
-        a, b = int(t0 * SAMPLE), max(int(np.ceil(t1 * SAMPLE)), int(t0 * SAMPLE) + 1)
-        seg = xs[min(a, n - 1):min(b, n)] if n else np.array([W / 2])
-        if len(seg) == 0:
-            seg = np.array([xs[-1] if n else W / 2])
+        seg = _shot_samples(xs, t0, t1)
         k = 3
         pad = np.pad(seg, k, mode="edge")
         seg = np.array([np.median(pad[j:j + 2 * k + 1]) for j in range(len(seg))])
@@ -112,6 +145,108 @@ def static_crops(cx_s: np.ndarray, cam_cuts: list[int], jumps: list[float], dur:
         crops.append({"t0": round(t0, 3), "t1": round(t1, 3), "cx": round(float(c), 1), "cw": round(float(w), 1),
                       "z": round(z, 3)})
     return crops
+
+
+def _gauss(x: np.ndarray, sigma: float) -> np.ndarray:
+    if sigma <= 0 or len(x) < 3:
+        return x
+    r = int(np.ceil(3 * sigma))
+    k = np.exp(-0.5 * (np.arange(-r, r + 1) / sigma) ** 2)
+    k /= k.sum()
+    return np.convolve(np.pad(x, r, mode="edge"), k, mode="valid")
+
+
+def _backlash(x: np.ndarray, dead: float, p0: float) -> np.ndarray:
+    out, p = np.empty_like(x), p0
+    for i, v in enumerate(x):
+        if v > p + dead:
+            p = v - dead
+        elif v < p - dead:
+            p = v + dead
+        out[i] = p
+    return out
+
+
+def follow_path(x: np.ndarray, half: float = CW / 2, dead: float = DEAD, ease: float = EASE,
+                rate: float = FOLLOW_RATE) -> np.ndarray:
+    """Face x (one shot, `rate`/s) -> camera centre x: dead zone (forward + backward pass averaged, so the camera
+    neither lags nor leads), zero-phase eased, kept inside the frame. A path that would move less than 6 px is
+    held still."""
+    x = np.clip(np.asarray(x, float), half, W - half)
+    if len(x) == 0:
+        return x
+    m = min(len(x), int(rate))
+    fwd = _backlash(x, dead, float(np.median(x[:m])))
+    bwd = _backlash(x[::-1], dead, float(np.median(x[-m:])))[::-1]
+    p = _gauss((fwd + bwd) / 2, ease * rate)
+    p = np.clip(p, half, W - half)
+    if p.max() - p.min() < 6:
+        p = np.full_like(p, float(np.median(p)))
+    return p
+
+
+def follow_tracks(cx_s: np.ndarray, cam_cuts: list[int], jumps: list[float], dur: float,
+                  segs: list) -> tuple[list[dict], list[dict]]:
+    """-> (tight follow crops in reel seconds [{"t0","t1","cx","cw","z","ax"}],
+           tracks in source seconds [{"s","e","x"}] with x at FOLLOW_RATE/s)."""
+    xs = _clean(cx_s)
+    n = len(cx_s)
+    edges_t, seg_z = shot_edges(n, cam_cuts, jumps, dur)
+    offs, o = [], 0.0
+    for s, e in segs:
+        offs.append(o)
+        o += e - s
+    crops, tracks = [], []
+    for (t0, t1), z in zip(zip(edges_t[:-1], edges_t[1:]), seg_z):
+        if t1 - t0 < 1e-3:
+            continue
+        # face x at FOLLOW_RATE over the shot (sample i of xs sits at i / SAMPLE reel seconds)
+        m = max(int(np.ceil((t1 - t0) * FOLLOW_RATE)) + 1, 2)
+        tt = np.minimum(t0 + np.arange(m) / FOLLOW_RATE, t1)
+        sh = _shot_samples(xs, t0, t1)
+        a = min(int(t0 * SAMPLE), max(len(xs) - 1, 0))
+        raw = np.interp(tt * SAMPLE, a + np.arange(len(sh)), sh)
+        path = follow_path(raw)
+        anchor = round(float(np.median(path)), 1)
+        crops.append({"t0": round(t0, 3), "t1": round(t1, 3), "cx": anchor, "cw": float(CW), "z": round(z, 3),
+                      "ax": anchor})
+        if segs:
+            k = max([i for i, of in enumerate(offs) if of <= t0 + 1e-3] or [0])
+            s0 = float(segs[k][0]) + (t0 - offs[k])
+            tracks.append({"s": round(s0, 3), "e": round(s0 + (t1 - t0), 3),
+                           "x": [round(float(v), 1) for v in path]})
+    return crops, tracks
+
+
+def follow_at(tracks: list[dict], src_t: float) -> float | None:
+    """Camera centre x of the follow path at a source second (None outside every track)."""
+    best = None
+    for tr in tracks or []:
+        if tr["s"] - 1e-3 <= src_t < tr["e"] + 1e-3:
+            if best is None or tr["s"] > best["s"]:  # touching tracks: the later shot owns its first frame
+                best = tr
+    if best is None or not best.get("x"):
+        return None
+    x = best["x"]
+    u = min(max((src_t - best["s"]) * FOLLOW_RATE, 0.0), len(x) - 1)
+    i = int(u)
+    j = min(i + 1, len(x) - 1)
+    return float(x[i] + (x[j] - x[i]) * (u - i))
+
+
+def x_at(crop: dict, t: float, mode: str, tracks: list[dict], segs: list, offs: list[float]) -> float:
+    """Crop centre x (1280-px) at reel second t: the crop's fixed cx, or in follow mode path + (cx - ax)."""
+    cx = float(crop["cx"])
+    if mode != "follow" or not tracks or not segs:
+        return cx
+    k = 0
+    for i, of in enumerate(offs):
+        if of <= t + 1e-6:
+            k = i
+    s, e = segs[k]
+    src_t = min(float(s) + (t - offs[k]), float(e))
+    f = follow_at(tracks, src_t)
+    return cx if f is None else f + (cx - float(crop.get("ax", cx)))
 
 
 def crop_at(crops: list[dict], t: float) -> dict:
@@ -187,9 +322,16 @@ def blurred_fill(f: np.ndarray, x: float | None = None) -> np.ndarray:
     return np.clip(bg, 0, 255).astype(np.uint8)
 
 
-def plan_crops(src: str, dur: float, jumps: list[float], job: Job, prog=(0.0, 1.0)) -> list[dict]:
+def plan_crops(src: str, dur: float, jumps: list[float], job: Job, prog=(0.0, 1.0), segs: list | None = None,
+               mode: str = "follow") -> tuple[list[dict], list[dict]]:
+    """-> (crops, follow tracks). Tracks are made in both modes so the editor can switch without a rebuild."""
     cx, cuts = track_faces(src, dur, job, prog)
     if len(cx) == 0:
-        return [{"t0": 0.0, "t1": round(dur, 3), "cx": W / 2, "cw": CW, "z": 1.0}]
-    return static_crops(cx, cuts, jumps, dur)
-
+        return [{"t0": 0.0, "t1": round(dur, 3), "cx": W / 2, "cw": CW, "z": 1.0}], []
+    fcrops, tracks = follow_tracks(cx, cuts, jumps, dur, segs or [[0.0, dur]])
+    if mode == "follow":
+        return fcrops, tracks
+    crops = static_crops(cx, cuts, jumps, dur)
+    for c, f in zip(crops, fcrops):
+        c["ax"] = f["ax"]
+    return crops, tracks

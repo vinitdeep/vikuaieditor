@@ -113,6 +113,8 @@ export function mockReelA(): Reel {
       [301.5, 313.9],
       [314.6, 322.4]
     ],
+    framing: 'fixed',
+    follow: [],
     crops: [
       { t0: 0, t1: 8.8, cx: 0.5, cw: 0.316, z: 1 },
       { t0: 8.8, t1: 21.3, cx: 0.5, cw: 0.316, z: 1.12 },
@@ -184,6 +186,8 @@ export function mockReelB(): Reel {
       [28.6, 41.0],
       [236.0, 251.5]
     ],
+    framing: 'fixed',
+    follow: [],
     crops: [
       { t0: 0, t1: 13.7, cx: 0.5, cw: 0.316, z: 1 },
       { t0: 13.7, t1: 26.1, cx: 0.5, cw: 0.316, z: 1.12 },
@@ -220,6 +224,8 @@ export function mockReelHi(): Reel {
       [101.0, 117.2],
       [190.0, 205.5]
     ],
+    framing: 'fixed',
+    follow: [],
     crops: [
       { t0: 0, t1: 12.4, cx: 0.5, cw: 0.316, z: 1 },
       { t0: 12.4, t1: 28.6, cx: 0.5, cw: 0.316, z: 1.12 },

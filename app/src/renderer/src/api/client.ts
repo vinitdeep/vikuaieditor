@@ -5,6 +5,7 @@ import type {
   Candidate,
   CaptionFix,
   Cutaway,
+  Framing,
   Feedback,
   Health,
   JobEvent,
@@ -47,13 +48,15 @@ export interface VikuApi {
   candidates(projectId: string): Promise<Candidate[]>
   createReel(projectId: string, body: { segments: Seg[]; title: string; sub: string }): Promise<Reel>
   autobuild(reelId: string): Promise<JobRef>
+  /** track the speaker for auto framing only (crops + follow paths); captions / cutaways / music untouched */
+  trackFraming(reelId: string): Promise<JobRef>
   /** attach a captured image to cutaway i (engine copies it into the library); null = adapter cannot, set it locally */
   attachCutawayImage(reelId: string, index: number, path: string): Promise<Cutaway | null>
   render(reelId: string, preset?: string): Promise<JobRef>
   thumbnail(reelId: string): Promise<JobRef>
   automate(body: AutomateRequest): Promise<JobRef>
   /** build (+ render) the clip the editor picked after automate({pick}) — result has the automate shape */
-  automateBuild(projectId: string, c: Candidate): Promise<JobRef>
+  automateBuild(projectId: string, c: Candidate, framing?: Framing): Promise<JobRef>
   cancelJob(jobId: string): Promise<boolean>
   /** poll one job (fallback when SSE is quiet); null when unknown */
   jobStatus(jobId: string): Promise<JobEvent | null>
