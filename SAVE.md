@@ -22,6 +22,11 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
   queues every empty cutaway in ONE batch and opens the Sign-in window. After a capture is attached,
   `rerenderWhenComplete()` re-renders a reel that was already rendered once none of its prompts is still waiting
   (engine copy of the reel is the truth; a picture landing mid-render triggers one more render).
+- LIVE verified (real engine + real TAPP sermon 32:00-36:00, isolated VIKU_DATA copy of library + project, own
+  Electron profile, browser/clipboard stubbed): `VIKU_PORT=8799 node scripts/e2e-ai-images-live.mjs` -> Make 1 reel
+  with Gemini: 56.9 s reel, 8 cutaways all NEED -> 8 prompts queued -> 8 "downloads" filed (~2 s each) -> auto
+  re-render -> 8/8 pictures visible in the final MP4 at their cutaway times (colour check); 0 console errors.
+  The engine refuses nothing, but the script refuses to run on the real Roaming\Viku data folder.
 - Still manual by design (free AI Studio): press Send next, paste in AI Studio, run, download — Viku files the image.
 - Verified: e2e-ai-images.mjs (mock adapter + REAL Sign-in queue and Downloads watcher, own profile, browser +
   clipboard stubbed): rendered reel with an empty cutaway -> queued -> Send next -> image in Downloads -> filed ->
