@@ -135,15 +135,56 @@ def compose(f: np.ndarray, x: float, cw: float = CW, z: float = 1.0) -> np.ndarr
     crop = f[:, a:a + cw]
     if cw <= CW + 1:
         return cv2.resize(crop, (OW, OH), interpolation=cv2.INTER_LANCZOS4)
-    fh = int(round(H * OW / cw))
+    t0, t1 = _bars(f)  # the source's own black letterbox rows would show as a line above / below the speaker
+    crop = crop[t0:t1]
+    fh = int(round(crop.shape[0] * OW / cw))
     fg = cv2.resize(crop, (OW, fh), interpolation=cv2.INTER_LANCZOS4)
-    b0 = int(round(min(max(x - CW / 2, 0), fw - CW)))
-    bg = cv2.resize(f[:, b0:b0 + CW], (OW // 8, OH // 8), interpolation=cv2.INTER_AREA)
-    bg = cv2.GaussianBlur(bg, (0, 0), 6)
-    bg = (cv2.resize(bg, (OW, OH), interpolation=cv2.INTER_LINEAR) * 0.45).astype(np.uint8)
+    bg = blurred_fill(f, x)
     y = (OH - fh) // 2
     bg[y:y + fh] = fg
     return bg
+
+
+FILL_GAIN, FILL_SAT, FILL_FLOOR = 0.55, 1.15, 70.0
+
+
+def _bars(f: np.ndarray, dark: float = 18.0, max_frac: float = 0.12) -> tuple[int, int]:
+    """Rows [t0, t1) without near-black letterbox bars at the top / bottom of the source (at most 12 % each side)."""
+    h = f.shape[0]
+    m = f[: int(h * max_frac)].mean(axis=(1, 2))
+    t0 = int(np.argmax(m >= dark)) if (m < dark).any() and (m >= dark).any() else (len(m) if (m < dark).all() else 0)
+    mb = f[h - int(h * max_frac):].mean(axis=(1, 2))[::-1]
+    b = int(np.argmax(mb >= dark)) if (mb < dark).any() and (mb >= dark).any() else (len(mb) if (mb < dark).all() else 0)
+    # + 2 rows: the encoder's soft edge between the bar and the picture is still dark
+    return t0 + (2 if t0 else 0), h - b - (2 if b else 0)
+
+
+def blurred_fill(f: np.ndarray, x: float | None = None) -> np.ndarray:
+    """1080x1920 background for a wide (letterboxed) crop, built from the FULL source frame: heavy blur over the whole
+    frame first (so the dark ceiling / stage edge mixes with the lit wall), cover-scaled to 9:16 around the speaker,
+    ~0.55 brightness, slightly more saturation. Rows darker than the frame's own mean colour are lifted toward it
+    (luma floor), so the bands above / below the speaker are never near-black."""
+    fh_, fw_ = f.shape[:2]
+    small = cv2.resize(f, (max(fw_ // 8, 16), max(fh_ // 8, 9)), interpolation=cv2.INTER_AREA).astype(np.float32)
+    small = cv2.GaussianBlur(small, (0, 0), 5)
+    sh, sw = small.shape[:2]
+    cw = sh * OW / OH  # cover: full height, 9:16 column (of the blurred full frame)
+    cx = (sw / 2) if x is None else x * sw / fw_
+    a = min(max(cx - cw / 2, 0.0), sw - cw)
+    col = cv2.getRectSubPix(small, (max(int(round(cw)), 2), sh), (a + cw / 2, sh / 2))
+    bg = cv2.resize(col, (OW // 8, OH // 8), interpolation=cv2.INTER_LINEAR)
+    bg = cv2.GaussianBlur(bg, (0, 0), 6)
+    # luma floor: blend dark areas toward the whole frame's mean colour (the lit part dominates a church stage)
+    mean = small.reshape(-1, 3).mean(0)
+    mean = mean * max(1.0, FILL_FLOOR / max(float(mean @ [0.299, 0.587, 0.114]), 1.0))
+    luma = bg @ np.array([0.299, 0.587, 0.114], np.float32)
+    w = np.clip((FILL_FLOOR - luma) / FILL_FLOOR, 0.0, 1.0)[..., None]
+    bg = bg * (1 - w) + mean[None, None, :] * w
+    # saturation boost around the pixel's luma, then the dim
+    luma = (bg @ np.array([0.299, 0.587, 0.114], np.float32))[..., None]
+    bg = (luma + (bg - luma) * FILL_SAT) * FILL_GAIN
+    bg = cv2.resize(bg, (OW, OH), interpolation=cv2.INTER_LINEAR)
+    return np.clip(bg, 0, 255).astype(np.uint8)
 
 
 def plan_crops(src: str, dur: float, jumps: list[float], job: Job, prog=(0.0, 1.0)) -> list[dict]:

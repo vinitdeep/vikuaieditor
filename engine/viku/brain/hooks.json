@@ -1,5 +1,5 @@
 {
- "_doc": "Hook writer data (brain/hooks.py). Words match like lexicon.json (token prefixes; <= 2 letters whole tokens; phrases with a space as substrings). themes: the English gist used as the reel's sub line when it has no verse card (first theme with the most hits wins; 'gist' is the sub, 'tags' become hashtags). Edit freely.",
+ "_doc": "Hook writer data (brain/hooks.py). Words match like lexicon.json (token prefixes; <= 2 letters whole tokens; phrases with a space as substrings). themes: the English gist used as the reel's sub line when it has no verse card (first theme with the most hits wins; 'gist' is the sub, 'tags' become hashtags; 'title' is the fallback title when no caption span scores >= 3). Edit freely.",
  "dangling_start": {
   "or": ["ତାହେଲେ", "କିନ୍ତୁ", "ଆଉ", "ଏବଂ", "ଯେ", "ଯଦି", "ତେଣୁ", "କାରଣ", "ସେଥିପାଇଁ", "ମାନେ", "ଅର୍ଥାତ", "ତ", "ବି", "ଏଇଟା", "ଯେଉଁ", "ଯାହା", "ଯାହାକି", "କି"],
   "hi": ["तो", "और", "लेकिन", "पर", "कि", "क्योंकि", "अगर", "जो", "की", "के", "का", "में", "से", "को", "ने", "है", "यानी", "मतलब", "भी", "ही", "जब", "इसलिए"],
@@ -25,16 +25,32 @@
   "hi": ["परमेश्वर", "प्रभु", "यीशु", "मसीह", "पवित्र आत्मा", "ज़रूर", "जरूर", "अवश्य", "कभी नहीं", "अकेले नहीं", "सकते", "सकोगे", "सकूँगा", "सकूंगा", "मुक्त", "प्रेम", "आशीष", "हार", "जीत", "जय"],
   "en": ["god", "jesus", "christ", "lord", "holy spirit", "never", "always", "not alone", "can", "will", "free", "love", "blessed", "defeated"]
  },
+ "enemy_names": {
+  "_doc": "Titles must not make the enemy the hero: a span naming him (or a line / previous line naming him) is penalised unless the line states his defeat (enemy_defeat). Odia 'ହରାଇବାକୁ' / Hindi 'हराना' (he wants to defeat you) are deliberately NOT defeat words.",
+  "or": ["ଶୟତାନ", "ଶୈତାନ", "ସଇତାନ", "ଲୁସିଫର", "ଲୁସିଫୋର", "ଲୋସିଫର", "ଲୁସିଫାର", "ଦିଆବଲ", "ଭୂତ", "ମନ୍ଦ ଆତ୍ମା", "ଅଶୁଚି ଆତ୍ମା", "ଦୁଷ୍ଟ ଆତ୍ମା", "ଡିସକରେଜର ସ୍ପିରିଟ", "ଡିସକରେଜ ର ସ୍ପିରିଟ", "ଡିସଆପଏଣ୍ଟେଡର ସ୍ପିରିଟ", "ଡିପ୍ରେସନର ସ୍ପିରିଟ"],
+  "hi": ["शैतान", "सैतान", "चैतान", "लूसिफर", "लूसिफ़र", "लूसीफर", "लुसिफर", "लुसिफ़र", "लुसिफोर", "इब्लीस", "दुष्टात्मा", "दुष्ट आत्मा", "अशुद्ध आत्मा", "भूत", "डिप्रेशन की आत्मा"],
+  "en": ["satan", "lucifer", "devil", "demon", "evil spirit", "evil one", "spirit of depression", "spirit of discouragement"]
+ },
+ "enemy_defeat": {
+  "or": ["ପରାଜୟ", "ପରାଜିତ", "ପରାସ୍ତ", "ହାରିଗଲା", "ହାରିଗଲେ", "ହାରିଲା", "ହାରି", "ହାର ମାନିଲା", "ହରାଇଦେଲେ", "ହରାଇ ଦେଲେ", "ହରାଇଲେ", "ଚୂର୍ଣ୍ଣ", "ଦଳିଦେଲେ", "ବିନାଶ", "ପଳାଇବ", "ପଳାଏ"],
+  "hi": ["हार", "हारा", "हार गया", "हरा दिया", "हरा दी", "हराया", "पराजित", "पराजय", "परास्त", "कुचल", "नाश", "भाग जाएगा", "भागेगा"],
+  "en": ["defeat", "defeated", "lost", "crushed", "overcome", "overcame", "conquered", "flee", "fled", "beaten"]
+ },
+ "divine_names": {
+  "or": ["ଈଶ୍ୱର", "ପରମେଶ୍ୱର", "ପ୍ରଭୁ", "ଯୀଶୁ", "ଯିଶୁ", "ଖ୍ରୀଷ୍ଟ", "ପବିତ୍ର ଆତ୍ମା"],
+  "hi": ["परमेश्वर", "प्रभु", "यीशु", "येशु", "मसीह", "पवित्र आत्मा"],
+  "en": ["god", "jesus", "christ", "lord", "holy spirit"]
+ },
  "themes": [
-  {"id": "not_alone", "gist": "You are not alone", "tags": ["NotAlone", "GodIsWithYou"],
+  {"id": "not_alone", "title": {"or": "ଆପଣ ଏକୁଟିଆ ନୁହଁନ୍ତି!", "hi": "आप अकेले नहीं हैं!", "en": "You are not alone!"}, "gist": "You are not alone", "tags": ["NotAlone", "GodIsWithYou"],
    "or": ["ଏକୁଟିଆ", "ଏକା", "ସାଙ୍ଗରେ ଅଛନ୍ତି", "ସାଥିରେ"], "hi": ["अकेले", "अकेला", "साथ है", "साथ हैं", "संग"], "en": ["alone", "with you", "lonely"]},
-  {"id": "enemy_defeated", "gist": "The enemy is defeated", "tags": ["Victory", "SpiritualWarfare"],
+  {"id": "enemy_defeated", "title": {"or": "ଶୟତାନ ପରାଜିତ!", "hi": "शैतान हार चुका है!", "en": "The enemy is defeated!"}, "gist": "The enemy is defeated", "tags": ["Victory", "SpiritualWarfare"],
    "or": ["ଶୟତାନ", "ଲୁସିଫ", "ଶତ୍ରୁ", "ପରାଜୟ", "ପରାଜିତ", "ପତନ", "ହାରି"], "hi": ["शैतान", "चैतान", "लूसिफर", "शत्रु", "दुश्मन", "हार", "पतन", "गिरा"], "en": ["satan", "devil", "enemy", "defeated", "lucifer"]},
-  {"id": "can_do", "gist": "You can do all things through Christ", "tags": ["Faith", "Strength"],
+  {"id": "can_do", "title": {"or": "ଖ୍ରୀଷ୍ଟଙ୍କ ଦ୍ୱାରା ସବୁ ସମ୍ଭବ!", "hi": "मसीह में सब संभव है!", "en": "All things through Christ!"}, "gist": "You can do all things through Christ", "tags": ["Faith", "Strength"],
    "or": ["ସବୁ କିଛି କରିପାରିବ", "ସବୁ କରିପାରେ", "ଶକ୍ତି", "ସାମର୍ଥ୍ୟ"], "hi": ["सब कुछ कर", "कर सकता", "कर सकूँगा", "कर सकूंगा", "शक्ति", "सामर्थ"], "en": ["can do all things", "strength", "strong"]},
-  {"id": "fear_not", "gist": "Do not be afraid", "tags": ["FearNot", "Courage"],
+  {"id": "fear_not", "title": {"or": "ଭୟ କରନ୍ତୁ ନାହିଁ!", "hi": "मत डरो!", "en": "Do not be afraid!"}, "gist": "Do not be afraid", "tags": ["FearNot", "Courage"],
    "or": ["ଭୟ", "ଡର", "ସାହସ"], "hi": ["डर", "भय", "डरो", "साहस", "हिम्मत"], "en": ["fear", "afraid", "courage"]},
-  {"id": "depression", "gist": "Freedom from depression", "tags": ["Hope", "Freedom"],
+  {"id": "depression", "title": {"or": "ନିରାଶାରୁ ମୁକ୍ତି!", "hi": "निराशा से आज़ादी!", "en": "Freedom from depression!"}, "gist": "Freedom from depression", "tags": ["Hope", "Freedom"],
    "or": ["ଡିପ୍ରେସନ", "ନିରାଶ", "ହତାଶ", "ଦୁଃଖ"], "hi": ["डिप्रेशन", "निराश", "उदास", "दुख"], "en": ["depression", "depressed", "discouraged", "hopeless"]},
   {"id": "pride", "gist": "Pride comes before a fall", "tags": ["Humility"],
    "or": ["ଅହଂକାର", "ଗର୍ବ", "ଆରୋହଣ", "ତାରାଗଣ", "ସିଂହାସନ"], "hi": ["घमंड", "अहंकार", "गर्व", "सिंहासन"], "en": ["pride", "proud", "throne", "above the stars"]},
@@ -64,9 +80,9 @@
    "or": ["ଆଲୋକ", "ଅନ୍ଧକାର"], "hi": ["ज्योति", "रोशनी", "अंधकार", "अंधेरा"], "en": ["light", "darkness"]},
   {"id": "spirit", "gist": "Filled with the Holy Spirit", "tags": ["HolySpirit"],
    "or": ["ପବିତ୍ର ଆତ୍ମା", "ଆତ୍ମା"], "hi": ["पवित्र आत्मा", "आत्मा"], "en": ["holy spirit", "spirit"]},
-  {"id": "victory", "gist": "Victory is yours in Christ", "tags": ["Victory", "Faith"],
+  {"id": "victory", "title": {"or": "ଖ୍ରୀଷ୍ଟଙ୍କଠାରେ ବିଜୟ!", "hi": "मसीह में विजय!", "en": "Victory in Christ!"}, "gist": "Victory is yours in Christ", "tags": ["Victory", "Faith"],
    "or": ["ବିଜୟ", "ଜୟ", "ଜିତି", "ଜିତିବ"], "hi": ["विजय", "जय", "जीत", "जयवंत"], "en": ["victory", "win", "overcome"]},
-  {"id": "hope", "gist": "There is hope in Jesus", "tags": ["Hope"],
+  {"id": "hope", "title": {"or": "ଯୀଶୁଙ୍କଠାରେ ଆଶା ଅଛି!", "hi": "यीशु में आशा है!", "en": "There is hope in Jesus!"}, "gist": "There is hope in Jesus", "tags": ["Hope"],
    "or": ["ଆଶା", "ଭରସା"], "hi": ["आशा", "उम्मीद", "भरोसा"], "en": ["hope", "trust"]}
  ]
 }
