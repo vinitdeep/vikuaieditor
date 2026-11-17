@@ -96,6 +96,8 @@ def _score_span(ws: list[str], lang: str, line_end: bool, whole: bool) -> tuple[
         pen += 3.0
     if T.lex_hits(s, "negative_end", lang):
         pen += 1.0
+    if T.count_hits(s, _words("losing", lang)) and not T.count_hits(s, _words("enemy_names", lang)):
+        pen += 2.0 + f["victory"]  # "धीरे धीरे हार रहे हैं" (they are slowly losing) is no victory hook
     if re.search(r"\d", s) or T.lex_hits(s, "scripture", lang):
         pen += 1.5
     if lang != "en":
@@ -108,11 +110,11 @@ def _score_span(ws: list[str], lang: str, line_end: bool, whole: bool) -> tuple[
 
 
 ENEMY_SPAN, ENEMY_CONTEXT, ENEMY_DEFEAT_ELSEWHERE = 3.0, 2.5, 0.5
-HOOK_MIN = 3.0  # best span below this -> the theme's fallback title (hooks.json themes[].title)
+HOOK_MIN = 3.5  # best span below this -> the theme's fallback title (hooks.json themes[].title)
 
 
 def names_enemy(text: str, lang: str) -> bool:
-    return bool(text) and T.count_hits(text, _words("enemy_names", lang)) > 0
+    return bool(text) and T.count_hits(text, _words("enemy_names", lang) + _words("enemy_actions", lang)) > 0
 
 
 def enemy_defeated(text: str, lang: str) -> bool:
@@ -165,7 +167,7 @@ def hook(lines: list, lang: str, verses: list | None = None, t_lines: list | Non
         for a in range(L):
             for b in range(a + 2, min(L, a + 6) + 1):
                 # a clause ends at the line end or before a conjunction ("... କରିଥିଲା | କିନ୍ତୁ"); elsewhere it is cut
-                end = b == L or _is(ws[b], "dangling_start", lang)
+                end = b == L or _is(ws[b], "conjunctions", lang)
                 sc, why = _score_span(ws[a:b], lang, line_end=end, whole=(a == 0 and b == L))
                 if not end:
                     sc -= 0.8

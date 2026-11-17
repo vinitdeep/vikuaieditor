@@ -1,5 +1,5 @@
 {
- "_doc": "Hook writer data (brain/hooks.py). Words match like lexicon.json (token prefixes; <= 2 letters whole tokens; phrases with a space as substrings). themes: the English gist used as the reel's sub line when it has no verse card (first theme with the most hits wins; 'gist' is the sub, 'tags' become hashtags; 'title' is the fallback title when no caption span scores >= 3). Edit freely.",
+ "_doc": "Hook writer data (brain/hooks.py). Words match like lexicon.json (token prefixes; <= 2 letters whole tokens; phrases with a space as substrings). themes: the English gist used as the reel's sub line when it has no verse card (first theme with the most hits wins; 'gist' is the sub, 'tags' become hashtags; 'title' is the fallback title when no caption span scores >= 3.5). Edit freely.",
  "dangling_start": {
   "or": ["ତାହେଲେ", "କିନ୍ତୁ", "ଆଉ", "ଏବଂ", "ଯେ", "ଯଦି", "ତେଣୁ", "କାରଣ", "ସେଥିପାଇଁ", "ମାନେ", "ଅର୍ଥାତ", "ତ", "ବି", "ଏଇଟା", "ଯେଉଁ", "ଯାହା", "ଯାହାକି", "କି"],
   "hi": ["तो", "और", "लेकिन", "पर", "कि", "क्योंकि", "अगर", "जो", "की", "के", "का", "में", "से", "को", "ने", "है", "यानी", "मतलब", "भी", "ही", "जब", "इसलिए"],
@@ -25,11 +25,29 @@
   "hi": ["परमेश्वर", "प्रभु", "यीशु", "मसीह", "पवित्र आत्मा", "ज़रूर", "जरूर", "अवश्य", "कभी नहीं", "अकेले नहीं", "सकते", "सकोगे", "सकूँगा", "सकूंगा", "मुक्त", "प्रेम", "आशीष", "हार", "जीत", "जय"],
   "en": ["god", "jesus", "christ", "lord", "holy spirit", "never", "always", "not alone", "can", "will", "free", "love", "blessed", "defeated"]
  },
+ "conjunctions": {
+  "_doc": "A span ends a clause at the line end or right before one of these (NOT before a postposition like में / ରେ: 'परमेश्वर में आए और प्रभु | में महिमा' is cut mid-phrase).",
+  "or": ["ତାହେଲେ", "କିନ୍ତୁ", "ଆଉ", "ଏବଂ", "ଯେ", "ଯଦି", "ତେଣୁ", "କାରଣ", "ସେଥିପାଇଁ", "ଯେପରିକି", "ଯାହାଫଳରେ"],
+  "hi": ["तो", "और", "लेकिन", "पर", "कि", "क्योंकि", "अगर", "जब", "ताकि", "इसलिए", "बल्कि", "मगर"],
+  "en": ["and", "but", "so", "because", "if", "when", "that", "then"]
+ },
+ "losing": {
+  "_doc": "People losing / falling (the defeat words of the victory lexicon used about US): a title must not say 'they are slowly losing!'. Penalised unless the span names the enemy (then it is his defeat).",
+  "or": ["ହାରିଯାଉଛନ୍ତି", "ହାରିଯାଉଛୁ", "ହାରିଯାଉଛ", "ହାରୁଛନ୍ତି", "ହାରୁଛୁ", "ଖସିଯାଉଛନ୍ତି", "ପଡ଼ିଯାଉଛନ୍ତି"],
+  "hi": ["हार रहे", "हार रहा", "हार रही", "हार जाते", "हार जाता", "गिर रहे", "गिरते जा"],
+  "en": ["losing", "are falling", "giving up"]
+ },
  "enemy_names": {
   "_doc": "Titles must not make the enemy the hero: a span naming him (or a line / previous line naming him) is penalised unless the line states his defeat (enemy_defeat). Odia 'ହରାଇବାକୁ' / Hindi 'हराना' (he wants to defeat you) are deliberately NOT defeat words.",
   "or": ["ଶୟତାନ", "ଶୈତାନ", "ସଇତାନ", "ଲୁସିଫର", "ଲୁସିଫୋର", "ଲୋସିଫର", "ଲୁସିଫାର", "ଦିଆବଲ", "ଭୂତ", "ମନ୍ଦ ଆତ୍ମା", "ଅଶୁଚି ଆତ୍ମା", "ଦୁଷ୍ଟ ଆତ୍ମା", "ଡିସକରେଜର ସ୍ପିରିଟ", "ଡିସକରେଜ ର ସ୍ପିରିଟ", "ଡିସଆପଏଣ୍ଟେଡର ସ୍ପିରିଟ", "ଡିପ୍ରେସନର ସ୍ପିରିଟ"],
   "hi": ["शैतान", "सैतान", "चैतान", "लूसिफर", "लूसिफ़र", "लूसीफर", "लुसिफर", "लुसिफ़र", "लुसिफोर", "इब्लीस", "दुष्टात्मा", "दुष्ट आत्मा", "अशुद्ध आत्मा", "भूत", "डिप्रेशन की आत्मा"],
   "en": ["satan", "lucifer", "devil", "demon", "evil spirit", "evil one", "spirit of depression", "spirit of discouragement"]
+ },
+ "enemy_actions": {
+  "_doc": "What the enemy does / wants (the subject is the enemy even when his name is lines away): treated like enemy_names.",
+  "or": ["ହରାଇବାକୁ ଚାହିଁ", "ହରାଇବାକୁ ଚାହେଁ", "ହରାଇବା ପାଇଁ", "ନଷ୍ଟ କରିବାକୁ ଚାହିଁ", "ଧ୍ୱଂସ କରିବାକୁ", "ଚୋରି କରିବାକୁ", "ପରୀକ୍ଷା କଲା"],
+  "hi": ["हराना चाहता", "हराना चाहते", "हराने के लिए", "नाश करना चाहता", "नष्ट करना चाहता", "चुराने", "गिराना चाहता", "परखा"],
+  "en": ["wants to defeat", "wants to destroy", "to steal", "kill and destroy", "tempted"]
  },
  "enemy_defeat": {
   "or": ["ପରାଜୟ", "ପରାଜିତ", "ପରାସ୍ତ", "ହାରିଗଲା", "ହାରିଗଲେ", "ହାରିଲା", "ହାରି", "ହାର ମାନିଲା", "ହରାଇଦେଲେ", "ହରାଇ ଦେଲେ", "ହରାଇଲେ", "ଚୂର୍ଣ୍ଣ", "ଦଳିଦେଲେ", "ବିନାଶ", "ପଳାଇବ", "ପଳାଏ"],

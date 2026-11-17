@@ -25,7 +25,10 @@ build-backend = "hatchling.build"
 packages = ["viku"]
 
 [dependency-groups]
-dev = ["httpx>=0.27"]
+dev = [
+    "httpx>=0.27",
+    "pytest>=8",
+]
 # Speech recognition runners (run as subprocesses of the engine, same env):
 #   IndicConformer (vendored viku/runners/indic_model.py: TorchScript preprocessor + ONNX) and faster-whisper.
 asr = [

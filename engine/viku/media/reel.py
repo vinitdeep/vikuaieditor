@@ -128,13 +128,45 @@ def attach_image(rid: str, i: int, path: str, tags: list[str] | None = None) -> 
 
 
 # --------------------------------------------------------------- jump cut --
-def join_segments(src: str, segs: list, out: Path, job: Job, prog=(0.0, 1.0)) -> list[float]:
-    """Kept segments back to back -> 1280x720 30 fps H.264 (crf 12) + pcm audio, 12 ms fades at each join."""
-    sig = out.with_suffix(".segs.json")
+def segment_offsets(segs: list) -> list[float]:
+    """Reel start second of every kept segment ([0, len0, len0+len1, ...]); offsets[1:] are the jump-cut joins."""
     offs, o = [], 0.0
     for s, e in segs:
         offs.append(round(o, 4))
         o += e - s
+    return offs
+
+
+def src_to_reel(t: float, segs: list) -> float | None:
+    """Source second -> reel second (None when t falls in a part the jump cut removed)."""
+    for (s, e), o in zip(segs, segment_offsets(segs)):
+        if s - 1e-6 <= t <= e + 1e-6:
+            return round(o + min(max(t - s, 0.0), e - s), 4)
+    return None
+
+
+def reel_to_src(t: float, segs: list) -> float:
+    """Reel second -> source second (clamped to the reel)."""
+    offs = segment_offsets(segs)
+    for (s, e), o in zip(reversed(segs), reversed(offs)):
+        if t >= o - 1e-6:
+            return round(s + min(max(t - o, 0.0), e - s), 4)
+    return float(segs[0][0]) if segs else 0.0
+
+
+def tp_guard_gain(true_peak: float | None, tp_max: float, margin: float = 0.2) -> float | None:
+    """Loudness guard: dB to pull the audio down when the encoded true peak exceeds the limit (AAC overshoot),
+    else None."""
+    if true_peak is None or true_peak <= tp_max:
+        return None
+    return round(tp_max - true_peak - margin, 2)
+
+
+def join_segments(src: str, segs: list, out: Path, job: Job, prog=(0.0, 1.0)) -> list[float]:
+    """Kept segments back to back -> 1280x720 30 fps H.264 (crf 12) + pcm audio, 12 ms fades at each join."""
+    sig = out.with_suffix(".segs.json")
+    offs = segment_offsets(segs)
+    o = sum(e - s for s, e in segs)
     if out.exists() and sig.exists() and json.loads(sig.read_text()) == [src, segs]:
         return offs[1:]
     args, fc = [], []
@@ -578,9 +610,9 @@ def _render(p: dict, r: dict, job: Job) -> dict:
         raise JobError("final render failed: " + b"".join(errbuf).decode("utf-8", "replace")[-1500:])
     qc = measure(str(tmp_out), job)
     tp_max = preset.get("true_peak", -1.5)
-    if qc.get("true_peak") is not None and qc["true_peak"] > tp_max:
+    g = tp_guard_gain(qc.get("true_peak"), tp_max)
+    if g is not None:
         # AAC overshoot pushed the true peak over the limit: pull the audio down and re-encode it (video copied)
-        g = tp_max - qc["true_peak"] - 0.2
         job.update(0.99, f"true peak {qc['true_peak']} dBTP > {tp_max}: audio {g:+.1f} dB")
         fixed = d / "final.tpfix.mp4"
         ff.run(["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-i", str(tmp_out), "-i", str(mix),
