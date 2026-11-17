@@ -117,6 +117,10 @@ def generate(job: Job, mood: str, seed: int | None = None, duration: float = 90.
                                  progress=lambda f, m: (job.check(), job.update(f * 0.95, m)))
     name = f"viku_{mood}_s{int(seed)}.flac"
     dst = (preview_dir() if preview else mdir()) / name
+    if preview:   # one preview at a time: drop earlier, un-kept previews
+        for old in preview_dir().iterdir():
+            if old.is_file():
+                old.unlink(missing_ok=True)
     job.update(0.96, "writing FLAC")
     music_gen.write(x, str(dst), int(seed))
     meta_entry = {"tags": [GEN_TAG, mood], "source": "viku", "mood": mood, "seed": int(seed),
