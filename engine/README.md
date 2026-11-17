@@ -118,4 +118,6 @@ POST /automate {"video_path" | "project_id", "language", "count", "range"}
 GET  /bible/verse?ref=Romans 10:10&lang=or    GET /bible/search?q=...&lang=hi
 GET  /library/search?q=fallen angel           GET /music
 POST /captions/fix {"text","lang","alt"}      POST /feedback {"reel_id","kind","before","after"}   POST /learn
+GET  /bible/similar?text=...&lang=hi          GET /reels/{id}/needs     POST /reels/{id}/cutaways/{i}/image {"path","tags"}
+POST /reels/{id}/thumbnail {"style","pose_t","title","sub","verse","renderer"}   GET /thumbnails/styles
 ```
