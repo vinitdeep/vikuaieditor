@@ -9,6 +9,23 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
 - Verified live (dev): simulated .crdownload -> rename in Downloads filed as `browser-mode-test.jpg`, queue item -> captured via browser; an image with no waiting prompt ignored; typecheck + lint clean. Not yet: a real AI Studio download end-to-end, installer rebuild.
 - **Length cap 10 s - 5 min** (Automate slider 10-300 s, step 5 below 1 min / 15 above; label "2 min 30 s"). Before this the slider was cosmetic: the engine ignored max_seconds and always used 20-60 s windows + a 60 s planner cap. Now `AutomateReq.max_seconds` / `SuggestReq.max_seconds` (10-300, default 60, 422 outside) -> `clipfinder.length_bounds(cap)` = (min window max(5, min(20, cap/2)), cap, ideal 0.75 cap) -> `build_windows`, `planner.plan(max_len)`, `ranker.raw_features(target)` (duration_fit = same 45 +/- 25 shape scaled to the target). 60 s gives exactly the old bounds. Caps > 60 s keep at most 16 evenly spaced ends per start; windows never span a > 10 s hole between cues (un-analysed gaps). Live: 6d0d / 4f96 at 10 s -> 6-9 s reels; at 60 s unchanged; at 300 s still ~28-34 s (the cap is a maximum; the ranker prefers those). tests/test_length_cap.py; 62 passed.
 
+## Session 7 (2026-11-17): reel length = the slider (not just a cap)
+- Bug (user): slider 1 min -> a 29.8 s reel (TAPP Church project 20261117-100233-3b05). Cause: the slider was only a
+  ceiling; windows were 20-60 s with the ranker's ideal at 0.75 x cap (45 s), then jump cuts removed 10-30 % more; and a
+  reel could only end after a cue gap >= 0.4 (cues are padded 0.15 s each side, so 0.7 s of real silence) - fast
+  preachers rarely leave those.
+- Now (`brain/clipfinder.py`): `length_bounds(t)` = (0.6 t, 1.3 t, target t) source-span windows for ranking;
+  `fit_length()` moves each picked window's END (then START if the analysed speech runs out) until the JUMP-CUT length is
+  in [reel_floor(t), t + 0.5 s] (`reel_floor` = t - max(2, 0.1 t): 60 -> 54 s). End tiers: 0.7 s silence > any real
+  pause (cue gap >= 0) > forced split (last resort); a finished line beats a dangling one. Windows that still fit
+  under 75 % of the floor are skipped for the next-best window (used only if nothing else). Starts are strided for
+  long targets (120 s -> every 2nd, 300 s -> every 5th) so embedding stays near the 60 s cost. Suggestions carry
+  `target_seconds` + `short_of_target`. Planner untouched (still the final safety cap).
+- App: "Length cap ≤ 1 min" -> "Reel length ≈ 1 min" (+ tooltip).
+- Real transcripts, slider 60: 3b05 55.2 / 56.5 / 54.7 s (was 29.8), 4f96 60.0 / 54.4 / 55.1, 6d0d 5160-5480 54.5 /
+  54.6 / 56.4; slider 120 -> 108-117 s; 30 -> 27-30.4 s. Still short: small sermon parts with more reels than fit
+  (150 s part, 3 x 30 s -> third 22 s) and some 10 s targets (~6-7 s). 68 tests pass.
+
 ## Project state: **v0.1.0 complete** (2026-11-17, session 5)
 Installer: `app/release/Viku-Setup-0.1.0.exe` (183.8 MB, NSIS per-user, unsigned) - `cd app && npm run dist`.
 A fresh install now works offline from the first minute with bundled starter illustrations and generated music.

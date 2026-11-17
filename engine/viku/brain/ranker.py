@@ -8,7 +8,7 @@ Raw features per window (`raw_features`; NaN when the input is missing, e.g. no 
   ends_on_hope, ends_negative  hope / judgement words in the last 2 cues
   call_response            share of cues that are only amen / hallelujah / yes fillers
   asr_conf                 mean ASR confidence
-  duration_fit             closeness to the target length (~45 s for a 60 s cap: 0.75 x the cap)
+  duration_fit             closeness to the target length (the Automate slider; source span, before jump cuts)
 Embedding features (multilingual-e5-small, "passage: " + window text):
   semantic                 cos(kept centroid) - cos(rejected centroid)
   pc1..pcK                 projection on the seed's top-K principal components

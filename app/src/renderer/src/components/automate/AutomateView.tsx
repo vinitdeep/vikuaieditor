@@ -62,7 +62,7 @@ const STAGES = [
 
 const RENDER_RE = /render|encod|composit|thumbnail|loud|mix|enhanc|final/i
 
-/** reel length cap label: "45 s", "1 min", "2 min 30 s" */
+/** reel length label: "45 s", "1 min", "2 min 30 s" */
 function capLabel(sec: number): string {
   if (sec < 60) return `${sec} s`
   const m = Math.floor(sec / 60)
@@ -343,7 +343,7 @@ export function AutomateView() {
                 {results.length} reel{results.length === 1 ? '' : 's'} ready
               </b>
               <span className="small muted ellipsis">
-                {fileName || 'Last run'} · {form.language === 'auto' ? 'auto language' : form.language.toUpperCase()} · ≤ {capLabel(form.max_seconds)}
+                {fileName || 'Last run'} · {form.language === 'auto' ? 'auto language' : form.language.toUpperCase()} · ≈ {capLabel(form.max_seconds)} reels
                 {job ? ` · finished in ${took(job.updatedAt - job.startedAt)}` : ''}
               </span>
             </div>
@@ -421,18 +421,18 @@ export function AutomateView() {
                   </span>
                 </div>
                 <div className="auto-row">
-                  <span className="muted">Length cap</span>
+                  <span className="muted" title="Each reel lands between 90 % and 100 % of this length (after jump cuts), unless the sermon part is too short">Reel length</span>
                   <input
                     type="range"
                     min={10}
                     max={300}
                     step={form.max_seconds < 60 ? 5 : 15}
                     value={form.max_seconds}
-                    aria-label="Maximum length"
+                    aria-label="Reel length"
                     className="range-plain"
                     onChange={(e) => setForm({ max_seconds: Number(e.target.value) })}
                   />
-                  <span className="num cap-val">≤ {capLabel(form.max_seconds)}</span>
+                  <span className="num cap-val">≈ {capLabel(form.max_seconds)}</span>
                 </div>
                 <div className="auto-row part-row">
                   <span className="muted">Sermon part</span>

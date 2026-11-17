@@ -1,6 +1,8 @@
 """Viku Brain v1 clip finder: windows -> features -> score -> ranked candidate reels.
 
-Windows: transcript cues joined at pauses into 20-60 s spans that end at a natural pause (>= 0.4 s).
+Windows: transcript cues joined at pauses into spans of 0.6-1.3 x the target reel length (the Automate slider,
+10 s - 5 min) that end at a natural pause (>= 0.4 s); the picked windows are then fitted (fit_length) so the
+jump-cut reel lands in 90-100 % of the target.
 Features (raw, then z-scored across the sermon's windows):
   energy / energy_var  mean + std of voiced frame dB (relative to the sermon median)
   speech_rate          letters per voiced second
@@ -10,7 +12,7 @@ Features (raw, then z-scored across the sermon's windows):
   ends_on_hope         hope words in the last 2 cues;  ends_negative: judgement words there
   call_response        share of cues that are only amen/hallelujah/yes fillers
   asr_conf             mean ASR confidence (music / crowd noise reads low)
-  duration_fit         closeness to ~45 s
+  duration_fit         closeness to the target length
   semantic             similarity to kept-vs-rejected reels (Phase 3 embedding hook; 0 until then)
 Score = sigmoid(bias + w . z) with weights.json, or the learned ranker (<data>/models/brain/ranker.json).
 """
@@ -66,18 +68,38 @@ MAX_ENDS = 16  # per start, for caps above 60 s (keeps feature + embedding work 
 MAX_HOLE = 10.0  # a window never spans a longer gap between cues (an un-analysed stretch, a song, a break)
 
 
+def clamp_len(max_seconds: float = 60.0) -> float:
+    return min(max(float(max_seconds or 60.0), MIN_CAP), MAX_CAP)
+
+
 def length_bounds(max_seconds: float = 60.0) -> tuple[float, float, float]:
-    """Reel length cap (10 s - 5 min) -> (min window, max window, ideal length). 60 s -> (20, 60, 45) as before."""
-    cap = min(max(float(max_seconds or 60.0), MIN_CAP), MAX_CAP)
-    return max(5.0, min(20.0, cap * 0.5)), cap, cap * 0.75
+    """Reel length (10 s - 5 min) -> (min window, max window, target) in SOURCE seconds for ranking.
+
+    The slider is the length the editor wants, not only a ceiling. Windows are ranked around it (jump cuts later
+    remove 10-30 % of a source span, so windows reach past the target); `fit_length` then moves the chosen window's
+    edges until the jump-cut reel lands in [reel_floor(target), target]."""
+    cap = clamp_len(max_seconds)
+    return max(5.0, cap * 0.6), cap * 1.3, cap
+
+
+def reel_floor(target: float) -> float:
+    """Shortest acceptable reel for a target length: 60 s -> 54 s, 10 s -> 8 s, 300 s -> 270 s."""
+    return target - max(2.0, 0.1 * target)
 
 
 def build_windows(items: list[dict], min_len=20.0, max_len=60.0, end_gap=0.4) -> list[tuple[int, int]]:
+    """Candidate (start, end) cue pairs for ranking. Above ~1 min only every 2nd-5th start is used (each window is
+    embedded; a 2 min target over a 1 h sermon was ~3,900 windows / ~8 min) - fit_length still moves the edges."""
     out = []
     n = len(items)
+    stride = max(1, round(max_len / 78.0))   # 60 s target (78 s windows) -> every start, 120 s -> 2, 300 s -> 5
+    seen = -1
     for i in range(n):
         if i > 0 and items[i]["start"] - items[i - 1]["end"] < 0.25:
             continue  # start on a pause
+        seen += 1
+        if seen % stride:
+            continue
         ends = []
         for j in range(i, n):
             d = items[j]["end"] - items[i]["start"]
@@ -87,8 +109,8 @@ def build_windows(items: list[dict], min_len=20.0, max_len=60.0, end_gap=0.4) ->
                 gap = items[j + 1]["start"] - items[j]["end"] if j + 1 < n else 9.0
                 if gap >= end_gap:
                     ends.append(j)
-        if max_len > 60.0 and len(ends) > MAX_ENDS:
-            # long caps: evenly spaced end points, always including the shortest and the longest
+        if len(ends) > MAX_ENDS:
+            # long targets: evenly spaced end points, always including the shortest and the longest
             ends = [ends[round(k * (len(ends) - 1) / (MAX_ENDS - 1))] for k in range(MAX_ENDS)]
         out.extend((i, j) for j in dict.fromkeys(ends))
     return out
@@ -201,6 +223,87 @@ def score_windows(p: dict, wins: list[list[dict]], lang_default: str, job=None, 
     return sc, contrib, rows, m
 
 
+FIT_SPAN = 2.5      # fit_length never looks at a source span longer than 2.5 x the target
+OVER = 0.5          # a reel may run this much past the target (30.4 s on a 30 s slider is fine)
+FIT_TRIES = 60      # windows fitted per /suggest before giving up on finding more non-overlapping reels
+
+
+def _planned(items: list[dict], a: int, b: int, pauses: list, lang: str) -> tuple[list, float]:
+    segs = planner.plan(items[a:b + 1], pauses, lang, 1e9)   # uncapped: measure the real jump-cut length
+    return segs, sum(e - s for s, e in segs)
+
+
+def fit_length(items: list[dict], i: int, j: int, pauses: list, lang: str, target: float
+               ) -> tuple[int, int, list[list[float]], float]:
+    """Move window (i, j)'s edges so the JUMP-CUT reel lands in [reel_floor(target), target + OVER].
+
+    The end moves first (nearest fitting end to the ranked one, a finished line preferred over a dangling one); when
+    the analysed stretch after the window runs out, the start moves earlier. Never crosses a > MAX_HOLE gap (an
+    un-analysed stretch) or the analysed range. -> (i, j, segments, seconds); shorter than the floor only when the
+    analysed speech around the window is too short."""
+    floor, n = reel_floor(target), len(items)
+    lo = i
+    while lo > 0 and items[lo]["start"] - items[lo - 1]["end"] <= MAX_HOLE:
+        lo -= 1
+    hi = j
+    while hi + 1 < n and items[hi + 1]["start"] - items[hi]["end"] <= MAX_HOLE:
+        hi += 1
+
+    def end_tier(b: int) -> int:
+        """How cleanly the reel can stop after cue b. Cues carry 0.15 s of padding on each side, so a cue gap of
+        0.4 = 0.7 s of real silence (tier 0), >= 0 = a real pause of >= 0.3 s (tier 1), < 0 = a long run of speech
+        that segment() split at its quietest frame (tier 2: last resort, only when nothing else hits the length)."""
+        if b == hi or b + 1 >= n:
+            return 0
+        gap = items[b + 1]["start"] - items[b]["end"]
+        return 0 if gap >= 0.4 - 1e-6 else 1 if gap >= -1e-6 else 2
+
+    def ok_start(a: int) -> bool:   # a hook starts after a real pause (>= 0.3 s of silence)
+        return a == 0 or items[a]["start"] - items[a - 1]["end"] >= -1e-6
+
+    cands = []
+    for b in range(i, hi + 1):
+        if items[b]["end"] - items[i]["start"] > FIT_SPAN * target:
+            break
+        segs, d = _planned(items, i, b, pauses, lang)
+        if d <= target + OVER:
+            cands.append((b, segs, d, end_tier(b)))
+    if not cands:
+        segs = planner.plan(items[i:j + 1], pauses, lang, target)
+        return i, j, segs, sum(e - s for s, e in segs)
+
+    def key(c):
+        b, _, d, tier = c
+        if d >= floor:   # in range: a finished line, then the cleanest pause, then nearest to the ranked end
+            return (0, is_dangling(items[b], lang), tier, abs(b - j))
+        # too short: the longest ending, a dangling / unpaused one weighed like the ranker's dangling penalty (a
+        # 6 s reel ending "when we ..." still beats a clean 0.9 s one; suggest() skips such windows when it can)
+        return (1, -d * (0.6 if is_dangling(items[b], lang) else 1.0) * (0.8 if tier == 2 else 1.0))
+    b, segs, d, _ = min(cands, key=key)
+    a = i
+    if d < floor:   # the speech after the window ran out: reach back for earlier lines (same end)
+        for a2 in range(i - 1, lo - 1, -1):
+            if items[b]["end"] - items[a2]["start"] > FIT_SPAN * target:
+                break
+            if not ok_start(a2):
+                continue
+            s2, d2 = _planned(items, a2, b, pauses, lang)
+            if d2 > target + OVER:
+                break
+            a, segs, d = a2, s2, d2
+            if d >= floor:
+                break
+    return a, b, segs, d
+
+
+def _window_lang(its: list[dict], lang_default: str) -> str:
+    langs: dict[str, float] = {}
+    for it in its:
+        L = it.get("lang", lang_default)
+        langs[L] = langs.get(L, 0) + it["end"] - it["start"]
+    return max(langs, key=langs.get)
+
+
 def suggest(p: dict, count: int = 8, rng: list | None = None, job=None, max_seconds: float = 60.0) -> list[dict]:
     min_len, max_len, target = length_bounds(max_seconds)
     items = sorted([t for t in p.get("transcript", []) if t.get("text")], key=lambda t: t["start"])
@@ -212,38 +315,58 @@ def suggest(p: dict, count: int = 8, rng: list | None = None, job=None, max_seco
     if p["language"] != "auto":
         items = [dict(t, lang=p["language"]) for t in items]
     wins = build_windows(items, min_len, max_len)
-    if not wins:
-        wins = [(0, len(items) - 1)]  # the planner still caps it at max_len
+    if not wins:   # the analysed part is shorter than the target: rank what there is, fit_length stretches it
+        wins = build_windows(items, 5.0, max_len) or [(0, len(items) - 1)]
     sc, contrib, rows, model = score_windows(p, [items[i:j + 1] for i, j in wins], lang_default, job, target)
     # house rule: a reel ends on a finished (encouraging) line, never on a setup like "then I ..." / "but ..."
     dangling = np.array([is_dangling(items[j], lang_default) for _, j in wins])
     sc = np.where(dangling, sc * 0.6, sc)
     order = np.argsort(-sc)
-    picked: list[int] = []
+    pauses = p.get("pauses", [])
+    picked: list[tuple] = []   # (k, i, j, lang, segs, seconds) with the window fitted to the target length
+    spans: list[tuple[float, float]] = []
+
+    def overlaps(s: float, e: float) -> bool:
+        return any(min(e, b) - max(s, a) > 0.25 * (e - s) for a, b in spans)
+    tries = 0
+    too_short = 0.75 * reel_floor(target)
+    spare: list[tuple] = []   # fitted windows far below the target: used only if not enough others fit
     for k in order:
         i, j = wins[k]
-        s, e = items[i]["start"], items[j]["end"]
-        if any(min(e, items[wins[q][1]]["end"]) - max(s, items[wins[q][0]]["start"]) > 0.25 * (e - s) for q in picked):
+        if overlaps(items[i]["start"], items[j]["end"]):
             continue
-        picked.append(int(k))
+        tries += 1
+        if tries > FIT_TRIES:
+            break
+        lang = _window_lang(items[i:j + 1], lang_default)
+        i2, j2, segs, secs = fit_length(items, i, j, pauses, lang, target)
+        if overlaps(items[i2]["start"], items[j2]["end"]):
+            continue
+        if secs < too_short:
+            spare.append((int(k), i2, j2, lang, segs, secs))
+            continue
+        picked.append((int(k), i2, j2, lang, segs, secs))
+        spans.append((items[i2]["start"], items[j2]["end"]))
         if len(picked) >= count:
             break
+    for c in sorted(spare, key=lambda c: -c[5]):   # e.g. a 30 s part with a 5 min slider: the longest first
+        if len(picked) >= count:
+            break
+        if not overlaps(items[c[1]]["start"], items[c[2]]["end"]):
+            picked.append(c)
+            spans.append((items[c[1]]["start"], items[c[2]]["end"]))
+    picked.sort(key=lambda c: -float(sc[c[0]]))
     out = []
     sermon = [t["text"] for t in items]
-    for rank, k in enumerate(picked):
-        i, j = wins[k]
+    for rank, (k, i, j, _, segs, secs) in enumerate(picked):
         its = items[i:j + 1]
-        langs: dict[str, float] = {}
-        for it in its:
-            L = it.get("lang", lang_default)
-            langs[L] = langs.get(L, 0) + it["end"] - it["start"]
-        lang = max(langs, key=langs.get)
-        segs = planner.plan(its, p.get("pauses", []), lang, max_len)
+        lang = _window_lang(its, lang_default)
         rs = ranker.reasons(contrib[k], model)
         title, flag = pick_title(its, lang, sermon, f"{_short_name(p)} · Clip {rank + 1}")
         out.append({"id": f"s{rank + 1}", "score": round(float(sc[k]), 4), "title": title, "title_flag": flag,
                     "segments": segs, "window": [items[i]["start"], items[j]["end"]],
-                    "duration": round(sum(b - a for a, b in segs), 2), "reasons": [r["why"] for r in rs],
+                    "duration": round(secs, 2), "target_seconds": target,
+                    "short_of_target": bool(secs < reel_floor(target)), "reasons": [r["why"] for r in rs],
                     "reason_details": rs, "language": lang,
                     "features": {f: (None if np.isnan(rows[k][f]) else round(float(rows[k][f]), 4)) for f in ranker.RAW},
                     "model": model.get("kind")})
