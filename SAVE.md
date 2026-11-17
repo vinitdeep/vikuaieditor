@@ -30,6 +30,10 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
   usable line is Lucifer's, ASR garbage otherwise); automate 4f96 ~1 "शैतान हार चुका है!" -> "सो मु कौन कह?",
   ~2 "ନା ଅସୁନ୍ଦର କରିବେ" -> "ଈଶ୍ୱରଙ୍କର ଆକାଶମଣ୍ଡଳ ଓ ପୃଥିବୀ ସୃଷ୍ଟି"; fee2 ~1 "शैतान हार चुका है!" -> "बेटी जो बोलते हैं".
   `uv run pytest` 43 passed.
+- ASR-quality gate for title lines (agreement >= 0.8, >= 3 words, >= 70 % known, script = language); nothing passes ->
+  verse ref or "<project> · Reel N" with `reel.title_flag: "review"`. Before -> after: 6d0d ~1/~2/~4/~5 unchanged;
+  ~3 "ଆପ ସୋଚ ଲିଜେ କି ଭ?" -> "Before the Foundation · Reel 3" (review); 4f96 ~1 "सो मु कौन कह?" -> "गिराया गया है";
+  ~2 and fee2 ~1 unchanged. 45 tests pass. Suggestion titles (`/suggest`) still fall back to the window's last line.
 
 **Gaps / next (session 4)**
 - Hook titles are still heuristic: an implicit enemy subject further back than 2 captions, or after a line naming

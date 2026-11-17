@@ -267,7 +267,10 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
     sfx = plan_sfx([c for c in cutaways if c.get("img") and Path(c["img"]).exists()])
     # hook title + sub (verse ref / English gist) unless the editor wrote their own
     from ..brain import hooks
-    hk = hooks.hook(captions, r["language"], verses) if captions else {"title": "", "sub": ""}
+    n = rid.rsplit("~", 1)[-1]
+    hk = (hooks.hook(captions, r["language"], verses, sermon=[t.get("text", "") for t in p.get("transcript", [])],
+                     fallback_name=f"{T_short(p.get('name') or 'Sermon')} · Reel {n}")
+          if captions else {"title": "", "sub": "", "title_flag": None})
     title_auto = not r.get("title") or bool(r.get("title_auto"))
     sub_auto = not r.get("sub") or bool(r.get("sub_auto"))
     title = hk["title"] if title_auto and hk["title"] else r.get("title", "")
@@ -276,6 +279,8 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
     def upd2(rr):
         rr.update({"captions": captions, "cutaways": cutaways, "verses": verses, "music": music, "sfx": sfx,
                    "title": title, "sub": sub, "title_auto": title_auto, "sub_auto": sub_auto, "status": "built"})
+        if title_auto:  # "review": no caption line passed the ASR-quality gate - the app highlights the title
+            rr["title_flag"] = hk.get("title_flag")
         th = rr.get("thumbnail") or {}
         if title_auto:
             th["title"] = title
@@ -284,6 +289,11 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
         rr["thumbnail"] = th
     _save_reel(rid, upd2)
     return projects.find_reel(rid)[1]
+
+
+def T_short(name: str, n: int = 32) -> str:
+    from ..brain import text as T
+    return T.short_title(name.split(" _ ")[0].strip() or name, n)
 
 
 def deoverlap(caps: list[dict]):

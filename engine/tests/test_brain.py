@@ -169,3 +169,27 @@ def test_enemy_subject_is_carried_two_captions():
     hk = hooks.hook(["ଯଶୁଙ୍କର ମୃତ୍ୟୁରେ ଶୟତାନ ନି", "ନିଜକୁ ବିଜୟୀ ମନେ କରିଥିଲା", "କିନ୍ତୁ ପୁନରୁତ୍ଥାନ ହେଲା",
                      "ଚୂଡ଼ାନ୍ତ ପରାଜୟ ସମ୍ଭବ କଲା"], "or")
     assert "ବିଜୟୀ" not in hk["title"] and "ପରାଜୟ" in hk["title"]
+
+
+def test_asr_quality_gate():
+    assert hooks.agreement("सो मु कौन कह", "सो मु कण कही") < hooks.AGREE_MIN               # garbled decode
+    assert hooks.agreement("ଚୂଡ଼ାନ୍ତ ପରାଜୟ ସମ୍ଭବ କଲା", "ଚୂଡ଼ାନ୍ତ ପରାଜୟ ସମ୍ଭ୍ରତ କଲା") >= hooks.AGREE_MIN
+    assert hooks.agreement("मैं क्या कर सकूँगा", "मैं क्या कर सकूंगा") == 1.0             # spelling variant only
+    assert hooks.agreement("God is with you", None) is None
+    vocab = {"परमेश्वर", "आपके", "साथ", "है", "आप", "अकेले", "नहीं", "हैं"}
+    ok = lambda text, lang="hi", alt=None: hooks.line_quality({"text": text, "alt": alt}, lang, vocab)[0]  # noqa: E731
+    assert ok("परमेश्वर आपके साथ है")
+    assert not ok("परमेश्वर साथ")                                    # < 3 words
+    assert not ok("ଆପ ସୋଚ ଲିଜେ କି", "hi")                            # Odia script in a Hindi reel
+    assert not ok("परमेश्वर क़ुर्बत बेखु जिते")                      # < 70 % known words
+    assert not ok("परमेश्वर आपके साथ है", alt="पर मेश आप के सा")       # RNNT / CTC disagree
+
+
+def test_no_gated_line_gives_verse_ref_or_neutral_name_for_review():
+    junk = [{"text": "सो मु कौन कह", "alt": "सो मु कण कही"}, {"text": "देखू से कौन कवा जाए", "alt": "देखू सेतब कण क जाए"}]
+    hk = hooks.hook(junk, "hi", [{"ref": "यूहन्ना 15:5 · John 15:5"}])
+    assert hk["title"] == "यूहन्ना 15:5" and hk["title_flag"] == "review"
+    hk = hooks.hook(junk, "hi", [], fallback_name="Before the Foundation · Reel 3")
+    assert hk["title"] == "Before the Foundation · Reel 3" and hk["title_flag"] == "review"
+    good = hooks.hook([{"text": "आप अकेले नहीं हैं", "alt": "आप अकेले नहीं हैं"}] * 2, "hi")
+    assert good["title_flag"] is None and "अकेले" in good["title"]

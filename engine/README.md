@@ -160,7 +160,12 @@ or poll `GET /jobs/{id}`; cancel with `POST /jobs/{id}/cancel` (kills its ffmpeg
   ପରାଜୟ / ପରାଜିତ / ହାରି..., हार / पराजित / हरा दिया..., defeated). A clause ends only before a conjunction
   (`conjunctions`), not a postposition. **Titles never claim what the reel doesn't say**: best span < 3.5 -> the
   reel's strongest short line in its own words (`fallback_line`: line-final 3-6 word windows, conf >= 0.75, no enemy
-  lines), else the quoted verse's native reference, else the best span without "!" + `why.needs_editor`. No canned
+  lines, needs a content word), else the quoted verse's native reference, else "<project> · Reel N" - those two
+  with `title_flag: "review"` (stored on the reel by autobuild for the app to highlight). **ASR-quality gate**: a
+  caption line can give a title only with >= 3 words, its script = the reel language, word-level RNNT/CTC agreement
+  >= 0.8 where a CTC text exists (soft match: a substituted word counts its character similarity when >= 0.6;
+  nukta / chandrabindu variants equal) and >= 70 % known words (lexicons + concepts + the offline Bible's words +
+  words said >= 3x in the sermon transcript; skipped when no Bible / transcript exists). No canned
   theme titles; the theme sub "The enemy is defeated" only when the reel names him AND states a defeat (not people
   "losing"). Reels ~1..~5 before -> after (session 4, first pass; second pass in SAVE.md): ~2 "ନିଜକୁ ବିଜୟୀ ମନେ କରିଥିଲା!" (Satan "considered himself
   victorious") -> "ଚୂଡ଼ାନ୍ତ ପରାଜୟ ସମ୍ଭବ କଲା!" (made the final defeat possible); ~3 "ଲୁସିଫର୍ ଆପଣଙ୍କ ଜୀବନରେ ଆଣିଥାଏ!"

@@ -23,9 +23,12 @@ Sub: the verse card's English reference when the reel has one ("<gist> · John 1
 """
 from __future__ import annotations
 
+import difflib
 import functools
 import json
 import re
+import sqlite3
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -170,9 +173,107 @@ def enemy_penalty(span: str, lang: str, ctx_enemy: bool, line_defeat: bool) -> f
 
 
 FALLBACK_MIN = 1.0
+AGREE_MIN, KNOWN_MIN, GATE_WORDS = 0.8, 0.7, 3
 
 
-def fallback_line(items: list[dict], lang: str, texts: list[str]) -> tuple[float, str, int] | None:
+@functools.lru_cache(maxsize=4)
+def _static_vocab(lang: str) -> frozenset:
+    """Known words that need no sermon: every lexicon / hooks / dictionary / concepts word of the language + English,
+    and every word of the offline Bible in that language (when downloaded)."""
+    words: set[str] = set()
+
+    def add(x):
+        if isinstance(x, str):
+            words.update(T.tokens(x))
+        elif isinstance(x, dict):
+            for k in (lang, "en"):
+                if k in x:
+                    add(x[k])
+        elif isinstance(x, list):
+            for y in x:
+                add(y)
+    add([v for k, v in T.lexicon().items() if not k.startswith("_")])
+    add([v for k, v in data().items() if not k.startswith("_") and k != "themes"])
+    try:
+        d = json.loads((HERE / "dictionary.json").read_text(encoding="utf-8"))
+        add(d.get("vocab", {}))
+        add(list(d.get("fixes", {}).get(lang, {}).values()))
+    except (OSError, json.JSONDecodeError):
+        pass
+    for c in T.concepts():
+        add(c)
+    try:
+        from .. import bible
+        f = bible.db_path(lang)
+        if f.exists():
+            con = sqlite3.connect(f)
+            for (t,) in con.execute("SELECT text FROM verses"):
+                words.update(T.tokens(t))
+            con.close()
+            words.add("__bible__")
+    except Exception:  # noqa: BLE001 - the gate degrades to script + agreement checks
+        pass
+    return frozenset(words)
+
+
+def known_vocab(lang: str, sermon: list[str] | None = None) -> set[str] | None:
+    """Words a title may use: static vocabulary (lexicons + the Bible) + words said >= 3 times in this sermon's
+    transcript. None when there is no reference vocabulary at all (no Bible downloaded, no transcript) - then the
+    known-word check is skipped."""
+    lang = _lang(lang)
+    base = _static_vocab(lang)
+    freq = Counter(w for t in (sermon or []) for w in T.tokens(t))
+    common = {w for w, n in freq.items() if n >= 3}
+    if "__bible__" not in base and not common:
+        return None
+    return set(base) | common
+
+
+def _skel(w: str) -> str:
+    """Spelling skeleton: nukta / chandrabindu variants the two decoders write differently (ज़/ज, ँ/ं, ଡ଼/ଡ)."""
+    return w.replace("़", "").replace("଼", "").replace("ँ", "ं").replace("ଁ", "ଂ")
+
+
+def agreement(text: str, alt: str | None) -> float | None:
+    """Word-level RNNT/CTC agreement (None without a CTC text): the two word sequences are aligned; an identical word
+    counts 1, a substituted word its character similarity when >= 0.6 (ସମ୍ଭବ / ସମ୍ଭ୍ରତ, सकूँगा / सकूंगा), else 0;
+    divided by the longer decode's word count."""
+    if not alt or not alt.strip():
+        return None
+    a, b = [_skel(w) for w in T.tokens(text)], [_skel(w) for w in T.tokens(alt)]
+    if not a or not b:
+        return 0.0
+    m = 0.0
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(a=a, b=b, autojunk=False).get_opcodes():
+        if op == "equal":
+            m += i2 - i1
+        elif op == "replace":
+            for x, y in zip(a[i1:i2], b[j1:j2]):
+                r = difflib.SequenceMatcher(a=x, b=y, autojunk=False).ratio()
+                m += r if r >= 0.6 else 0.0
+    return m / max(len(a), len(b))
+
+
+def line_quality(it: dict, lang: str, vocab: set[str] | None) -> tuple[bool, dict]:
+    """ASR-quality gate for title candidates: >= 3 words, script = reel language, RNNT/CTC agreement >= 0.8 where a
+    CTC text exists, >= 70 % known words (when a vocabulary exists). Garbled lines ("सो मु कौन कह" vs CTC "सो मु कण
+    कही"; Hindi read as Odia "ଆପ ସୋଚ ଲିଜେ") never become titles."""
+    text = it.get("text") or ""
+    toks = T.tokens(text)
+    q: dict = {"words": len(toks), "script": T.script_of(text)}
+    ok = len(toks) >= GATE_WORDS and q["script"] == lang
+    ag = agreement(text, it.get("alt"))
+    if ag is not None:
+        q["agree"] = round(ag, 2)
+        ok = ok and ag >= AGREE_MIN
+    if vocab is not None and toks:
+        q["known"] = round(sum(1 for w in toks if w in vocab) / len(toks), 2)
+        ok = ok and q["known"] >= KNOWN_MIN
+    return ok, q
+
+
+def fallback_line(items: list[dict], lang: str, texts: list[str], gate: list | None = None
+                  ) -> tuple[float, str, int] | None:
     """The reel's strongest short line, in its own words: per caption, every 3-6 word window that ends the line
     (Odia / Hindi put the verb last) and its first <= 6 words, trimmed of dangling conjunctions / postpositions,
     scored as a clause + ASR confidence - flags. Lines whose subject is the enemy (unless they state his defeat)
@@ -180,7 +281,7 @@ def fallback_line(items: list[dict], lang: str, texts: list[str]) -> tuple[float
     best = None
     for li, it in enumerate(items):
         conf = it.get("conf")
-        if conf is not None and float(conf) < 0.75:
+        if (conf is not None and float(conf) < 0.75) or (gate is not None and not gate[li][0]):
             continue
         ws0 = [w for w in re.split(r"\s+", it["text"].strip()) if w and not re.fullmatch(r"[\W_]+", w)]
         ctx, defeat = enemy_context(texts, li, lang), enemy_defeated(it["text"], lang)
@@ -188,6 +289,8 @@ def fallback_line(items: list[dict], lang: str, texts: list[str]) -> tuple[float
         wins = {(max(0, L - k), L) for k in range(3, 7)} | {(0, min(L, 6))}
         for a, b in wins:
             ws = ws0[a:b]
+            if len(ws) >= 4 and _is(ws[-2], "conjunctions", lang):  # "... गिराया गया है लेकिन आप" -> cut before लेकिन
+                ws = ws[:-2]
             while ws and (_is(ws[-1], "dangling_end", lang) or _is(ws[-1], "conjunctions", lang)):
                 ws.pop()
             while ws and (_is(ws[0], "dangling_start", lang) or _is(ws[0], "fillers", lang)):
@@ -197,6 +300,8 @@ def fallback_line(items: list[dict], lang: str, texts: list[str]) -> tuple[float
             if enemy_penalty(" ".join(ws), lang, ctx, defeat):
                 continue
             sc, why = _score_span(ws, lang, line_end=(b == L), whole=(a == 0 and b == L))
+            if not any(why.get(k) for k in ("victory", "hope", "strong", "address", "theme", "question")):
+                continue  # no content signal at all ("जैसे कि अभी" = "like now"): not a title
             sc += 2.0 * (float(conf) - 0.75) if conf is not None else 0.0
             sc -= 0.5 * len(it.get("flags") or [])
             title = re.sub(r"[\s.,;:।…!?]+$", "", " ".join(ws)) + ("?" if why.get("question") else "")
@@ -205,18 +310,25 @@ def fallback_line(items: list[dict], lang: str, texts: list[str]) -> tuple[float
     return best
 
 
-def hook(lines: list, lang: str, verses: list | None = None, t_lines: list | None = None) -> dict:
-    """lines: [str | {"text", "conf", "flags", "t0"}]. -> {"title", "sub", "theme", "tags", "why"}"""
+def hook(lines: list, lang: str, verses: list | None = None, t_lines: list | None = None,
+         sermon: list[str] | None = None, fallback_name: str = "", vocab: set[str] | None = None) -> dict:
+    """lines: [str | {"text", "conf", "flags", "t0", "alt"}]. sermon: the whole transcript's texts (frequent words
+    count as known); fallback_name: "<project> · Reel N" for when no line passes the quality gate.
+    -> {"title", "sub", "theme", "tags", "why", "title_flag": None | "review"}"""
     lang = _lang(lang)
     items = [{"text": x} if isinstance(x, str) else dict(x) for x in lines]
     items = [it for it in items if (it.get("text") or "").strip()]
     if not items:
-        return {"title": "", "sub": "", "theme": None, "tags": [], "why": {}}
+        return {"title": "", "sub": "", "theme": None, "tags": [], "why": {}, "title_flag": None}
     texts = [it["text"] for it in items]
+    vocab = vocab if vocab is not None else known_vocab(lang, sermon)
+    gate = [line_quality(it, lang, vocab) for it in items]
     fav = _fav_z(texts)
     best = (-1e9, None, None, None)
     n = len(items)
     for li, it in enumerate(items):
+        if not gate[li][0]:
+            continue
         ws = [w for w in re.split(r"\s+", it["text"].strip()) if w and not re.fullmatch(r"[\W_]+", w)]
         if not ws:
             continue
@@ -253,6 +365,7 @@ def hook(lines: list, lang: str, verses: list | None = None, t_lines: list | Non
             if sc + line_bonus - 1.0 > best[0]:
                 best = (sc + line_bonus - 1.0, ws, why, li)
     sc, ws, why, li = best
+    flag = None
     title = re.sub(r"[\s.,;:।…!?]+$", "", " ".join(ws or []))
     if why and why.get("question"):
         title += "?"
@@ -274,18 +387,18 @@ def hook(lines: list, lang: str, verses: list | None = None, t_lines: list | Non
     if sc < HOOK_MIN:
         # no caption span is a good hook (mixed-language ASR, every span about the enemy...): never a canned claim -
         # the reel's own strongest short line, else the verse reference it quotes
-        fb = fallback_line(items, lang, texts)
-        old = {"best_span": title, "best_span_score": round(float(sc), 2)}
-        if fb and (fb[0] >= FALLBACK_MIN or not native):
+        fb = fallback_line(items, lang, texts, gate)
+        old = {"best_span": title, "best_span_score": round(float(sc), 2)} if ws else {}
+        if fb and fb[0] >= FALLBACK_MIN:
             title, why, li = fb[1], {"fallback": "line", "fallback_score": round(fb[0], 2), **old}, fb[2]
         elif native:
-            title, why, li = native, {"fallback": "verse", **old}, None
+            # no line passes the ASR-quality gate (or none is a hook): the quoted verse's reference, for review
+            title, why, li, flag = native, {"fallback": "verse", **old}, None, "review"
         else:
-            # nothing trustworthy to say: keep the best span (the reel's own words) without a "!" claim and ask
-            # the editor for a title
-            title = re.sub(r"!$", "", title)
-            why = (why or {}) | {"fallback": "none", "needs_editor": True}
+            title, why, li, flag = fallback_name or "", {"fallback": "name", **old}, None, "review"
+        why = why | {"gated_out": sum(1 for g in gate if not g[0]), "lines": len(gate)}
     sub = " · ".join(x for x in (gist, ref) if x)
     return {"title": title, "sub": sub, "theme": th["id"] if th else None, "tags": th["tags"] if th else [],
+            "title_flag": flag,
             "why": {"score": round(float(sc), 2), "line": li,
                     **{k: v for k, v in (why or {}).items() if k not in ("question", "lexical")}}}
