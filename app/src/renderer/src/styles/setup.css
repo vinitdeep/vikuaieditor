@@ -1,7 +1,7 @@
 /* First-launch setup screen, models manager, About / licences */
 
 /* ---------------------------------------------------------------- setup -- */
-.setup {
+.first-run {
   height: 100%;
   display: flex;
   align-items: center;
@@ -543,12 +543,18 @@
 
 /* automate: sermon part */
 .part-row .part-in {
-  width: 104px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 120px;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 .part-row .part-in.bad {
   border-color: var(--red);
+}
+.part-dash {
+  color: var(--text-3);
+  flex: none;
 }
 .part-hint {
   margin: -2px 0 2px;
@@ -562,4 +568,16 @@
   object-fit: contain;
   background: #000;
   border-radius: inherit;
+}
+.rendered-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  color: var(--text-2);
+}
+.render-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }

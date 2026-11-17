@@ -61,13 +61,13 @@ const shot = async (name) => {
 let failure = null
 try {
 // 3. setup screen (bootstrap)
-await page.waitForSelector('.setup, .ob, .topbar', { timeout: 120000 })
-if (await page.$('.setup')) {
+await page.waitForSelector('.first-run, .ob, .topbar', { timeout: 120000 })
+if (await page.$('.first-run')) {
   await page.waitForTimeout(1500)
   await shot('01-setup-start')
   let n = 0
   let lastPct = -1
-  while (await page.$('.setup')) {
+  while (await page.$('.first-run')) {
     const pct = await page.$eval('.setup-pct', (e) => e.textContent).catch(() => '')
     const msg = await page.$eval('.setup-msg', (e) => e.textContent).catch(() => '')
     if (pct !== lastPct) log('setup', pct, msg)

@@ -134,7 +134,7 @@ build/           icon.svg (+ icon-small.svg) → icon.ico, icon.png, icons/NxN.p
   downward play triangle, in a graphite tile with two 9:16 viewfinder corners (dropped below 28 px). Window icon `resources/icon.png`,
   installer icon `build/icon.ico` (16–256 px).
 - **First run**: onboarding (`shell/Onboarding.tsx`, shown once via `prefs.onboarded`, reopen in Settings → General): welcome →
-  projects/exports folders → engine + models from `/health` (ready / missing + what each enables, Start engine) → optional
+  projects/exports folders → engine card (Start engine) + the models manager (`GET /models`, Install all required, HF token step) → optional
   sign-ins (AI Studio, HeyGen, eBible download job) → church name + credit line (live preview) + default language → done.
 - **Top bar**: logo, project / reel, Automate | Manual, sign-in chips (Gemini, HeyGen, eBible → open the Sign-in window),
   engine dot (opens Settings), Activity, Keyboard (?), Settings, Export.

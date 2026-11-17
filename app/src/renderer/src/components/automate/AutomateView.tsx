@@ -437,7 +437,9 @@ export function AutomateView() {
                     onKeyDown={(e) => e.stopPropagation()}
                     spellCheck={false}
                   />
-                  <span className="muted">–</span>
+                  <span className="part-dash" aria-hidden>
+                    –
+                  </span>
                   <input
                     className={`input part-in${partTo.trim() && toS === null ? ' bad' : ''}`}
                     value={partTo}

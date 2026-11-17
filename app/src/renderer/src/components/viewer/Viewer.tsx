@@ -240,7 +240,9 @@ export function Viewer() {
 
   const rendered = usePlayback((s) => s.rendered)
   const lastExport = reel?.exports[reel.exports.length - 1]?.path
-  const showRendered = viewer === 'rendered'
+  // the chosen export when it belongs to this reel, else the reel's latest one
+  const renderedPath = rendered && reel?.exports.some((e) => e.path === rendered.path) ? rendered.path : lastExport
+  const showRendered = viewer === 'rendered' && Boolean(renderedPath)
   const isReel = viewer === 'reel' || showRendered
   const aspect = isReel ? 9 / 16 : 16 / 9
   const pad = 28
@@ -294,11 +296,11 @@ export function Viewer() {
       </div>
       <div className="viewer-area" ref={areaRef} onDoubleClick={() => setZoom('fit')}>
         <div className={`stage ${isReel ? 'stage-reel' : 'stage-src'}`} style={{ width: fw, height: fh }}>
-          {showRendered && (rendered?.path || lastExport) ? (
+          {showRendered && renderedPath ? (
             <video
-              key={`${rendered?.path ?? lastExport}-${rendered?.v ?? 0}`}
+              key={`${renderedPath}-${rendered?.v ?? 0}`}
               className="rendered-video"
-              src={`${api().mediaUrl(rendered?.path ?? (lastExport as string))}&v=${rendered?.v ?? 0}`}
+              src={`${api().mediaUrl(renderedPath)}&v=${rendered?.v ?? 0}`}
               controls
               autoPlay
               playsInline
@@ -330,7 +332,19 @@ export function Viewer() {
           )}
         </div>
       </div>
-      <Transport reel={reel} project={project} />
+      {showRendered && renderedPath ? (
+        <div className="transport rendered-bar">
+          <Film size={14} aria-hidden />
+          <span className="grow ellipsis small" title={renderedPath}>
+            Rendered file · {renderedPath.split(/[\\/]/).pop()}
+          </span>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => set({ viewer: 'reel' })}>
+            <span>Back to the edit</span>
+          </button>
+        </div>
+      ) : (
+        <Transport reel={reel} project={project} />
+      )}
     </div>
   )
 }

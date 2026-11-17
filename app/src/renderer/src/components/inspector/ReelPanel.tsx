@@ -9,7 +9,7 @@ import { useJobs } from '@/state/jobs'
 import { reelDuration } from '@/lib/reel'
 import { duration } from '@/lib/time'
 import { LANGS } from '@/lib/lang'
-import { Button, Field, Section, Segmented, Select, Slider, TextInput } from '../ui'
+import { Button, Field, Progress, Section, Segmented, Select, Slider, TextInput } from '../ui'
 import { Row } from './common'
 
 /** engine render result: {path, thumbnail} (older shape: {output}) */
@@ -22,9 +22,13 @@ export function resultPath(r: unknown): string | null {
   return null
 }
 
+/** reel id -> its latest render job (the Reel inspector shows its progress) */
+const renderJobs = new Map<string, string>()
+
 export async function renderReel(reel: Reel, preset?: string): Promise<void> {
   try {
     const ref = await api().render(reel.id, preset)
+    renderJobs.set(reel.id, ref.job)
     useJobs.getState().track(ref, `Render · ${reel.title}`, {
       onDone: (ev) => {
         const out = resultPath(ev.result) ?? ''
@@ -58,6 +62,9 @@ export function ReelPanel({ reel }: { reel: Reel }) {
   const presets = useApp((s) => s.settings?.export_presets ?? [])
   const [preset, setPreset] = useState(presets[0]?.id ?? 'reels')
   const dur = reelDuration(reel)
+  const renderJobId = renderJobs.get(reel.id)
+  const renderJob = useJobs((s) => (renderJobId ? s.jobs[renderJobId] : undefined))
+  const rendering = renderJob && (renderJob.state === 'running' || renderJob.state === 'queued')
 
   return (
     <>
@@ -120,10 +127,18 @@ export function ReelPanel({ reel }: { reel: Reel }) {
           </Button>
           <div className="row">
             <Select ariaLabel="Export preset" className="grow" value={preset} onChange={setPreset} options={presets.map((p) => ({ id: p.id, label: p.name }))} />
-            <Button variant="primary" icon={Hammer} onClick={() => void renderReel(reel, preset)}>
-              Render
+            <Button variant="primary" icon={Hammer} onClick={() => void renderReel(reel, preset)} disabled={Boolean(rendering)}>
+              {rendering ? 'Rendering…' : 'Render'}
             </Button>
           </div>
+          {rendering && renderJob && (
+            <div className="render-progress" aria-live="polite">
+              <Progress value={renderJob.progress} />
+              <span className="small muted">
+                {Math.round(renderJob.progress * 100)}% · {renderJob.message}
+              </span>
+            </div>
+          )}
         </div>
         {reel.exports.length > 0 && (
           <div className="exports">

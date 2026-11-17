@@ -47,7 +47,7 @@ export function SetupScreen({ status }: { status: EngineStatus }) {
   const stage = STAGES.filter(([p]) => pct >= p).length - 1
 
   return (
-    <div className="setup" role="main" aria-label="Setting up Viku">
+    <div className="first-run" role="main" aria-label="Setting up Viku">
       <div className="setup-card">
         <Logo size={56} />
         <h1>{failed ? 'Viku could not finish setting up' : 'Setting up Viku'}</h1>

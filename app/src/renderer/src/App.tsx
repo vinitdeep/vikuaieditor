@@ -4,7 +4,7 @@ import { toast, useApp } from '@/state/app'
 import { currentReel, useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
 import { usePlayback } from '@/state/playback'
-import { handleCapture, resumeQueue, syncQueue } from '@/lib/gemini'
+import { generateForCutaway, handleCapture, resumeQueue, syncQueue, useGen } from '@/lib/gemini'
 import { useLibraryIndex } from '@/lib/cutaways'
 import { useTranscriptSel } from '@/state/transcriptSel'
 import { useHotkeys } from '@/lib/hotkeys'
@@ -81,7 +81,7 @@ async function boot(onWait: (msg: string) => void): Promise<void> {
   })
 
   if (params.has('debug')) {
-    Object.assign(window, { __viku: { useApp, useEditor, usePlayback, useJobs, useAuto, useTranscriptSel, api, currentReel } })
+    Object.assign(window, { __viku: { useApp, useEditor, usePlayback, useJobs, useAuto, useTranscriptSel, useGen, generateForCutaway, api, currentReel } })
   }
 }
 
