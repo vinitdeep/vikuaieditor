@@ -278,8 +278,9 @@ def bible_verse(ref: str, lang: str = "or"):
 
 @app.get("/bible/similar")
 def bible_similar(text: str, lang: str = "or", k: int = 10):
-    """Verses closest in meaning (e5 embeddings of every verse, <data>/bible/<code>.emb.npy)."""
-    return bible.similar(text, lang, k)
+    """Verses closest to `text`: e5 meaning (every verse embedded in <data>/bible/<code>.emb.npy) + shared rare words."""
+    from .brain import scripture
+    return scripture.rank_verses(text, lang, k)
 
 
 @app.get("/bible/search")

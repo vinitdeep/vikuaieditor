@@ -128,6 +128,29 @@ def is_filler(text: str, lang: str) -> bool:
     return len(rest) <= max(0, phr * 2) or (len(rest) <= 1 and len(toks) <= 3)
 
 
+DANGLING = {"or": ["ତାହେଲେ", "ତେବେ", "କିନ୍ତୁ", "ଯଦି", "ଆଉ", "ଏବଂ", "କାରଣ", "ଯେ", "ଯେଉଁ", "ଯୋଉ"],
+            "hi": ["तो", "लेकिन", "पर", "अगर", "और", "क्योंकि", "कि", "जो", "जब", "तब"],
+            "en": ["then", "but", "if", "and", "because", "that", "when", "so"]}
+
+
+REF_INTRO = {"or": ["ଅଧ୍ୟ", "ପଦ", "ପୋଦ"], "hi": ["अध्या", "पद"], "en": ["chapter", "verse"]}  # incl. ASR spellings
+
+
+def is_dangling(last: dict, lang_default: str) -> bool:
+    """Last cue is a fragment: very short, or its last word is a conjunction / 'if-then' setup."""
+    toks = T.tokens(last.get("text", ""))
+    if not toks or last["end"] - last["start"] < 0.9:
+        return True
+    L = last.get("lang") or lang_default
+    tail = {T.norm(w) for w in DANGLING.get(L, []) + DANGLING["en"]}
+    if toks[-1] in tail or (len(toks) <= 3 and any(t in tail for t in toks)):
+        return True
+    # "Matthew 4, verse 4 ..." - announcing a reference sets up a quote that the window then cuts off
+    ref_words = REF_INTRO.get(L, []) + REF_INTRO["en"]
+    return len(toks) <= 7 and (T.lex_hits(last.get("text", ""), "scripture", L) > 0
+                               or any(t.startswith(w) for t in toks for w in ref_words))
+
+
 def sermon_audio(p: dict):
     db = framedb(p) if p.get("wav16") and Path(p["wav16"]).exists() else np.zeros(0, np.float32)
     med = float(np.median(db)) if len(db) else -40.0
@@ -174,6 +197,9 @@ def suggest(p: dict, count: int = 8, rng: list | None = None, job=None) -> list[
     if not wins:
         wins = [(0, len(items) - 1)]
     sc, contrib, rows, model = score_windows(p, [items[i:j + 1] for i, j in wins], lang_default, job)
+    # house rule: a reel ends on a finished (encouraging) line, never on a setup like "then I ..." / "but ..."
+    dangling = np.array([is_dangling(items[j], lang_default) for _, j in wins])
+    sc = np.where(dangling, sc * 0.6, sc)
     order = np.argsort(-sc)
     picked: list[int] = []
     for k in order:

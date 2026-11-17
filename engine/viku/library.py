@@ -83,9 +83,7 @@ def import_paths(paths: list[str], tags: list[str] | None = None, desc: str = ""
         for f in files:
             h = hashlib.sha1(f.read_bytes()).hexdigest()[:16]
             if c.execute("SELECT 1 FROM images WHERE id=?", (h,)).fetchone():
-                skipped += 1
-                if desc:
-                    c.execute("UPDATE images SET desc=? WHERE id=?", (desc, h))
+                skipped += 1   # already in the library: keep its desc / tags
                 added_ids.append(h)
                 continue
             dst = ldir() / "images" / f"{h}{f.suffix.lower()}"

@@ -46,12 +46,16 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
 | POST | /projects/{id}/reels | create reel from `{segments:[[s,e],...], title, sub}` (jump cut if >1 segment) |
 | POST | /reels/{id}/autobuild | job: captions (re-ASR on joined audio), verse detection, cutaway plan + library picks, music pick, sfx |
 | POST | /reels/{id}/render | job: final mp4 (and thumbnail) → `exports/` |
-| POST | /reels/{id}/thumbnail | job: thumbnail jpg from a style template + pose frame time |
+| POST | /reels/{id}/thumbnail | job: `{style, pose_t, title, sub, verse, renderer}` (all optional; auto pose + auto style) → thumbnail jpg |
 | POST | /automate | job: `{video_path, language, count}` → analyze → suggest → build → render N reels |
 | POST | /captions/fix | `{text, lang}` → `{text, flags:[{start,end,reason,suggest}]}` (dictionary + learned corrections) |
 | POST | /feedback | `{reel_id, kind:"keep"\|"reject"\|"caption_edit", before, after}` → stored for learning |
 | POST | /learn | job: retrain clip-finder ranker + correction memory from feedback |
 | GET | /bible/search?q=&lang= ; /bible/verse?ref=&lang= | offline verse lookup (IRV ory, IRV hin2017, WEB eng) |
+| GET | /bible/similar?text=&lang=&k= | verses closest in meaning (e5 embedding of every verse) → `[{ref, display_ref, text, score}]` |
+| GET | /reels/{id}/needs | unfilled cutaway generation requests `[{index, t0, t1, prompt, slug, scene, text, tags, suggested_name}]` |
+| POST | /reels/{id}/cutaways/{i}/image | `{path, tags?}` attach a captured image to cutaway i (copied into the library) → cutaway |
+| GET | /thumbnails/styles | `[{id, label}]` thumbnail designer styles |
 | POST | /bible/download | job: fetch eBible USFM zips once (online) |
 | GET | /library/search?q= | illustration library search (tags + filename + embedding) |
 | POST | /library/import | add images (folder/files) with tags |
@@ -88,12 +92,18 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
 - **Project JSON additions**: `width, height, proxy_offset` (proxy of a range starts at that source second), `proxies[]`, `peaks` (npy path),
   `analyzed[[s,e]]`, `suggestions[]`; transcript items carry `alt` (CTC text); reels carry `duration, jumps, src, voice, enhance`,
   captions `{flags, alt, conf}`, cutaways `{lib_id, why}`, verses `{attribution}`, exports `{path, thumbnail, width, height, duration, lufs, true_peak}`.
-- **Thumbnail** (Phase 1): a frame grab at `pose_t`; style templates come with the Phase 2 designer. `/auth/status.gemini_web` is `null` (owned by the app's sign-in window).
+- **Phase 2/3 additions (2026-11-17)**: cutaways carry `text` (captions they cover), `why` (match score / z / concept /
+  desc) and, when the library has no good match, `img: null` + `need: {prompt, slug, scene, text, tags, grade}` (becomes
+  `need_done` once an image is attached); verses carry `match: {kind: "explicit"|"semantic", score, caption}` and
+  `top_y` (default 520, moved off faces); `thumbnail` stores `{style, pose_t, path, renderer, style_user, pose_user}`;
+  exports add `cutaway_coverage` (filled share), `cutaway_needs`, `tp_fix_db` (when AAC overshoot forced an audio re-encode).
+  Suggestions carry `reason_details [{feature, why, contribution}]` and `model: "seed"|"learned"`. Library import takes
+  `desc` and `set`. Settings: `cutaway_match_threshold` (1.3).
 
 ## Offline AI (clip finder + caption fixer) — "Viku Brain"
 - Signals per transcript window (sentence-ish chunks joined at pauses, 20–60 s): voice energy & variance, speech rate, pitch variance (excitement), direct address ("ଆପଣ/ତୁମେ", "आप/तुम", "you"), encouragement/victory lexicon (or/hi/en, `engine/viku/brain/lexicon.json`), scripture mention regex (book names in 3 languages + "ଅଧ୍ୟାୟ/अध्याय/chapter"), ends-on-hope check (last 2 sentences), Hindi/Odia language id.
-- Semantic score: multilingual sentence embedding (`intfloat/multilingual-e5-small`, ONNX/CPU) similarity to the user's favourite reels vs rejected ones.
-- Ranker: logistic regression over the features, trained from labelled windows (seed data = the two Pastor Jacob sermons, labels from the reels the user kept/rejected + hand labels), retrained by `/learn` from editor feedback. Stored in `models/brain/ranker.json`.
+- Semantic score: multilingual sentence embedding (`intfloat/multilingual-e5-small`, ONNX/CPU) — cosine to the kept-minus-rejected centroids + an 8-d PCA projection.
+- Ranker: logistic regression over the features, trained on the seed (the two Pastor Jacob sermons, 662 labelled windows) and shipped as `engine/viku/brain/ranker_seed.json` (blocked-CV AUC 0.858 vs 0.661 for the old hand weights); `/learn` refits on seed + editor keep/reject (x5) into `<data>/models/brain/ranker.json`.
 - Jump-cut planner: inside a chosen window drop fillers/repeats/crowd call-and-response (short low-content segments, repeated n-grams), cut only in pauses ≥ 0.25 s.
 - Caption fixer: RNNT vs CTC disagreement flags, Bible/church vocabulary per language, learned correction memory (`before→after` pairs from edits, applied when seen again).
 - Optional: local LLM via Ollama (if installed) for titles/descriptions; never required.

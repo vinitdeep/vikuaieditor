@@ -20,6 +20,11 @@ import urllib.request
 from pathlib import Path
 
 import cv2
+
+try:  # errors only: YuNet spams a 'Targets are not supported' warning per detector
+    cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)
+except AttributeError:
+    pass
 import numpy as np
 
 from .. import config

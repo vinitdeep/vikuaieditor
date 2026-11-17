@@ -214,6 +214,7 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
                              "alt": it.get("alt"), "conf": it.get("conf")})
         deoverlap(captions)
 
+    deoverlap(captions)   # also for captions kept from an earlier build (libass would stack overlapping cues)
     job.span(0.92, 1.0)
     cutaways, verses, music, sfx = r.get("cutaways", []), r.get("verses", []), r.get("music"), r.get("sfx", [])
     if steps["cutaways"]:

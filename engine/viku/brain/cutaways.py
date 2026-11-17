@@ -184,6 +184,8 @@ class Matcher:
 def need_request(text: str, lang: str, idx: int, tags: list[str]) -> dict:
     neg = T.lex_hits(text, "enemy", lang) + T.lex_hits(text, "negative_end", lang)
     pos = T.lex_hits(text, "victory", lang) + T.lex_hits(text, "hope_end", lang)
+    dark_tags = {"satan", "darkness", "dark", "shadow", "storm", "despair", "serpent", "fire", "battle", "sin"}
+    neg += 2 * len(dark_tags & set(tags))
     grade = GRADES["dark" if neg > pos else "hope" if pos else "neutral"]
     what = (", ".join(tags[:5]) + " - ") if tags else ""
     scene = (f"{what}a respectful scene that a viewer can picture for this {LANG_NAME.get(lang, lang)} sermon line: "

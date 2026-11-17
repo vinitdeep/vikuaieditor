@@ -590,8 +590,10 @@ def make(rid: str, job, style: str | None = None, pose_t: float | None = None, t
     th = r.get("thumbnail") or {}
     if style and style not in STYLES:
         raise JobError(f"unknown thumbnail style '{style}' - one of {', '.join(STYLES)}")
-    style = style or (th.get("style") if th.get("style") in STYLES and th.get("style_locked") else None) \
-        or auto_style(p, r)
+    style_user = style is not None   # an editor's choice sticks for later automatic runs
+    if style is None and th.get("style_user") and th.get("style") in STYLES:
+        style, style_user = th["style"], True
+    style = style or auto_style(p, r)
     wd = projects.reel_dir(rid) / "thumb"
     wd.mkdir(parents=True, exist_ok=True)
 

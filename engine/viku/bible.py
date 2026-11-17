@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 
 from . import config
-from .jobs import Job, JobError
+from .jobs import Cancelled, Job, JobError
 
 TRANSLATIONS = {
     "or": {"code": "ory", "url": "https://ebible.org/Scriptures/ory_usfm.zip",
@@ -201,7 +201,15 @@ def download(job: Job, langs: list[str] | None = None) -> list[dict]:
             raise JobError(f"download failed for {t['url']}: {e}")
         job.check()
         job.update((i + 0.6) / len(langs), f"indexing {t['code']}")
-        res.append(build_db(lang, data))
+        info = build_db(lang, data)
+        try:  # meaning index (embeddings of every verse) - offline, a few minutes per translation on CPU
+            with job.scope((i + 0.65) / len(langs), (i + 1) / len(langs)):
+                info["meaning_index"] = embed_index(lang, job)
+        except (JobError, Cancelled):
+            raise
+        except Exception as e:  # noqa: BLE001 - the Bible still works without it (built lazily later)
+            info["meaning_index"] = f"failed: {e}"
+        res.append(info)
     return res
 
 
@@ -330,3 +338,120 @@ def search(q: str, lang: str, limit: int = 30) -> list[dict]:
     c.close()
     return [{"ref": f"{BOOK_EN.get(b, b)} {ch}:{v}", "book": b, "chapter": ch, "verse": v, "text": t, "lang": lang}
             for b, ch, v, t in rows]
+
+
+# ------------------------------------------------------- meaning index --
+# Every verse embedded once with multilingual-e5-small ("passage: " + verse text) into
+# <data>/bible/<code>.emb.npy (float16, L2-normalised) + <code>.emb.refs.json ([[book, chapter, verse], ...]
+# in the same row order). bible.similar() embeds the probe with "query: " and ranks by cosine.
+_emb_cache: dict[str, tuple] = {}
+
+
+def emb_path(lang: str) -> Path:
+    return bdir() / f"{TRANSLATIONS[lang]['code']}.emb.npy"
+
+
+def refs_path(lang: str) -> Path:
+    return bdir() / f"{TRANSLATIONS[lang]['code']}.emb.refs.json"
+
+
+def index_ready(lang: str) -> bool:
+    return emb_path(lang).exists() and refs_path(lang).exists()
+
+
+def embed_index(lang: str, job: Job | None = None) -> dict:
+    import json
+    import time
+
+    import numpy as np
+
+    from .brain import embed
+    c = _conn(lang)
+    rows = c.execute("SELECT v.book, v.chapter, v.verse, v.text FROM verses v JOIN books b ON b.code=v.book "
+                     "ORDER BY b.ord, v.chapter, v.verse").fetchall()
+    c.close()
+    code = TRANSLATIONS[lang]["code"]
+    t0 = time.perf_counter()
+
+    def prog(done, total):
+        if job is not None:
+            job.check()
+            el = time.perf_counter() - t0
+            eta = el / max(done, 1) * (total - done)
+            job.update(done / total, f"Bible meaning index {code}: {done}/{total} verses (~{eta:.0f} s left)")
+
+    if job is not None:
+        job.update(0.0, f"Bible meaning index {code}: {len(rows)} verses")
+    embed.ensure_model(job)
+    X = embed.embed_texts([r[3] for r in rows], prefix="passage: ", batch=64, cache=False, progress=prog)
+    tmp = emb_path(lang).with_suffix(".tmp.npy")
+    np.save(tmp, X.astype(np.float16))
+    tmp.replace(emb_path(lang))
+    refs_path(lang).write_text(json.dumps([[b, ch, v] for b, ch, v, _ in rows]), encoding="utf-8")
+    _emb_cache.pop(lang, None)
+    secs = round(time.perf_counter() - t0, 1)
+    return {"lang": lang, "code": code, "verses": len(rows), "seconds": secs,
+            "mb": round(emb_path(lang).stat().st_size / 1e6, 1)}
+
+
+def ensure_index(lang: str, job: Job | None = None) -> bool:
+    """Build the meaning index if missing (minutes on CPU). False when the Bible itself is missing."""
+    if lang not in TRANSLATIONS or not db_path(lang).exists():
+        return False
+    if not index_ready(lang):
+        embed_index(lang, job)
+    return True
+
+
+def _index(lang: str):
+    import json
+
+    import numpy as np
+    f = emb_path(lang)
+    m = f.stat().st_mtime
+    hit = _emb_cache.get(lang)
+    if hit and hit[0] == m:
+        return hit[1], hit[2]
+    X = np.load(f).astype(np.float32)
+    refs = json.loads(refs_path(lang).read_text(encoding="utf-8"))
+    _emb_cache[lang] = (m, X, refs)
+    return X, refs
+
+
+def similar_vec(q, lang: str, k: int = 10) -> list[tuple[int, float]]:
+    """(row, cosine) of the k nearest verses for an already-embedded query vector."""
+    import numpy as np
+    X, _ = _index(lang)
+    s = X @ q
+    top = np.argpartition(-s, min(k, len(s) - 1))[:k]
+    top = top[np.argsort(-s[top])]
+    return [(int(i), float(s[i])) for i in top]
+
+
+def rows_info(lang: str, hits: list[tuple[int, float]]) -> list[dict]:
+    _, refs = _index(lang)
+    c = _conn(lang)
+    out = []
+    for i, sc in hits:
+        b, ch, v = refs[i]
+        t = c.execute("SELECT text FROM verses WHERE book=? AND chapter=? AND verse=?", (b, ch, v)).fetchone()
+        nb = c.execute("SELECT h, toc2 FROM books WHERE code=?", (b,)).fetchone()
+        native = ((nb[0] or nb[1]) if nb else None) or BOOK_EN[b]
+        en = f"{BOOK_EN[b]} {ch}:{v}"
+        out.append({"ref": en, "display_ref": f"{native.strip()} {ch}:{v} · {en}" if lang != "en" else en,
+                    "book": b, "chapter": ch, "verse": v, "text": t[0] if t else "", "score": round(sc, 4),
+                    "row": i})
+    c.close()
+    return out
+
+
+def similar(text: str, lang: str, k: int = 10) -> list[dict]:
+    """Verses closest in meaning to `text` in translation `lang` (builds the index on first use)."""
+    from .brain import embed
+    text = (text or "").strip()
+    if not text:
+        return []
+    if not ensure_index(lang):
+        raise JobError(f"Bible for '{lang}' not downloaded - POST /bible/download first")
+    q = embed.embed_texts([text], prefix="query: ")[0]
+    return rows_info(lang, similar_vec(q, lang, k))
