@@ -112,7 +112,7 @@ try {
   await st(() => window.__viku.useApp.getState().set({ mode: 'automate' }))
   await page.waitForSelector('.auto-tabs', { timeout: 10000 })
   await page.click('.auto-tab:nth-child(2)')
-  await st((v) => window.__viku.useAuto.getState().setForm({ video_path: v, language: 'auto', count: 1, max_seconds: 60, illustrations: 'gemini', framing: 'follow' }), VIDEO)
+  await st((v) => window.__viku.useAuto.getState().setForm({ video_path: v, language: 'auto', count: 1, max_seconds: 60, illustrations: 'ai', framing: 'follow' }), VIDEO)
   await page.fill('input[aria-label="Sermon part from"]', FROM)
   await page.fill('input[aria-label="Sermon part to"]', TO)
   await sleep(500)

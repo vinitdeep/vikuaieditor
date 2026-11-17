@@ -9,6 +9,29 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
 - Verified live (dev): simulated .crdownload -> rename in Downloads filed as `browser-mode-test.jpg`, queue item -> captured via browser; an image with no waiting prompt ignored; typecheck + lint clean. Not yet: a real AI Studio download end-to-end, installer rebuild.
 - **Length cap 10 s - 5 min** (Automate slider 10-300 s, step 5 below 1 min / 15 above; label "2 min 30 s"). Before this the slider was cosmetic: the engine ignored max_seconds and always used 20-60 s windows + a 60 s planner cap. Now `AutomateReq.max_seconds` / `SuggestReq.max_seconds` (10-300, default 60, 422 outside) -> `clipfinder.length_bounds(cap)` = (min window max(5, min(20, cap/2)), cap, ideal 0.75 cap) -> `build_windows`, `planner.plan(max_len)`, `ranker.raw_features(target)` (duration_fit = same 45 +/- 25 shape scaled to the target). 60 s gives exactly the old bounds. Caps > 60 s keep at most 16 evenly spaced ends per start; windows never span a > 10 s hole between cues (un-analysed gaps). Live: 6d0d / 4f96 at 10 s -> 6-9 s reels; at 60 s unchanged; at 300 s still ~28-34 s (the cap is a maximum; the ranker prefers those). tests/test_length_cap.py; 62 passed.
 
+## Session 8e (2026-11-17): every reel gets NEW AI pictures by itself (aipics + Cloudflare Workers AI)
+- User: the pictures in the reels were old (the 119-picture starter library from Before the Foundation / Salvation, the
+  same ones reused across reels) - "every video should have new images from AI generation".
+- Engine `viku/aipics.py`: per cutaway, the sermon line (+ lines around, reel title, scenes already used in the reel)
+  -> llama-3.3-70b (Workers AI) writes ONE English scene (the image models only read English; lines are Odia/Hindi
+  ASR text) -> SDXL 768x1344 paints it (negative prompt keeps bindi / tilak / sindoor / temple out - Flux has no
+  negative prompt and painted a bindi on 3 of 4 women whatever the wording; Flux is the fallback) -> imported into the
+  library (set "<sermon> reel N (AI)", desc = scene) -> cutaway img + `ai {scene, model, made}`. Failures keep `need`.
+  autobuild runs it for every reel when Settings -> AI pictures is set up and `every_reel` (default on); Automate
+  Illustrations "New AI" (`ai`, old name `gemini` accepted) is the default. `POST /reels/{id}/ai-pictures
+  {replace, render}` repaints a reel (replace = library pictures too) and re-renders it if it was rendered.
+  Settings `ai_pictures {url, image_model: sdxl, text_model: llama, every_reel}`; key via `ai_pictures_key` ->
+  DPAPI `ai_pictures_key_dpapi`, never returned (`ai_pictures_key_set`). Cloudflare refuses Python's default UA (403):
+  requests send `User-Agent: Viku/...`. tests/test_aipics.py.
+- Worker: `tools/cloudflare-worker/` (README = 10-minute setup for any church; adds `POST /text`). The user's own
+  worker (its URL + key live only in the user's Viku settings, never in the repo) was redeployed with
+  /text (default text model llama; gemma-3 returned 500).
+- App: Settings tab "AI pictures" (URL, key, every reel, model); Automate Illustrations New AI | Library | None;
+  Reel panel "New AI pictures for this reel" (replace + re-render); AI Studio queue only for cutaways it could not fill.
+- LIVE verified on an isolated VIKU_DATA copy (scripts/e2e-ai-auto-live.mjs): Make 1 reel -> 8/8 cutaways NEW AI, 0
+  left for AI Studio, ~3 s/picture (Flux) / ~12 s (SDXL); repaint via /ai-pictures -> 8 made, re-rendered; scenes
+  varied (family, fisherman, farmer, choir, mother and child...), no bindi with SDXL.
+
 ## Session 8d (2026-11-17): why new AI pictures never reached the videos — fixed
 - Diagnosis (user's data): no AI Studio prompt had EVER been queued (no gemini-queue.json); every picture in every
   reel came from the starter library and unmatched cutaways stayed empty ("needs": 3b05~6 had 3, ~3 had 2 ...).

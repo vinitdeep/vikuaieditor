@@ -25,7 +25,8 @@ def suggest_job(pid: str, job: Job, count: int = 8, rng: list | None = None, max
 
 def illustration_steps(illustrations: str) -> dict:
     """Automate "Illustrations" option -> autobuild steps: library pictures, new AI pictures (Gemini) or none."""
-    return {"cutaways": illustrations != "none", "ai_images": illustrations == "gemini"}
+    # "ai" (and the older name "gemini") = new AI pictures for every cutaway
+    return {"cutaways": illustrations != "none", "ai_images": illustrations in ("ai", "gemini")}
 
 
 def build_reel(pid: str, s: dict, job: Job, render: bool = True, framing: str = "follow",

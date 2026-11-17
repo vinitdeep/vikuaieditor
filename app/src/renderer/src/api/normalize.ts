@@ -102,7 +102,14 @@ export function settings(x: unknown): Settings {
     church_name: str(r.church_name),
     credit_line: str(r.credit_line),
     default_language: langOpt(r.default_language),
-    export_presets: presets
+    export_presets: presets,
+    ai_pictures: {
+      url: str(rec(r.ai_pictures).url),
+      image_model: str(rec(r.ai_pictures).image_model, 'sdxl'),
+      text_model: str(rec(r.ai_pictures).text_model, 'llama'),
+      every_reel: rec(r.ai_pictures).every_reel !== false
+    },
+    ai_pictures_key_set: r.ai_pictures_key_set === true
   }
 }
 
@@ -120,6 +127,9 @@ export function settingsPatch(s: Settings): Record<string, unknown> {
     )
   }
   for (const k of ['projects_dir', 'exports_dir', 'library_dir', 'music_dir', 'data_dir'] as const) if (s[k]) out[k] = s[k]
+  if (s.ai_pictures) out.ai_pictures = { ...s.ai_pictures, url: s.ai_pictures.url.trim() }
+  if (s.ai_pictures_key === null) out.ai_pictures_key = null
+  else if (s.ai_pictures_key?.trim()) out.ai_pictures_key = s.ai_pictures_key.trim()
   return out
 }
 

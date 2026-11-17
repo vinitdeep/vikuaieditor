@@ -41,6 +41,20 @@ export interface Settings {
   credit_line: string
   default_language: LangOpt
   export_presets: ExportPreset[]
+  /** new AI pictures for cutaways (a Cloudflare Workers AI worker) */
+  ai_pictures: AiPicturesSettings
+  /** a key is stored (the engine never returns it) */
+  ai_pictures_key_set: boolean
+  /** typed in Settings, sent once: non-empty = store, null = remove */
+  ai_pictures_key?: string | null
+}
+
+export interface AiPicturesSettings {
+  url: string
+  image_model: string
+  text_model: string
+  /** every reel gets new AI pictures (none from the library) */
+  every_reel: boolean
 }
 
 export interface TranscriptLine {
@@ -388,7 +402,8 @@ export interface AutomateRequest {
   language: LangOpt
   count: number
   max_seconds: number
-  illustrations: 'library' | 'gemini' | 'none'
+  /** ai = a NEW AI picture for every cutaway · library = the closest library picture · none = no cutaways */
+  illustrations: 'ai' | 'library' | 'none'
   music: 'library' | 'heygen' | 'none'
   thumbnails: boolean
   /** only this part of the sermon (source seconds) is analysed and searched */

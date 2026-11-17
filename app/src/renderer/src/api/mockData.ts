@@ -407,5 +407,7 @@ export const MOCK_SETTINGS: Settings = {
     { id: 'reels', name: 'Reels 1080×1920', width: 1080, height: 1920, fps: 30, max_seconds: 60 },
     { id: 'shorts', name: 'Shorts 1080×1920', width: 1080, height: 1920, fps: 30, max_seconds: 60 },
     { id: 'youtube', name: 'YouTube 16:9 1920×1080', width: 1920, height: 1080, fps: 30 }
-  ]
+  ],
+  ai_pictures: { url: '', image_model: 'sdxl', text_model: 'llama', every_reel: true },
+  ai_pictures_key_set: false
 }

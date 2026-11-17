@@ -88,6 +88,10 @@ def default_settings() -> dict:
             "reel": {"width": 1080, "height": 1920, "fps": 30, "crf": 18, "audio_kbps": 192,
                      "lufs": -14.0, "true_peak": -1.5},
         },
+        # New AI pictures for cutaways (aipics.py): a Cloudflare Workers AI worker. The key goes in via
+        # POST {"ai_pictures_key": "..."} and is stored DPAPI-encrypted as `ai_pictures_key_dpapi`.
+        "ai_pictures": {"url": "", "image_model": "sdxl", "text_model": "llama", "every_reel": True},
+        "ai_pictures_key_dpapi": "",
         "auto_framing": True,         # new reels: the 9:16 crop follows the speaker (reel["framing"] = "follow")
         "music_gain_db": -19.0,
         "sfx_gain_db": -15.0,
@@ -106,7 +110,9 @@ def _merge(base: dict, over: dict) -> dict:
 
 
 _mem_token = ""  # session-only token when DPAPI is unavailable (non-Windows)
-SECRET_KEYS = ("hf_token", "hf_token_dpapi", "hf_token_set")
+SECRET_KEYS = ("hf_token", "hf_token_dpapi", "hf_token_set", "ai_pictures_key", "ai_pictures_key_dpapi",
+               "ai_pictures_key_set")
+_mem_ai_key = ""
 
 
 def _write(d: dict) -> None:
@@ -152,16 +158,41 @@ def save_settings(patch: dict) -> dict:
     token = patch.pop("hf_token", "")
     patch.pop("hf_token_dpapi", None)
     patch.pop("hf_token_set", None)
+    ai_key = patch.pop("ai_pictures_key", "")   # same rules as hf_token
+    patch.pop("ai_pictures_key_dpapi", None)
+    patch.pop("ai_pictures_key_set", None)
     cur = settings()
     new = _merge(cur, patch)
     if token is None:
         new["hf_token_dpapi"], _mem_token = "", ""
     elif isinstance(token, str) and token.strip():
         _absorb_token(new, token.strip())
+    if ai_key is None:
+        new["ai_pictures_key_dpapi"] = ""
+        _set_mem_ai_key("")
+    elif isinstance(ai_key, str) and ai_key.strip():
+        from . import vault
+        try:
+            new["ai_pictures_key_dpapi"] = vault.protect(ai_key.strip())
+        except vault.VaultUnavailable:
+            new["ai_pictures_key_dpapi"] = ""
+            _set_mem_ai_key(ai_key.strip())
     with _lock:
         _write(new)
         _cache = new
     return settings()
+
+
+def _set_mem_ai_key(k: str) -> None:
+    global _mem_ai_key
+    _mem_ai_key = k
+
+
+def ai_pictures_key() -> str:
+    """The AI picture service key (decrypted in memory only), else env VIKU_AI_PICTURES_KEY."""
+    from . import vault
+    return (vault.unprotect(settings().get("ai_pictures_key_dpapi", "")) or _mem_ai_key
+            or os.environ.get("VIKU_AI_PICTURES_KEY") or "")
 
 
 def hf_token() -> str:
@@ -177,6 +208,7 @@ def public_settings() -> dict:
     for k in SECRET_KEYS:
         s.pop(k, None)
     s["hf_token_set"] = bool(hf_token())
+    s["ai_pictures_key_set"] = bool(ai_pictures_key())
     return s
 
 

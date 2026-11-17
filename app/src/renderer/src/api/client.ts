@@ -50,6 +50,8 @@ export interface VikuApi {
   autobuild(reelId: string): Promise<JobRef>
   /** track the speaker for auto framing only (crops + follow paths); captions / cutaways / music untouched */
   trackFraming(reelId: string): Promise<JobRef>
+  /** new AI pictures for a reel's cutaways (replace: every cutaway, library ones too), re-rendered if it was */
+  aiPictures(reelId: string, replace?: boolean): Promise<JobRef>
   /** attach a captured image to cutaway i (engine copies it into the library); null = adapter cannot, set it locally */
   attachCutawayImage(reelId: string, index: number, path: string): Promise<Cutaway | null>
   render(reelId: string, preset?: string): Promise<JobRef>

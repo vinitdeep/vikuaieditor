@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { FolderOpen, Hammer, Play, Wand2 } from 'lucide-react'
+import { FolderOpen, Hammer, ImagePlus, Play, Wand2 } from 'lucide-react'
 import { api } from '@/api'
 import type { Lang, Reel } from '@/api/types'
 import { toast, useApp } from '@/state/app'
-import { useEditor } from '@/state/editor'
+import { saveNow, useEditor } from '@/state/editor'
 import { usePlayback } from '@/state/playback'
 import { useJobs } from '@/state/jobs'
 import { reelDuration } from '@/lib/reel'
@@ -58,6 +58,35 @@ export async function autobuildReel(reel: Reel): Promise<void> {
   }
 }
 
+/** reel id -> its running "new AI pictures" job */
+const pictureJobs = new Map<string, string>()
+
+/** New AI pictures for every cutaway of the reel (library pictures replaced), then a re-render if it had one. */
+export async function newAiPictures(reel: Reel): Promise<void> {
+  if (!useApp.getState().settings?.ai_pictures_key_set || !useApp.getState().settings?.ai_pictures.url) {
+    toast('warn', 'Set up AI pictures first (Settings → AI pictures)', { label: 'Open Settings', run: () => useApp.getState().set({ settingsOpen: true }) })
+    return
+  }
+  try {
+    await saveNow() // the engine reads the saved project
+    const ref = await api().aiPictures(reel.id, true)
+    pictureJobs.set(reel.id, ref.job)
+    useJobs.getState().track(ref, `New AI pictures · ${reel.title}`, {
+      onDone: (ev) => {
+        void useEditor.getState().refresh()
+        const r = ev.result && typeof ev.result === 'object' ? (ev.result as Record<string, unknown>) : {}
+        const made = typeof r.made === 'number' ? r.made : 0
+        const failed = typeof r.failed === 'number' ? r.failed : 0
+        const out = resultPath(ev.result)
+        if (out) usePlayback.getState().set({ rendered: { path: out, v: Date.now() } })
+        toast(failed ? 'warn' : 'success', `${made} new AI picture${made === 1 ? '' : 's'}${failed ? `, ${failed} could not be made` : ''}${out ? ' — reel re-rendered' : ''}`)
+      }
+    })
+  } catch (e) {
+    toast('error', `New AI pictures failed: ${e instanceof Error ? e.message : String(e)}`)
+  }
+}
+
 export function ReelPanel({ reel }: { reel: Reel }) {
   const edit = useEditor((s) => s.edit)
   const presets = useApp((s) => s.settings?.export_presets ?? [])
@@ -66,6 +95,9 @@ export function ReelPanel({ reel }: { reel: Reel }) {
   const renderJobId = renderJobs.get(reel.id)
   const renderJob = useJobs((s) => (renderJobId ? s.jobs[renderJobId] : undefined))
   const rendering = renderJob && (renderJob.state === 'running' || renderJob.state === 'queued')
+  const picJobId = pictureJobs.get(reel.id)
+  const picJob = useJobs((s) => (picJobId ? s.jobs[picJobId] : undefined))
+  const painting = picJob && (picJob.state === 'running' || picJob.state === 'queued')
 
   return (
     <>
@@ -126,6 +158,9 @@ export function ReelPanel({ reel }: { reel: Reel }) {
         <div className="btn-col">
           <Button icon={Wand2} onClick={() => void autobuildReel(reel)}>
             Auto-build captions, verses, cutaways
+          </Button>
+          <Button icon={ImagePlus} onClick={() => void newAiPictures(reel)} disabled={Boolean(painting)} title="Paint a new AI picture for every cutaway of this reel (replaces library pictures), then re-render">
+            {painting ? `${Math.round((picJob?.progress ?? 0) * 100)}% · ${picJob?.message || 'New AI pictures…'}` : 'New AI pictures for this reel'}
           </Button>
           <div className="row">
             <Select ariaLabel="Export preset" className="grow" value={preset} onChange={setPreset} options={presets.map((p) => ({ id: p.id, label: p.name }))} />

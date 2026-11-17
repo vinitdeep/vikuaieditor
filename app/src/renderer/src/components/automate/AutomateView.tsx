@@ -66,7 +66,7 @@ interface AutoState {
 
 export const useAuto = create<AutoState>((set, get) => ({
   kind: 'pick',
-  form: { video_path: '', language: 'auto', count: 3, max_seconds: 60, illustrations: 'library', music: 'library', thumbnails: true, framing: 'follow' },
+  form: { video_path: '', language: 'auto', count: 3, max_seconds: 60, illustrations: 'ai', music: 'library', thumbnails: true, framing: 'follow' },
   jobId: null,
   phase: 'run',
   picks: null,
@@ -489,9 +489,10 @@ export function AutomateView() {
     set({ reels: map, projects: pmap })
   }
 
-  /** Illustrations = Gemini: queue a new AI picture for every empty cutaway of the reels just made (AI Studio). */
+  /** Illustrations = New AI: the engine paints the pictures while it builds (Settings -> AI pictures); any cutaway it
+   *  could not fill (no service set up, quota, offline) is queued in AI Studio instead. */
   const askForAiImages = async (res: AutomateResultReel[]): Promise<void> => {
-    if (useAuto.getState().form.illustrations !== 'gemini') return
+    if (useAuto.getState().form.illustrations !== 'ai') return
     const all = useAuto.getState().reels
     const made = res.map((r) => all[r.reel_id]).filter((r): r is Reel => Boolean(r))
     await queueEmptyCutaways(made)
@@ -773,8 +774,8 @@ export function AutomateView() {
                     value={form.illustrations}
                     onChange={(v) => setForm({ illustrations: v })}
                     options={[
+                      { id: 'ai', label: 'New AI' },
                       { id: 'library', label: 'Library' },
-                      { id: 'gemini', label: 'Gemini' },
                       { id: 'none', label: 'None' }
                     ]}
                   />

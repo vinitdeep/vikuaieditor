@@ -129,6 +129,8 @@ export class HttpApi implements VikuApi {
     }
   }
   autobuild = async (reelId: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/autobuild`, {}), 'autobuild')
+  aiPictures = async (reelId: string, replace = false) =>
+    N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/ai-pictures`, { replace, render: true }), 'ai_pictures')
   trackFraming = async (reelId: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/framing`, {}), 'framing')
   render = async (reelId: string, preset?: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/render`, preset ? { preset } : {}), 'render')
   thumbnail = async (reelId: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/thumbnail`, {}), 'thumbnail')

@@ -10,7 +10,7 @@ import { Modal } from './Shell'
 import { ModelsPanel } from './ModelsPanel'
 import { StarterSummary } from './AboutDialog'
 
-type Tab = 'general' | 'folders' | 'export' | 'models' | 'engine'
+type Tab = 'general' | 'pictures' | 'folders' | 'export' | 'models' | 'engine'
 
 function FolderRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
@@ -28,6 +28,72 @@ function FolderRow({ label, value, onChange }: { label: string; value: string; o
         />
       </span>
     </div>
+  )
+}
+
+/** New AI pictures for every reel: the Cloudflare Workers AI picture service (URL + key) and the on/off switch. */
+function AiPicturesTab({ draft, patch }: { draft: Settings; patch: (p: Partial<Settings>) => void }) {
+  const ap = draft.ai_pictures
+  const setAp = (p: Partial<Settings['ai_pictures']>): void => patch({ ai_pictures: { ...ap, ...p } })
+  const ready = Boolean(ap.url.trim()) && (draft.ai_pictures_key_set || Boolean(draft.ai_pictures_key?.trim()))
+  return (
+    <>
+      <p className="rule-note small">
+        Every reel can get brand-new AI pictures for its cutaways: Viku reads each sermon line, writes an English scene for it and paints it — no copying
+        into AI Studio. It uses a free Cloudflare Workers AI service (about 80 pictures a day on the free plan); see <code>tools/cloudflare-worker</code> in
+        the Viku folder to set one up for your church.
+      </p>
+      <div className="irow">
+        <span className="irow-label">Service URL</span>
+        <span className="irow-ctl">
+          <input className="input" value={ap.url} placeholder="https://your-worker.workers.dev" onChange={(e) => setAp({ url: e.target.value })} onKeyDown={(e) => e.stopPropagation()} spellCheck={false} aria-label="AI picture service URL" />
+        </span>
+      </div>
+      <div className="irow">
+        <span className="irow-label">Key</span>
+        <span className="irow-ctl row gap">
+          <input
+            className="input grow"
+            type="password"
+            value={draft.ai_pictures_key ?? ''}
+            placeholder={draft.ai_pictures_key_set ? 'Stored (encrypted) — type to replace' : 'Paste the service key'}
+            onChange={(e) => patch({ ai_pictures_key: e.target.value })}
+            onKeyDown={(e) => e.stopPropagation()}
+            autoComplete="off"
+            aria-label="AI picture service key"
+          />
+          {draft.ai_pictures_key_set && (
+            <Button size="sm" variant="ghost" onClick={() => patch({ ai_pictures_key: null, ai_pictures_key_set: false })}>
+              Remove
+            </Button>
+          )}
+        </span>
+      </div>
+      <div className="irow">
+        <span className="irow-label">Every reel</span>
+        <span className="irow-ctl">
+          <Toggle checked={ap.every_reel} onChange={(v) => setAp({ every_reel: v })} label="New AI pictures for every reel (Automate and Manual)" />
+        </span>
+      </div>
+      <div className="irow">
+        <span className="irow-label">Picture model</span>
+        <span className="irow-ctl">
+          <Segmented
+            size="sm"
+            ariaLabel="Picture model"
+            value={ap.image_model === 'flux' ? 'flux' : 'sdxl'}
+            onChange={(v) => setAp({ image_model: v })}
+            options={[
+              { id: 'sdxl', label: 'SDXL (tall, recommended)' },
+              { id: 'flux', label: 'Flux (sharper, may add a bindi)' }
+            ]}
+          />
+        </span>
+      </div>
+      <p className={`small ${ready ? 'muted' : 'warn-text'}`}>
+        {ready ? 'Ready — new reels get new AI pictures while they are built.' : 'Not set up yet — reels use the picture library, and empty cutaways can be filled through AI Studio.'}
+      </p>
+    </>
   )
 }
 
@@ -102,6 +168,7 @@ export function SettingsDialog() {
         onChange={setTab}
         tabs={[
           { id: 'general', label: 'General' },
+          { id: 'pictures', label: 'AI pictures' },
           { id: 'folders', label: 'Folders' },
           { id: 'export', label: 'Export presets' },
           { id: 'models', label: 'Models' },
@@ -112,6 +179,7 @@ export function SettingsDialog() {
         <div className="muted pad">Settings are unavailable until the engine answers.</div>
       ) : (
         <div className="settings-body">
+          {tab === 'pictures' && draft && <AiPicturesTab draft={draft} patch={patch} />}
           {tab === 'general' && draft && (
             <>
               <div className="irow">

@@ -236,6 +236,22 @@ export class MockApi implements VikuApi {
     }
     return clone(c)
   }
+  async aiPictures(reelId: string, replace = false) {
+    return this.job('ai_pictures', [{ msg: 'AI pictures: 1 of 2', ms: 700 }, { msg: 'AI pictures: 2 of 2', ms: 700 }, { msg: 'rendering final', ms: 900 }], () => {
+      const { r } = this.findReel(reelId)
+      let made = 0
+      r.cutaways.forEach((c, i) => {
+        if (!replace && c.img && !c.need) return
+        c.img = `D:\\Viku\\library\\images\\ai-${reelId}-${i + 1}.jpg`
+        if (c.need) {
+          c.need_done = c.need
+          delete c.need
+        }
+        made++
+      })
+      return { reel: reelId, made, failed: 0 }
+    })
+  }
   async trackFraming(reelId: string) {
     return this.job('framing', [{ msg: 'framing: finding the speaker', ms: 900 }], () => {
       const { r } = this.findReel(reelId)

@@ -203,8 +203,11 @@ def caption_chunks(wav16: np.ndarray, bounds: list[float], max_cue=3.5) -> list[
 
 # ------------------------------------------------------------------ build --
 def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
-    # ai_images: cutaways are all requests for new AI pictures (none taken from the library)
-    steps = {"captions": True, "cutaways": True, "music": True, "ai_images": False, **(steps or {})}
+    # ai_images: every cutaway gets a NEW AI picture (none from the library) - made right here by aipics when a
+    # generator is set up (default for every reel), else left as `need` requests for the editor (AI Studio)
+    from .. import aipics
+    steps = {"captions": True, "cutaways": True, "music": True, "ai_images": aipics.every_reel(), **(steps or {})}
+    make_ai = bool(steps["cutaways"] and steps["ai_images"] and aipics.ready())
     p, r = projects.find_reel(rid)
     d = projects.reel_dir(rid)
     segs = r["segments"]
@@ -233,7 +236,7 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
 
     captions = r.get("captions", [])
     if steps["captions"]:
-        job.span(0.70, 0.92)
+        job.span(0.70, 0.80 if make_ai else 0.92)
         job.update(0.0, "captions: re-transcribing the joined clip")
         w16 = d / "voice16k.wav"
         ff.run(["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-i", str(src), "-vn", "-ac", "1", "-ar", "16000",
@@ -251,7 +254,7 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
         deoverlap(captions)
 
     deoverlap(captions)   # also for captions kept from an earlier build (libass would stack overlapping cues)
-    job.span(0.92, 1.0)
+    job.span(0.80, 0.84) if make_ai else job.span(0.92, 1.0)
     cutaways, verses, music, sfx = r.get("cutaways", []), r.get("verses", []), r.get("music"), r.get("sfx", [])
     if steps["cutaways"]:
         from ..brain import cutaways as cutplan
@@ -295,6 +298,10 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
             th["sub"] = sub
         rr["thumbnail"] = th
     _save_reel(rid, upd2)
+    if make_ai:
+        job.span(0.84, 1.0)
+        res = aipics.fill(rid, job)
+        _save_reel(rid, lambda rr: rr.update({"ai_pictures": res}))
     return projects.find_reel(rid)[1]
 
 

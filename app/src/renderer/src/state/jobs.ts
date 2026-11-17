@@ -27,6 +27,7 @@ const LABELS: Record<string, string> = {
   suggest: 'Find clips (Viku Brain)',
   autobuild: 'Auto-build reel',
   framing: 'Auto framing',
+  ai_pictures: 'New AI pictures',
   automate_build: 'Make the chosen reel',
   render: 'Render reel',
   thumbnail: 'Thumbnail',

@@ -244,6 +244,31 @@ def reel_framing(rid: str):
     return job_ref(MANAGER.submit("framing", lambda job: reel.track_framing(rid, job), {"reel": rid}))
 
 
+class AiPicturesReq(BaseModel):
+    replace: bool = False   # True: new AI pictures for EVERY cutaway (library pictures too), not only empty ones
+    render: bool = True     # re-render afterwards when the reel was rendered before
+
+
+@app.post("/reels/{rid}/ai-pictures")
+def reel_ai_pictures(rid: str, b: AiPicturesReq | None = None):
+    """Make new AI pictures for a reel's cutaways (needs Settings -> AI pictures), then re-render it if it had been."""
+    from . import aipics
+    b = b or AiPicturesReq()
+    projects.find_reel(rid)
+    if not aipics.ready():
+        raise HTTPException(409, "AI pictures are not set up: add the picture service URL and key in Settings")
+
+    def run(job):
+        was_rendered = projects.find_reel(rid)[1].get("status") == "rendered"
+        with job.scope(0.0, 0.5 if (b.render and was_rendered) else 1.0):
+            res = aipics.fill(rid, job, replace=b.replace)
+        if b.render and was_rendered and res["made"]:
+            with job.scope(0.5, 1.0):
+                res |= reel.render(rid, job)
+        return {"reel": rid, **res}
+    return job_ref(MANAGER.submit("ai_pictures", run, {"reel": rid}))
+
+
 @app.post("/reels/{rid}/render")
 def render(rid: str):
     projects.find_reel(rid)
@@ -313,7 +338,7 @@ class AutomateReq(BaseModel):
     max_seconds: float = Field(60.0, ge=10, le=300)   # reel length: 10 s - 5 min
     pick: int = Field(0, ge=0, le=12)   # > 0: stop after suggest, return this many suggestions to choose from
     framing: Literal["follow", "fixed"] = "follow"   # auto framing (crop follows the speaker) or still crops
-    illustrations: Literal["library", "gemini", "none"] = "library"   # gemini: every cutaway asks for a new AI image
+    illustrations: Literal["ai", "gemini", "library", "none"] = "ai"   # ai: a NEW AI picture for every cutaway
 
 
 @app.post("/automate")
@@ -332,7 +357,7 @@ class AutomateBuildReq(BaseModel):
     suggestions: list[dict] | None = Field(None, max_length=12)   # several picked clips -> one job, built in order
     render: bool = True
     framing: Literal["follow", "fixed"] = "follow"
-    illustrations: Literal["library", "gemini", "none"] = "library"
+    illustrations: Literal["ai", "gemini", "library", "none"] = "ai"
 
 
 @app.post("/automate/build")
