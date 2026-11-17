@@ -52,7 +52,10 @@ interface AutoState {
   picks: Picks | null
   /** candidate id -> reel id it became */
   built: Record<string, string>
-  buildingId: string | null
+  /** candidate ids being made right now (one job, made one after another) */
+  building: string[]
+  /** candidate ids the editor ticked to make together */
+  marked: string[]
   results: AutomateResultReel[]
   reels: Record<string, Reel>
   projects: Record<string, Project>
@@ -67,7 +70,8 @@ export const useAuto = create<AutoState>((set, get) => ({
   phase: 'run',
   picks: null,
   built: {},
-  buildingId: null,
+  building: [],
+  marked: [],
   results: [],
   reels: {},
   projects: {},
@@ -173,17 +177,33 @@ interface PickCardProps {
   building: boolean
   locked: boolean
   made: boolean
+  marked: boolean
+  onMark: () => void
   onChoose: () => void
   onOpen: () => void
 }
 
-function PickCard({ c, rank, project, previewing, onPreview, building, locked, made, onChoose, onOpen }: PickCardProps) {
+function PickCard({ c, rank, project, previewing, onPreview, building, locked, made, marked, onMark, onChoose, onOpen }: PickCardProps) {
   const secs = c.duration ?? segTotal(c.segments)
   const pct = scorePct(c.score) ?? 0
   const start = c.window?.[0] ?? c.segments[0]?.[0] ?? 0
   return (
-    <article className={`ccard pick${made ? ' kept' : ''}${building ? ' is-building' : ''}`}>
+    <article className={`ccard pick${made ? ' kept' : ''}${building ? ' is-building' : ''}${marked ? ' marked' : ''}`}>
       <header>
+        {!made && !building && (
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={marked}
+            aria-label={`Select clip ${rank} to make`}
+            className={`pick-mark${marked ? ' on' : ''}`}
+            onClick={onMark}
+            disabled={locked}
+            title={marked ? 'Selected for the build — click to unselect' : 'Select this clip to make it with the others'}
+          >
+            {marked && <Check size={12} strokeWidth={3} aria-hidden />}
+          </button>
+        )}
         <span className="ccard-rank num">#{rank}</span>
         <span className={`ccard-title lang-${c.language}`} title={c.title}>
           {c.title || `Clip ${rank}`}
@@ -405,7 +425,7 @@ function ResultCard({ r, index, reel, project, playing, onPlay }: { r: AutomateR
 }
 
 export function AutomateView() {
-  const { kind, form, setForm, jobId, phase, picks, built, buildingId, results, reels, projects: autoProjects, set } = useAuto()
+  const { kind, form, setForm, jobId, phase, picks, built, building, marked, results, reels, projects: autoProjects, set } = useAuto()
   const job = useJobs((s) => (jobId ? s.jobs[jobId] : undefined))
   const projects = useEditor((s) => s.projects)
   const settings = useApp((s) => s.settings)
@@ -414,6 +434,10 @@ export function AutomateView() {
   const [playing, setPlaying] = useState<string | null>(null)
   const [previewing, setPreviewing] = useState<string | null>(null)
   const choosing = kind === 'pick'
+  // clips that can still be ticked (not made, not being made), and the ticked ones in rank order
+  const pickable = (picks?.items ?? []).filter((c) => !(c.id in built) && !building.includes(c.id))
+  const markedItems = pickable.filter((c) => marked.includes(c.id))
+  const allMarked = pickable.length > 0 && markedItems.length === pickable.length
   const waitingForPick = phase === 'pick' && job?.state === 'done' && Boolean(picks?.items.length)
   const picksRef = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -479,7 +503,7 @@ export function AutomateView() {
     setForm({ range: body.range })
     try {
       const ref = await api().automate(body)
-      set({ jobId: ref.job, phase: choosing ? 'pick' : 'run', picks: null, built: {}, buildingId: null, results: [], reels: {} })
+      set({ jobId: ref.job, phase: choosing ? 'pick' : 'run', picks: null, built: {}, building: [], marked: [], results: [], reels: {} })
       setPreviewing(null)
       useJobs.getState().track(ref, `Automate · ${form.video_path.split(/[\\/]/).pop()}`, {
         onDone: async (ev) => {
@@ -504,21 +528,36 @@ export function AutomateView() {
     }
   }
 
-  const choose = async (c: Candidate): Promise<void> => {
-    if (!picks) return
+  /** make one clip, or every clip the editor ticked — one engine job, reels made one after another */
+  const make = async (list: Candidate[]): Promise<void> => {
+    if (!picks || !list.length) return
     setPreviewing(null)
+    const ids = list.map((c) => c.id)
     try {
-      const ref = await api().automateBuild(picks.project_id, c, form.framing ?? 'follow')
-      set({ jobId: ref.job, phase: 'build', buildingId: c.id })
-      const done = (): void => set({ buildingId: null })
-      useJobs.getState().track(ref, `Automate · ${c.title || 'picked clip'}`, {
+      const ref = await api().automateBuild(picks.project_id, list.length === 1 ? list[0] : list, form.framing ?? 'follow')
+      set({ jobId: ref.job, phase: 'build', building: ids })
+      const done = (): void => set({ building: [] })
+      const label = list.length === 1 ? list[0].title || 'picked clip' : `${list.length} picked clips`
+      useJobs.getState().track(ref, `Automate · ${label}`, {
         onDone: async (ev) => {
           const res = parseResults(ev.result)
+          const raw = isRec(ev.result) && Array.isArray(ev.result.reels) ? ev.result.reels : []
           const cur = useAuto.getState()
-          set({ results: [...res, ...cur.results], built: { ...cur.built, [c.id]: res[0]?.reel_id ?? '' }, buildingId: null })
+          const madeNow: Record<string, string> = {}
+          res.forEach((r, i) => {
+            const it: unknown = raw[i]
+            const from = isRec(it) ? str(it.suggestion) : ''
+            madeNow[from || ids[i] || r.reel_id] = r.reel_id
+          })
+          set({
+            results: [...res, ...cur.results],
+            built: { ...cur.built, ...madeNow },
+            building: [],
+            marked: cur.marked.filter((m) => !(m in madeNow))
+          })
           await loadProjects(res.map((r) => r.project_id))
           void useEditor.getState().loadProjects()
-          toast('success', 'Your reel is ready')
+          toast('success', res.length === 1 ? 'Your reel is ready' : `${res.length} reels ready`)
         },
         onError: done,
         onCancel: done
@@ -879,8 +918,25 @@ export function AutomateView() {
               <div>
                 <h2>{Object.keys(built).length ? 'More clips from this sermon' : 'Choose your reel'}</h2>
                 <span className="muted small">
-                  The {picks.items.length} best clips at about {capLabel(form.max_seconds)} · press play to hear one, then make the one you like
+                  The {picks.items.length} best clips at about {capLabel(form.max_seconds)} · press play to hear one · tick the ones you want and make them together
                 </span>
+              </div>
+              <div className="pick-bar">
+                {pickable.length > 0 && (
+                  <Button size="sm" variant="ghost" disabled={Boolean(running)} onClick={() => set({ marked: allMarked ? [] : pickable.map((c) => c.id) })}>
+                    {allMarked ? 'Clear' : 'Select all'}
+                  </Button>
+                )}
+                <Button
+                  variant="primary"
+                  icon={Wand2}
+                  className="pick-make"
+                  disabled={Boolean(running) || markedItems.length === 0}
+                  onClick={() => void make(markedItems)}
+                  title={markedItems.length ? undefined : 'Tick the clips you want, then make them all at once'}
+                >
+                  {markedItems.length ? `Make ${markedItems.length} selected reel${markedItems.length === 1 ? '' : 's'}` : 'Make selected reels'}
+                </Button>
               </div>
             </div>
             <div className="pgrid">
@@ -892,10 +948,12 @@ export function AutomateView() {
                   project={autoProjects[picks.project_id] ?? null}
                   previewing={previewing === c.id}
                   onPreview={(on) => setPreviewing(on ? c.id : null)}
-                  building={buildingId === c.id}
+                  building={building.includes(c.id)}
                   locked={Boolean(running)}
                   made={c.id in built}
-                  onChoose={() => void choose(c)}
+                  marked={marked.includes(c.id)}
+                  onMark={() => set({ marked: marked.includes(c.id) ? marked.filter((m) => m !== c.id) : [...marked, c.id] })}
+                  onChoose={() => void make([c])}
                   onOpen={() => void openBuilt(c)}
                 />
               ))}

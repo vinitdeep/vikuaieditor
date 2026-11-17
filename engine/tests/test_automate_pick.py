@@ -52,3 +52,14 @@ def test_build_suggestion_has_the_automate_result_shape(monkeypatch):
     out = automate.build_suggestion(FakeJob(), "p1", {"id": "s2", "segments": [[0, 50]], "title": "T", "score": 1},
                                     framing="fixed")
     assert out["reels"][0]["framing"] == "fixed"
+
+
+def test_build_suggestions_makes_every_marked_clip_in_order(monkeypatch):
+    made = []
+    monkeypatch.setattr(automate, "build_reel", lambda pid, s, job, render, framing="follow": made.append(s["id"]) or {
+        "reel": f"{pid}~{len(made)}", "suggestion": s["id"], "framing": framing})
+    picked = [{"id": f"s{i}", "segments": [[i * 100.0, i * 100.0 + 50]], "title": f"T{i}", "score": 1} for i in (3, 1, 4)]
+    out = automate.build_suggestions(FakeJob(), "p1", picked, framing="fixed")
+    assert made == ["s3", "s1", "s4"]
+    assert [r["suggestion"] for r in out["reels"]] == ["s3", "s1", "s4"]
+    assert out["project"] == "p1" and all(r["framing"] == "fixed" for r in out["reels"])

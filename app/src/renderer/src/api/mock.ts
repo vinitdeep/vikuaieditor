@@ -332,24 +332,24 @@ export class MockApi implements VikuApi {
       return { project: 'p-btf', reels }
     })
   }
-  async automateBuild(projectId: string, c: Candidate) {
+  async automateBuild(projectId: string, c: Candidate | Candidate[]) {
+    const list = Array.isArray(c) ? c : [c]
     const steps: Step[] = [
       { msg: 'captions: re-transcribing the joined clip', ms: 1200 },
       { msg: 'verse cards, cutaways, music', ms: 700 },
       { msg: 'speech enhancement', ms: 800 },
       { msg: 'rendering final', ms: 1600 }
     ]
-    return this.job('automate_build', steps, () => ({
+    return this.job('automate_build', list.flatMap(() => steps), () => ({
       project: projectId,
-      reels: [
-        {
-          reel: c.id === 's1' ? 'r-satan-defeated' : `r-pick-${c.id}`,
-          title: c.title,
-          duration: c.duration ?? c.segments.reduce((a, [s, e]) => a + e - s, 0),
-          score: c.score,
-          path: `D:\\Viku\\exports\\pick\\${c.id}.mp4`
-        }
-      ]
+      reels: list.map((x) => ({
+        reel: x.id === 's1' ? 'r-satan-defeated' : `r-pick-${x.id}`,
+        suggestion: x.id,
+        title: x.title,
+        duration: x.duration ?? x.segments.reduce((a, [s, e]) => a + e - s, 0),
+        score: x.score,
+        path: `D:\\Viku\\exports\\pick\\${x.id}.mp4`
+      }))
     }))
   }
   async cancelJob(jobId: string) {

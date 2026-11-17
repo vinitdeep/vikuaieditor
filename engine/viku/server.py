@@ -327,20 +327,26 @@ class AutomateBuildReq(BaseModel):
     project_id: str
     suggestion_id: str = ""
     suggestion: dict | None = None   # {id, segments, title, score} as shown to the editor (preferred)
+    suggestions: list[dict] | None = Field(None, max_length=12)   # several picked clips -> one job, built in order
     render: bool = True
     framing: Literal["follow", "fixed"] = "follow"
 
 
 @app.post("/automate/build")
 def automate_build(b: AutomateBuildReq):
-    """Build (+ render) the suggestion the editor chose after POST /automate with pick > 0."""
+    """Build (+ render) the suggestion(s) the editor chose after POST /automate with pick > 0. `suggestions` makes
+    several reels one after another in a single job (same result shape: {project, reels})."""
     from .jobs import JobError
     projects.load(b.project_id)
     try:
-        s = automate.find_suggestion(b.project_id, b.suggestion_id, b.suggestion)
+        if b.suggestions:
+            picked = [automate.find_suggestion(b.project_id, str(x.get("id") or ""), x) for x in b.suggestions]
+        else:
+            picked = [automate.find_suggestion(b.project_id, b.suggestion_id, b.suggestion)]
     except JobError as e:
-        raise HTTPException(404 if b.suggestion is None else 422, str(e)) from e
-    j = MANAGER.submit("automate_build", lambda job: automate.build_suggestion(job, b.project_id, s, b.render, b.framing),
+        raise HTTPException(404 if b.suggestion is None and not b.suggestions else 422, str(e)) from e
+    j = MANAGER.submit("automate_build", lambda job: automate.build_suggestions(job, b.project_id, picked, b.render,
+                                                                                b.framing),
                        {"project": b.project_id})
     return job_ref(j)
 

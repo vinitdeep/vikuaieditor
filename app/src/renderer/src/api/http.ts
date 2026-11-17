@@ -133,16 +133,13 @@ export class HttpApi implements VikuApi {
   render = async (reelId: string, preset?: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/render`, preset ? { preset } : {}), 'render')
   thumbnail = async (reelId: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/thumbnail`, {}), 'thumbnail')
   automate = async (body: Parameters<VikuApi['automate']>[0]) => N.jobRef(await this.call('POST', '/automate', body), 'automate')
-  automateBuild = async (projectId: string, c: Candidate, framing: Framing = 'follow') =>
-    N.jobRef(
-      await this.call('POST', '/automate/build', {
-        project_id: projectId,
-        suggestion_id: c.id,
-        suggestion: { id: c.id, segments: c.segments, title: c.title, score: c.score },
-        framing
-      }),
-      'automate_build'
-    )
+  automateBuild = async (projectId: string, c: Candidate | Candidate[], framing: Framing = 'follow') => {
+    const wire = (x: Candidate) => ({ id: x.id, segments: x.segments, title: x.title, score: x.score })
+    const body = Array.isArray(c)
+      ? { project_id: projectId, suggestions: c.map(wire), framing }
+      : { project_id: projectId, suggestion_id: c.id, suggestion: wire(c), framing }
+    return N.jobRef(await this.call('POST', '/automate/build', body), 'automate_build')
+  }
   cancelJob = async (jobId: string) => {
     try {
       await this.call('POST', `/jobs/${encodeURIComponent(jobId)}/cancel`, {})

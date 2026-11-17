@@ -31,7 +31,7 @@ def build_reel(pid: str, s: dict, job: Job, render: bool = True, framing: str = 
                                                       "framing": framing if framing in ("follow", "fixed") else "follow"})
     with job.scope(0.0, 0.4 if render else 1.0):
         reel.autobuild(r["id"], job)
-    res = {"reel": r["id"], "score": s["score"], "suggested_title": s["title"]}
+    res = {"reel": r["id"], "score": s["score"], "suggested_title": s["title"], "suggestion": s["id"]}
     if render:
         with job.scope(0.4, 1.0):
             res |= reel.render(r["id"], job)
@@ -87,5 +87,16 @@ def find_suggestion(pid: str, suggestion_id: str = "", suggestion: dict | None =
 
 
 def build_suggestion(job: Job, pid: str, s: dict, render: bool = True, framing: str = "follow") -> dict:
-    """POST /automate/build: make the suggestion the editor picked. Same result shape as /automate."""
-    return {"project": pid, "reels": [build_reel(pid, s, job, render, framing)]}
+    """Make the one suggestion the editor picked. Same result shape as /automate."""
+    return build_suggestions(job, pid, [s], render, framing)
+
+
+def build_suggestions(job: Job, pid: str, picked: list[dict], render: bool = True, framing: str = "follow") -> dict:
+    """POST /automate/build: make every clip the editor marked, one after another (one job, progress split evenly).
+    Each result reel carries `suggestion` (the clip id it came from)."""
+    out = []
+    n = max(len(picked), 1)
+    for i, s in enumerate(picked):
+        with job.scope(i / n, (i + 1) / n):
+            out.append(build_reel(pid, s, job, render, framing))
+    return {"project": pid, "reels": out}

@@ -101,7 +101,7 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
 - **Reel ids** are `<project id>~<n>`; exports go to `<project>/exports/<n>-<slug>.mp4` (+ `.jpg`).
 - **Extra endpoints**: `GET /jobs`, `GET /jobs/{id}`, `POST /jobs/{id}/cancel`, `GET /reels/{id}`, `POST /music/seed`.
 - **Request options**: analyze `{range:[s,e], steps:{proxy,shots,asr}}`; suggest `{count, range}`; autobuild `{steps:{captions,cutaways,music}}`;
-  automate `{video_path | project_id, language, count, range, render, max_seconds, pick, framing:"follow"|"fixed"}` (automate/build takes `framing` too); library import `{paths, tags, seed}`; bible download `{langs}`.
+  automate `{video_path | project_id, language, count, range, render, max_seconds, pick, framing:"follow"|"fixed"}` (automate/build `{project_id, suggestion | suggestions[], render, framing}`; several suggestions = one job, reels made in order, each result reel has `suggestion`); library import `{paths, tags, seed}`; bible download `{langs}`.
 - **Project JSON additions**: `width, height, proxy_offset` (proxy of a range starts at that source second), `proxies[]`, `peaks` (npy path),
   `analyzed[[s,e]]`, `suggestions[]`; transcript items carry `alt` (CTC text); reels carry `duration, jumps, src, voice, enhance`,
   captions `{flags, alt, conf}`, cutaways `{lib_id, why}`, verses `{attribution}`, exports `{path, thumbnail, width, height, duration, lufs, true_peak}`.

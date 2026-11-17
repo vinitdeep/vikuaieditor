@@ -55,8 +55,9 @@ export interface VikuApi {
   render(reelId: string, preset?: string): Promise<JobRef>
   thumbnail(reelId: string): Promise<JobRef>
   automate(body: AutomateRequest): Promise<JobRef>
-  /** build (+ render) the clip the editor picked after automate({pick}) — result has the automate shape */
-  automateBuild(projectId: string, c: Candidate, framing?: Framing): Promise<JobRef>
+  /** build (+ render) the clip(s) the editor picked after automate({pick}) — one job, reels made one after another;
+   *  result has the automate shape, each reel with `suggestion` = the clip id it came from */
+  automateBuild(projectId: string, c: Candidate | Candidate[], framing?: Framing): Promise<JobRef>
   cancelJob(jobId: string): Promise<boolean>
   /** poll one job (fallback when SSE is quiet); null when unknown */
   jobStatus(jobId: string): Promise<JobEvent | null>

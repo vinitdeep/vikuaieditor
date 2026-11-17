@@ -84,7 +84,43 @@ try {
   log('tab 1 sent:', JSON.stringify({ pick: sent1.pick, count: sent1.count }), 'cards:', cards)
   if (sent1.pick !== 5 || cards < 1) throw new Error('Find clips should send pick=5 and show clip cards')
 
-  // tab 2: make 1 reel straight away
+  // tick clips 1 and 3, make both in one job
+  await st(() => {
+    const a = window.__viku.api()
+    const orig = a.automateBuild.bind(a)
+    window.__built = []
+    a.automateBuild = (pid, c, framing) => {
+      window.__built.push(Array.isArray(c) ? c.map((x) => x.id) : [c.id])
+      return orig(pid, c, framing)
+    }
+  })
+  let make = await page.textContent('.pick-make')
+  if (!(await page.$eval('.pick-make', (b) => b.disabled))) throw new Error('"Make selected" should be disabled with nothing ticked')
+  await page.click('.ccard.pick >> nth=0 >> .pick-mark')
+  await page.click('.ccard.pick >> nth=2 >> .pick-mark')
+  make = await page.textContent('.pick-make')
+  const ticked = await page.$$eval('.ccard.pick', (els) => els.map((e) => e.classList.contains('marked')))
+  log('ticked:', JSON.stringify(ticked), '| button:', make)
+  if (make.trim() !== 'Make 2 selected reels') throw new Error(`expected "Make 2 selected reels", got "${make}"`)
+  await page.$eval('.picks', (el) => el.scrollIntoView({ block: 'start' }))
+  await shot('01b-two-ticked')
+  await page.click('.pick-make')
+  await sleep(800)
+  const busy = await page.$$eval('.ccard.pick', (els) => els.map((e) => e.classList.contains('is-building')))
+  log('building:', JSON.stringify(busy))
+  await waitDone('automate_build')
+  await sleep(800)
+  const sentBuild = await st(() => window.__built)
+  const madeBtns = await page.$$eval('.ccard.pick', (els) => els.map((e) => e.querySelector('footer button:last-child')?.textContent?.trim()))
+  log('build sent:', JSON.stringify(sentBuild), '| cards after:', JSON.stringify(madeBtns))
+  if (sentBuild.length !== 1 || sentBuild[0].length !== 2) throw new Error('the two ticked clips should go to the engine as ONE build')
+  if (madeBtns.filter((t) => t === 'Made · open').length !== 2 || madeBtns[0] !== 'Made · open' || madeBtns[2] !== 'Made · open')
+    throw new Error('clips 1 and 3 should show "Made · open"')
+  await page.$eval('.picks', (el) => el.scrollIntoView({ block: 'start' }))
+  await shot('01c-two-made')
+
+  // tab 2: make 1 reel straight away (made reels fold the setup away: open it again)
+  if (await page.$('button:has-text("New run")')) await page.click('button:has-text("New run")')
   await page.$eval('.auto-tabs', (el) => el.scrollIntoView({ block: 'start' }))
   await page.click('.auto-tab:nth-child(2)')
   await page.waitForSelector('[aria-label="Fewer reels"]', { timeout: 5000 })

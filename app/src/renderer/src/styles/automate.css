@@ -813,3 +813,61 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* picker: tick several clips, then "Make N selected reels" */
+.pick-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.pick-mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1.5px solid var(--text-3);
+  border-radius: 5px;
+  background: transparent;
+  color: #1a1408;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+}
+
+.pick-mark:hover:not(:disabled) {
+  border-color: var(--gold);
+}
+
+.pick-mark.on {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.pick-mark:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.pick-mark:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.ccard.pick.marked {
+  border-color: var(--gold-line);
+  box-shadow: 0 0 0 1px var(--gold-line) inset;
+  background: linear-gradient(var(--gold-soft), var(--gold-soft)), var(--bg-2, transparent);
+}
+
+@media (max-width: 720px) {
+  .picks .results-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .pick-bar {
+    justify-content: flex-end;
+  }
+}

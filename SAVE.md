@@ -9,6 +9,17 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
 - Verified live (dev): simulated .crdownload -> rename in Downloads filed as `browser-mode-test.jpg`, queue item -> captured via browser; an image with no waiting prompt ignored; typecheck + lint clean. Not yet: a real AI Studio download end-to-end, installer rebuild.
 - **Length cap 10 s - 5 min** (Automate slider 10-300 s, step 5 below 1 min / 15 above; label "2 min 30 s"). Before this the slider was cosmetic: the engine ignored max_seconds and always used 20-60 s windows + a 60 s planner cap. Now `AutomateReq.max_seconds` / `SuggestReq.max_seconds` (10-300, default 60, 422 outside) -> `clipfinder.length_bounds(cap)` = (min window max(5, min(20, cap/2)), cap, ideal 0.75 cap) -> `build_windows`, `planner.plan(max_len)`, `ranker.raw_features(target)` (duration_fit = same 45 +/- 25 shape scaled to the target). 60 s gives exactly the old bounds. Caps > 60 s keep at most 16 evenly spaced ends per start; windows never span a > 10 s hole between cues (un-analysed gaps). Live: 6d0d / 4f96 at 10 s -> 6-9 s reels; at 60 s unchanged; at 300 s still ~28-34 s (the cap is a maximum; the ranker prefers those). tests/test_length_cap.py; 62 passed.
 
+## Session 8c (2026-11-17): tick several picked clips, make them together
+- User asked: select / mark clips in "Choose your reel" for the build. Each clip card has a tick box; the header has
+  Select all / Clear + "Make N selected reels" (disabled with none ticked). "Make this reel" on a card still makes one.
+- Engine: `POST /automate/build {suggestions: [...]}` (max 12) -> ONE job `automate_build`, reels made one after another
+  (`automate.build_suggestions`, progress split evenly); each result reel carries `suggestion` (its clip id) so the app
+  marks the right cards "Made · open". Single `suggestion` still works. Test in tests/test_automate_pick.py.
+- App: `useAuto.marked` / `building: string[]` (was buildingId); `api.automateBuild(pid, Candidate | Candidate[])`.
+- Dev note: `api/index.ts` keeps the adapter on globalThis — an HMR re-run of the module used to reset it ->
+  "API not initialised" in an open dev window.
+- Verified: e2e-auto-tabs.mjs (mock): ticked #1 + #3 -> one build call with both -> both cards "Made · open".
+
 ## Session 8b (2026-11-17): Automate tabs — "Find 5 clips to choose from" | "Make N reels"
 - User asked for two tabs instead of "How many = 1 means picker". `useAuto.kind: 'pick' | 'make'` (default pick).
   Tab 1 hides How many and sends `pick: 5`; tab 2 shows How many (1-12) and makes the reels straight away — 1 reel
