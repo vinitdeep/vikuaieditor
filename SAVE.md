@@ -24,9 +24,16 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
   (-14.1 / -1.8) + Odia 28.3 s with a Genesis 1:1 card (-14.0 / -1.9), both 1080x1920, 51-52 % cutaways.
 - `cd engine && uv run pytest` -> 41 passed in < 1 s (offline).
 
+- Follow-up (no canned claims): theme titles removed; fallback = strongest own line / verse ref / best span +
+  `needs_editor`; enemy subject carried over the 2 previous captions unless a new subject appears. Titles before ->
+  after: 6d0d ~1, ~2, ~4, ~5 unchanged; ~3 "ଶୟତାନ ପରାଜିତ!" -> "ଆପ ସୋଚ ଲିଜେ କି ଭ?" (needs_editor: every
+  usable line is Lucifer's, ASR garbage otherwise); automate 4f96 ~1 "शैतान हार चुका है!" -> "सो मु कौन कह?",
+  ~2 "ନା ଅସୁନ୍ଦର କରିବେ" -> "ଈଶ୍ୱରଙ୍କର ଆକାଶମଣ୍ଡଳ ଓ ପୃଥିବୀ ସୃଷ୍ଟି"; fee2 ~1 "शैतान हार चुका है!" -> "बेटी जो बोलते हैं".
+  `uv run pytest` 43 passed.
+
 **Gaps / next (session 4)**
-- Hook titles are still heuristic: an implicit enemy subject several lines away is missed (~4 "what is he saying to
-  Jesus?"); the theme fallback can assert "Satan is defeated" for a reel that never says it; titles produced by the
+- Hook titles are still heuristic: an implicit enemy subject further back than 2 captions, or after a line naming
+  Jesus, is missed (~4 "what is he saying to Jesus?"); weak / mixed-language reels get weak own-word titles; titles produced by the
   running engine before these fixes (automate reels above) are not rewritten until the next autobuild.
 - No church mirror exists yet - decide on hosting one (MIT permits) or ship the token flow; the app's setup screen
   must show `accept_url` on `hf_auth_required`.

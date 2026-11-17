@@ -153,11 +153,16 @@ or poll `GET /jobs/{id}`; cancel with `POST /jobs/{id}/cancel` (kills its ffmpeg
   kept reels"; penalties for dangling conjunctions / postpositions, fillers, admin notices, refs / digits, code-mixing,
   repeats, death words, people "losing") -> title <= 6 words + "?" (question word) or "!" (lexical hit); sub = theme
   gist (+ " · " verse ref). **The enemy is never the hero**: a span naming Satan / Lucifer / devil / "spirit of
-  depression" or an enemy action ("हराना चाहता", "ହରାଇବାକୁ ଚାହିଁ" = wants to defeat) gets -3, a span whose line or
-  previous line does (no divine name in the span) -2.5 - unless the line states his defeat (`enemy_defeat`:
+  depression" or an enemy action ("हराना चाहता", "ହରାଇବାକୁ ଚାହିଁ" = wants to defeat) gets -3; a span whose line, or
+  one of the 2 captions before it with no explicit new subject in between (`subjects`: nominative pronouns / people
+  words / divine names as whole tokens), names him and that has no subject of its own -2.5 - unless the line states
+  his defeat (`enemy_defeat`:
   ପରାଜୟ / ପରାଜିତ / ହାରି..., हार / पराजित / हरा दिया..., defeated). A clause ends only before a conjunction
-  (`conjunctions`), not a postposition. Best span < 3.5 -> the theme's native title (`themes[].title`, e.g.
-  "ଶୟତାନ ପରାଜିତ!"). Reels ~1..~5 before -> after: ~2 "ନିଜକୁ ବିଜୟୀ ମନେ କରିଥିଲା!" (Satan "considered himself
+  (`conjunctions`), not a postposition. **Titles never claim what the reel doesn't say**: best span < 3.5 -> the
+  reel's strongest short line in its own words (`fallback_line`: line-final 3-6 word windows, conf >= 0.75, no enemy
+  lines), else the quoted verse's native reference, else the best span without "!" + `why.needs_editor`. No canned
+  theme titles; the theme sub "The enemy is defeated" only when the reel names him AND states a defeat (not people
+  "losing"). Reels ~1..~5 before -> after (session 4, first pass; second pass in SAVE.md): ~2 "ନିଜକୁ ବିଜୟୀ ମନେ କରିଥିଲା!" (Satan "considered himself
   victorious") -> "ଚୂଡ଼ାନ୍ତ ପରାଜୟ ସମ୍ଭବ କଲା!" (made the final defeat possible); ~3 "ଲୁସିଫର୍ ଆପଣଙ୍କ ଜୀବନରେ ଆଣିଥାଏ!"
   (what Lucifer brings into your life) -> "ଶୟତାନ ପରାଜିତ!" (fallback); ~4 "ନିଜକୁ ବିଜୟୀ ମନେ କରିଥିଲା!" -> "ଆସିକରି
   ଯୀଶୁଙ୍କୁ କଣ କହୁଛି?"; ~1 / ~5 unchanged. Used by `/suggest` and by autobuild while `title_auto` / `sub_auto` (an edited title via PUT clears them).

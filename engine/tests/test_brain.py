@@ -133,7 +133,39 @@ def test_hook_enemy_penalty_rules():
     assert not hooks.enemy_defeated("ଲୁସିଫର୍ ଆପଣଙ୍କୁ ହରାଇବାକୁ ଚାହିଁବ", "or")  # "wants to defeat you" is no defeat
 
 
-def test_hook_low_score_falls_back_to_theme_title():
-    hk = hooks.hook(["ଲୁସିଫର୍ ଇଭେନ୍ ଆଜି ମଧ୍ୟ", "ଏଇଟା ଲୁସିଫର୍ ଆପଣଙ୍କ ଜୀବନରେ ଆଣିଥାଏ"], "or")
-    assert hk["title"] == "ଶୟତାନ ପରାଜିତ!"
-    assert hk["why"].get("fallback") == "theme"
+def test_fallback_never_makes_a_canned_claim():
+    # every line is about Lucifer and none states his defeat: no "ଶୟତାନ ପରାଜିତ!" and no "enemy is defeated" sub
+    lines = [{"text": "ଲୁସିଫର୍ ଇଭେନ୍ ଆଜି ମଧ୍ୟ", "conf": 0.9}, {"text": "ଏଇଟା ଲୁସିଫର୍ ଆପଣଙ୍କ ଜୀବନରେ ଆଣିଥାଏ", "conf": 0.9},
+             {"text": "କେଉଁଠାରୁ କେତେ ବର୍ଷ ପର୍ଯ୍ୟନ୍ତ", "conf": 0.6}]
+    hk = hooks.hook(lines, "or")
+    words = {w for x in lines for w in x["text"].split()}
+    assert hk["title"] != "ଶୟତାନ ପରାଜିତ!"
+    assert set(hk["title"].rstrip("?!").split()) <= words      # built from the reel's own words
+    assert not hk["title"].endswith("!")
+    assert "enemy is defeated" not in hk["sub"].lower()
+
+
+def test_fallback_uses_strongest_own_line_or_verse_ref():
+    weak = [{"text": "ଓକେ କୋଟି କୋଟି ବର୍ଷର ବି", "conf": 0.86, "flags": [1]},
+            {"text": "ସମସ୍ତ ବିଷୟ ବହୁତ ସୁନ୍ଦର ଭାବରେ ପ୍ରଭୁ ତିଆରି କରିଥିଲେ", "conf": 0.89},
+            {"text": "ତ", "conf": 0.5}]
+    fb = hooks.fallback_line(weak, "or", [x["text"] for x in weak])
+    assert fb and fb[2] == 1 and fb[1].endswith("ତିଆରି କରିଥିଲେ") and len(fb[1].split()) <= 6
+    # nothing usable (low confidence everywhere) + a verse card -> the verse's own reference
+    junk = [{"text": "ତକୋ ହ କା", "conf": 0.5}, {"text": "କା ଯୋ ଭଏସ ହ", "conf": 0.4}]
+    hk = hooks.hook(junk, "or", [{"ref": "ଆଦି ପୁସ୍ତକ 1:1 · Genesis 1:1"}])
+    assert hk["title"] == "ଆଦି ପୁସ୍ତକ 1:1" and hk["why"]["fallback"] == "verse"
+
+
+def test_enemy_subject_is_carried_two_captions():
+    t = ["ଯଶୁଙ୍କର ମୃତ୍ୟୁରେ ଶୟତାନ ନି", "ନିଜକୁ ବିଜୟୀ ମନେ କରିଥିଲା", "ଆଉ ଖୁସି ହେଲା", "ଶେଷରେ ଏହା ହେଲା"]
+    assert hooks.enemy_context(t, 1, "or") and hooks.enemy_context(t, 2, "or")
+    assert not hooks.enemy_context(t, 3, "or")                    # 3 captions later: no longer carried
+    t2 = ["ଶୟତାନ ଆସିଲା", "ଆମେ ବିଜୟୀ ହୋଇଛୁ"]                     # a new explicit subject ends the carry
+    assert not hooks.enemy_context(t2, 1, "or")
+    assert hooks.enemy_context(["शैतान चाहता है कि", "उनको आज हराना चाहता है"], 1, "hi")
+    assert not hooks.enemy_context(["शैतान चाहता है कि", "आप विजयी हैं"], 1, "hi")
+    # the carried line never becomes the title, the line stating his defeat does
+    hk = hooks.hook(["ଯଶୁଙ୍କର ମୃତ୍ୟୁରେ ଶୟତାନ ନି", "ନିଜକୁ ବିଜୟୀ ମନେ କରିଥିଲା", "କିନ୍ତୁ ପୁନରୁତ୍ଥାନ ହେଲା",
+                     "ଚୂଡ଼ାନ୍ତ ପରାଜୟ ସମ୍ଭବ କଲା"], "or")
+    assert "ବିଜୟୀ" not in hk["title"] and "ପରାଜୟ" in hk["title"]
