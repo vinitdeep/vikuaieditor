@@ -182,24 +182,45 @@ def render(rid: str):
 
 
 class ThumbReq(BaseModel):
-    pose_t: float | None = None
+    style: str | None = None      # thumbs.STYLES key; None = auto (not the previous reel's style)
+    pose_t: float | None = None   # reel seconds; None = auto (eyes open, frontal, big face)
+    title: str | None = None      # None = reel title (Hinglish transliteration for Hindi reels)
+    sub: str | None = None
+    verse: str | None = None
+    renderer: str | None = None   # "browser" | "pillow" (fallback); None = browser if Chrome/Edge is found
 
 
 @app.post("/reels/{rid}/thumbnail")
 def thumbnail(rid: str, b: ThumbReq | None = None):
-    p, r = projects.find_reel(rid)
+    projects.find_reel(rid)
+    b = b or ThumbReq()
+    from .media import thumbs
 
     def run(job: Job):
-        ex = [e for e in r.get("exports", []) if Path(e["path"]).exists()]
-        if not ex:
-            raise JobError("render the reel first")
-        rr = dict(r)
-        if b and b.pose_t is not None:
-            rr["thumbnail"] = {**(r.get("thumbnail") or {}), "pose_t": b.pose_t}
-        out = Path(ex[-1]["path"]).with_suffix(".jpg")
-        reel.make_thumbnail(ex[-1]["path"], rr, out, job)
-        return {"thumbnail": str(out)}
+        return thumbs.make(rid, job, style=b.style, pose_t=b.pose_t, title=b.title, sub=b.sub, verse=b.verse,
+                           renderer=b.renderer)
     return job_ref(MANAGER.submit("thumbnail", run, {"reel": rid}))
+
+
+@app.get("/thumbnails/styles")
+def thumbnail_styles():
+    from .media import thumbs
+    return [{"id": k, "label": v.get("label", k)} for k, v in thumbs.STYLES.items()]
+
+
+@app.get("/reels/{rid}/needs")
+def reel_needs(rid: str):
+    return reel.needs(rid)
+
+
+class AttachReq(BaseModel):
+    path: str
+    tags: list[str] = []
+
+
+@app.post("/reels/{rid}/cutaways/{i}/image")
+def reel_attach(rid: str, i: int, b: AttachReq):
+    return reel.attach_image(rid, i, b.path, b.tags)
 
 
 class AutomateReq(BaseModel):
@@ -255,6 +276,12 @@ def bible_verse(ref: str, lang: str = "or"):
     return bible.verse(ref, lang)
 
 
+@app.get("/bible/similar")
+def bible_similar(text: str, lang: str = "or", k: int = 10):
+    """Verses closest in meaning (e5 embeddings of every verse, <data>/bible/<code>.emb.npy)."""
+    return bible.similar(text, lang, k)
+
+
 @app.get("/bible/search")
 def bible_search(q: str, lang: str = "or", limit: int = 30):
     return bible.search(q, lang, limit)
@@ -279,6 +306,8 @@ def library_search(q: str = "", limit: int = 40):
 class ImportReq(BaseModel):
     paths: list[str] = []
     tags: list[str] = []
+    desc: str = ""      # optional English scene text (e.g. the generation prompt's SCENE) used for matching
+    set: str = ""       # optional set name (default: the source folder name)
     seed: bool = False
 
 
@@ -287,7 +316,7 @@ def library_import(b: ImportReq):
     def run(job: Job):
         res = library.seed() if b.seed else {"added": 0, "skipped": 0, "items": []}
         if b.paths:
-            r2 = library.import_paths(b.paths, b.tags)
+            r2 = library.import_paths(b.paths, b.tags, desc=b.desc, setname=b.set)
             res = {"added": res["added"] + r2["added"], "skipped": res["skipped"] + r2["skipped"],
                    "items": res["items"] + r2["items"]}
         return res

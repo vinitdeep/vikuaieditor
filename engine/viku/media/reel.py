@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -80,6 +81,50 @@ def _save_reel(rid: str, fn):
                 return
         raise projects.NotFound(rid)
     projects.update(pid, upd)
+
+
+# --------------------------------------------------------- cutaway needs --
+def needs(rid: str) -> list[dict]:
+    """Unfilled generation requests of a reel (for the app's AI Studio window)."""
+    _, r = projects.find_reel(rid)
+    out = []
+    for i, c in enumerate(r.get("cutaways", [])):
+        if c.get("need") and not (c.get("img") and Path(c["img"]).exists()):
+            out.append({"index": i, "t0": c["t0"], "t1": c["t1"], **c["need"],
+                        "suggested_name": f"{c['need']['slug']}.png"})
+    return out
+
+
+def attach_image(rid: str, i: int, path: str, tags: list[str] | None = None) -> dict:
+    """Attach a captured / chosen picture to cutaway i: copy it into the library (tags = need slug + scene words,
+    desc = the need's scene, set = this reel) and point the cutaway at the library copy."""
+    from .. import library
+    src = Path(path)
+    if not src.is_file():
+        raise projects.Invalid(f"image not found: {path}")
+    p, r = projects.find_reel(rid)
+    cs = r.get("cutaways", [])
+    if not 0 <= i < len(cs):
+        raise projects.Invalid(f"cutaway index {i} out of range (0..{len(cs) - 1})")
+    need = cs[i].get("need") or {}
+    words = (need.get("tags") or []) + [w for w in re.split(r"[^a-z]+", need.get("slug", "").lower()) if len(w) > 2]
+    setname = f"{p['name']} reel {rid.split('~')[1]}"
+    res = library.import_paths([str(src)], list(dict.fromkeys(words + (tags or []))),
+                               desc=need.get("scene", "")[:400] if need.get("tags") else "", setname=setname)
+    lid = res["ids"][0] if res.get("ids") else None
+    item = next((it for it in library.items() if it["id"] == lid), None)
+    if not item:
+        raise projects.Invalid("library import failed")
+
+    def upd(rr):
+        c = rr["cutaways"][i]
+        c["img"], c["lib_id"] = item["path"], item["id"]
+        if c.get("need"):
+            c["need_done"] = c.pop("need")
+        if rr.get("status") == "rendered":
+            rr["status"] = "built"
+    _save_reel(rid, upd)
+    return projects.find_reel(rid)[1]["cutaways"][i]
 
 
 # --------------------------------------------------------------- jump cut --
@@ -173,12 +218,20 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
     cutaways, verses, music, sfx = r.get("cutaways", []), r.get("verses", []), r.get("music"), r.get("sfx", [])
     if steps["cutaways"]:
         from ..brain import cutaways as cutplan
-        cutaways = cutplan.plan(captions, dur, r["language"])
         from ..brain import scripture
+        job.update(0.1, "planning cutaways")
+        w16 = d / "voice16k.wav"
+        if not w16.exists():
+            ff.run(["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-i", str(src), "-vn", "-ac", "1", "-ar", "16000",
+                    "-c:a", "pcm_s16le", str(w16)], job=job)
+        xv = ff.read_wav16(str(w16))
+        ref = [t["text"] for t in p.get("transcript", []) if t.get("text")]
+        cutaways = cutplan.plan(captions, dur, r["language"], jumps, xv, ref)
+        job.update(0.6, "matching verses")
         verses = scripture.place_verses(captions, cutaways, r["language"])
     if steps["music"]:
         music = pick_music(rid)
-    sfx = plan_sfx(cutaways)
+    sfx = plan_sfx([c for c in cutaways if c.get("img") and Path(c["img"]).exists()])
     title = r.get("title") or (captions[0]["text"][:40] if captions else "")
 
     def upd2(rr):
@@ -429,8 +482,9 @@ def _render(p: dict, r: dict, job: Job) -> dict:
     (d / "caps.ass").write_text(ass.build(r, dur, st.get("credit_line", "")), encoding="utf-8-sig")
     shade = d / "shade.png"
     shade_png(shade)
+    # unfilled generation requests (img None, `need`) stay on the speaker until the app attaches a picture
     cuts = [Cutaway(it) for it in sorted(r.get("cutaways", []), key=lambda c: c["t0"])
-            if Path(it["img"]).exists()]
+            if it.get("img") and Path(it["img"]).exists()]
     shots = build_shots(cuts, dur)
     cutpts = [sh[1] for sh in shots[:-1]]
     exp = projects.exports_dir(p["id"])
@@ -509,21 +563,42 @@ def _render(p: dict, r: dict, job: Job) -> dict:
     job.check()
     if enc.returncode != 0:
         raise JobError("final render failed: " + b"".join(errbuf).decode("utf-8", "replace")[-1500:])
+    qc = measure(str(tmp_out), job)
+    tp_max = preset.get("true_peak", -1.5)
+    if qc.get("true_peak") is not None and qc["true_peak"] > tp_max:
+        # AAC overshoot pushed the true peak over the limit: pull the audio down and re-encode it (video copied)
+        g = tp_max - qc["true_peak"] - 0.2
+        job.update(0.99, f"true peak {qc['true_peak']} dBTP > {tp_max}: audio {g:+.1f} dB")
+        fixed = d / "final.tpfix.mp4"
+        ff.run(["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-i", str(tmp_out), "-i", str(mix),
+                "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-af", f"volume={g:.2f}dB", "-c:a", "aac",
+                "-b:a", f"{preset.get('audio_kbps', 192)}k", "-ar", "48000", "-t", f"{dur:.3f}",
+                "-movflags", "+faststart", str(fixed)], job=job)
+        fixed.replace(tmp_out)
+        qc = measure(str(tmp_out), job) | {"tp_fix_db": round(g, 2)}
     shutil.move(str(tmp_out), str(out))
     thumb = exp / f"{name}.jpg"
-    make_thumbnail(str(out), r, thumb, job)
-    qc = measure(str(out), job)
+    try:
+        from . import thumbs
+        tinfo = thumbs.make(rid, job, out=thumb)
+    except Exception as e:  # noqa: BLE001 - a thumbnail must never fail the render
+        make_thumbnail(str(out), r, thumb, job)
+        tinfo = {"renderer": "frame", "error": str(e)[:300]}
+    from ..brain import cutaways as cutplan
+    qc["cutaway_coverage"] = cutplan.coverage(r.get("cutaways", []), dur, filled_only=True)
+    qc["cutaway_needs"] = sum(1 for c in r.get("cutaways", []) if c.get("need") and not c.get("img"))
 
     def upd(rr):
         rr["status"] = "rendered"
         ex = [e for e in rr.get("exports", []) if e.get("path") != str(out)]
         rr["exports"] = ex + [{"path": str(out), "thumbnail": str(thumb), **qc}]
     _save_reel(rid, upd)
-    return {"path": str(out), "thumbnail": str(thumb), "frames": i, **qc, "mix": mix_info}
+    return {"path": str(out), "thumbnail": str(thumb), "frames": i, **qc, "mix": mix_info,
+            "thumbnail_info": {k: v for k, v in tinfo.items() if k in ("style", "pose_t", "renderer", "error")}}
 
 
 def make_thumbnail(video: str, r: dict, out: Path, job: Job):
-    """Phase-1 thumbnail: a frame at pose_t (default 1/3 in) of the rendered reel."""
+    """Fallback thumbnail (when the designer in thumbs.py fails): a frame at pose_t of the rendered reel."""
     t = (r.get("thumbnail") or {}).get("pose_t")
     if t is None:
         t = min(max(4.5, float(r["duration"]) / 3), float(r["duration"]) - 0.1)
