@@ -14,8 +14,11 @@ Image choice
 - e5 cosine between "query: <caption text of the span>" (Odia / Hindi / English) and each library image's
   "passage: <desc>" (library.describe: desc or slug words), hub-corrected: an image's mean/std similarity over the
   sermon's transcript cues is subtracted/divided out (otherwise generic images like "believers serving" win everywhere).
-- + concept bonus when the caption's concepts.json tags hit the image tags, + same-set bonus for images from the set
-  the reel already uses; an image is used once per reel.
+- + concept bonus: concepts.json maps ~900 spoken Odia / Hindi / English words (stems, ASR spellings) to English
+  library tags; an image whose desc words show a concept the caption names gets +1.6 (+0.4 per extra concept), and
+  when the library can show it, images showing none of the named concepts get -0.8 (e5's Odia/Hindi similarity is
+  noisy, the spoken word is the stronger signal); + same-set bonus for images from the set the reel already uses;
+  an image is used once per reel.
 - Below the threshold (settings.cutaway_match_threshold, Odia stricter: e5's Odia is weaker) the cutaway carries a
   generation request `need = {prompt, slug, scene, text, tags}` instead of an image (img = None) for the app's
   AI Studio window; POST /reels/{id}/cutaways/{i}/image attaches the captured picture.
@@ -45,16 +48,29 @@ QUESTION = {
 GRADES = {"dark": "moody low-key blue-grey grade", "hope": "warm golden-hour grade",
           "neutral": "soft natural daylight grade"}
 LANG_NAME = {"or": "Odia", "hi": "Hindi", "en": "English"}
+CONCEPT_BONUS = 1.6   # image shows a concept the caption names (concepts.json)
+CONCEPT_EXTRA = 0.4   # ... per further concept it shows (max 3 counted)
+OFF_CONCEPT = 0.8     # caption names a concept the library can show, but this image shows none of them
 
 
 # ------------------------------------------------------------- helpers --
+def concept_groups(text: str, lang: str) -> list[dict]:
+    """concepts.json rows whose spoken words (the caption's language + English loanwords) occur in `text`."""
+    return [c for c in T.concepts() if T.count_hits(text, c.get(lang, []) + c.get("en", []))]
+
+
 def concept_tags(text: str, lang: str) -> list[str]:
-    tags = []
-    for c in T.concepts():
-        words = c.get(lang, []) + c.get("en", [])
-        if T.count_hits(text, words):
-            tags += c["tags"]
-    return list(dict.fromkeys(tags))
+    return list(dict.fromkeys(t for c in concept_groups(text, lang) for t in c["tags"]))
+
+
+def _stem(w: str) -> str:
+    return w[:-1] if len(w) > 3 and w.endswith("s") and not w.endswith("ss") else w
+
+
+def tag_hits(tag: str, words: set[str]) -> bool:
+    """A library tag hits an image when every word of the tag is among the image's (stemmed) words:
+    "fallen angel" needs both, so "angel music" is not a Satan picture."""
+    return all(_stem(p) in words for p in tag.lower().split())
 
 
 def thresholds(lang: str) -> float:
@@ -159,24 +175,39 @@ class Matcher:
         self.mu, self.sd = R.mean(0), np.maximum(R.std(0), 1e-4)
         # concept bonus uses the image's own words (desc / slug), not its folder words: every picture in a
         # "6-satan-defeated" folder would otherwise count as a "satan" picture
-        self.tags = [set(library.words(it["desc"])) for it in self.items]
+        self.tags = [{_stem(w) for w in library.words(it["desc"])} for it in self.items]
+
+    def concept_hits(self, text: str) -> list[list[str]]:
+        """-> per library image, the names of the caption's concepts that the image's words show."""
+        groups = concept_groups(text, self.lang)
+        return [[g.get("name", g["tags"][0]) for g in groups if any(tag_hits(t, w) for t in g["tags"])]
+                for w in self.tags]
 
     def rank(self, text: str, exclude: set[str], prefer_set: str | None) -> list[tuple[float, int, dict]]:
+        """score = hub-corrected e5 z + concept bonus (+ same-set bonus). When the caption names a picturable
+        concept that some library image shows, images showing it get +CONCEPT_BONUS (+ a little per extra
+        concept) and images showing none of them get -OFF_CONCEPT: e5's Odia/Hindi similarity is noisy
+        (an Odia "final defeat" line sat at z 2.8 for "youth lost"), the spoken word is the stronger signal."""
         from . import embed
         if not self.ok:
             return []
         q = embed.embed_texts([text], "query: ")[0]
         z = (self.V @ q - self.mu) / self.sd
-        ct = set(concept_tags(text, self.lang))
+        hits = self.concept_hits(text)
+        avail = any(hits)
         out = []
         for k, it in enumerate(self.items):
             if it["id"] in exclude:
                 continue
-            bonus = 1.0 if ct and (ct & self.tags[k]) else 0.0
-            if prefer_set and it["set"] == prefer_set:
+            h = len(hits[k])
+            bonus = CONCEPT_BONUS + CONCEPT_EXTRA * (min(h, 3) - 1) if h else (-OFF_CONCEPT if avail else 0.0)
+            same = bool(prefer_set and it["set"] == prefer_set)
+            if same:
                 bonus += 0.4
-            out.append((float(z[k]) + bonus, k, {"z": round(float(z[k]), 2), "concept": bool(bonus >= 1.0),
-                                                  "same_set": bool(prefer_set and it["set"] == prefer_set)}))
+            info = {"z": round(float(z[k]), 2), "concept": bool(h), "same_set": same}
+            if h:
+                info["concepts"] = hits[k]
+            out.append((float(z[k]) + bonus, k, info))
         out.sort(key=lambda x: -x[0])
         return out[:5]
 

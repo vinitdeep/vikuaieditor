@@ -1,750 +1,275 @@
 {
- "_doc": "Picturable concepts for cutaway picks: spoken words (or/hi/en, token-prefix match) -> English library tags. Add rows as the library grows.",
+ "_doc": "Picturable concepts for cutaway picks: spoken words (or/hi/en; token prefix match for words > 2 letters, phrases as substrings; ASR spellings included) -> English library tags (a tag with a space needs all its words on the image, e.g. 'fallen angel'). Add rows as the library grows.",
  "concepts": [
-  {
-   "tags": [
-    "light",
-    "sunrise",
-    "glow",
-    "lamp",
-    "dawn"
-   ],
-   "or": [
-    "ଆଲୋକ",
-    "ଜ୍ୟୋତି",
-    "ପ୍ରକାଶ"
-   ],
-   "hi": [
-    "रोशनी",
-    "प्रकाश",
-    "ज्योति",
-    "उजियाला"
-   ],
-   "en": [
-    "light",
-    "shine"
-   ]
-  },
-  {
-   "tags": [
-    "darkness",
-    "dark",
-    "shadow",
-    "night"
-   ],
-   "or": [
-    "ଅନ୍ଧାର",
-    "ଅନ୍ଧକାର",
-    "ଛାୟା"
-   ],
-   "hi": [
-    "अंधकार",
-    "अंधेरा",
-    "छाया",
-    "साया"
-   ],
-   "en": [
-    "dark",
-    "shadow",
-    "night"
-   ]
-  },
-  {
-   "tags": [
-    "cross",
-    "crosses",
-    "calvary"
-   ],
-   "or": [
-    "କ୍ରୁଶ"
-   ],
-   "hi": [
-    "क्रूस"
-   ],
-   "en": [
-    "cross",
-    "calvary"
-   ]
-  },
-  {
-   "tags": [
-    "tomb",
-    "empty",
-    "resurrection",
-    "sealed"
-   ],
-   "or": [
-    "କବର",
-    "ପୁନରୁତ୍ଥାନ",
-    "ମୃତ୍ୟୁରୁ"
-   ],
-   "hi": [
-    "कब्र",
-    "पुनरुत्थान",
-    "जी उठ"
-   ],
-   "en": [
-    "tomb",
-    "grave",
-    "resurrection",
-    "risen"
-   ]
-  },
-  {
-   "tags": [
-    "bible",
-    "scroll",
-    "scrolls",
-    "book",
-    "word"
-   ],
-   "or": [
-    "ବାଇବଲ",
-    "ବାକ୍ୟ",
-    "ଶାସ୍ତ୍ର",
-    "ପୁସ୍ତକ"
-   ],
-   "hi": [
-    "बाइबल",
-    "वचन",
-    "शास्त्र",
-    "पुस्तक"
-   ],
-   "en": [
-    "bible",
-    "scripture",
-    "word of god"
-   ]
-  },
-  {
-   "tags": [
-    "prayer",
-    "praying",
-    "kneeling",
-    "hands"
-   ],
-   "or": [
-    "ପ୍ରାର୍ଥନା"
-   ],
-   "hi": [
-    "प्रार्थना"
-   ],
-   "en": [
-    "pray",
-    "prayer"
-   ]
-  },
-  {
-   "tags": [
-    "family",
-    "home",
-    "father",
-    "hug",
-    "embrace"
-   ],
-   "or": [
-    "ପରିବାର",
-    "ଘର",
-    "ପିତା",
-    "ବାପା",
-    "ମାଆ"
-   ],
-   "hi": [
-    "परिवार",
-    "घर",
-    "पिता",
-    "बाप",
-    "माँ",
-    "मां"
-   ],
-   "en": [
-    "family",
-    "home",
-    "father",
-    "mother"
-   ]
-  },
-  {
-   "tags": [
-    "satan",
-    "fallen",
-    "angel",
-    "serpent",
-    "shadow",
-    "whisper"
-   ],
-   "or": [
-    "ଶୟତାନ",
-    "ଲୁସିଫର",
-    "ସର୍ପ",
-    "ଭୂତ"
-   ],
-   "hi": [
-    "शैतान",
-    "लूसिफर",
-    "सर्प",
-    "सांप",
-    "लुसीफर",
-    "लुसिफर",
-    "लूसीफर",
-    "लूसिफ़र"
-   ],
-   "en": [
-    "satan",
-    "devil",
-    "lucifer",
-    "serpent",
-    "enemy"
-   ]
-  },
-  {
-   "tags": [
-    "angel",
-    "angels",
-    "heavenly",
-    "heaven"
-   ],
-   "or": [
-    "ଦୂତ",
-    "ସ୍ୱର୍ଗ"
-   ],
-   "hi": [
-    "स्वर्गदूत",
-    "दूत",
-    "स्वर्ग"
-   ],
-   "en": [
-    "angel",
-    "heaven"
-   ]
-  },
-  {
-   "tags": [
-    "heart",
-    "faith"
-   ],
-   "or": [
-    "ହୃଦୟ",
-    "ମନ"
-   ],
-   "hi": [
-    "हृदय",
-    "दिल",
-    "मन"
-   ],
-   "en": [
-    "heart"
-   ]
-  },
-  {
-   "tags": [
-    "alone",
-    "walking",
-    "lonely",
-    "road"
-   ],
-   "or": [
-    "ଏକୁଟିଆ",
-    "ଏକା",
-    "ଏକାକୀ"
-   ],
-   "hi": [
-    "अकेला",
-    "अकेले"
-   ],
-   "en": [
-    "alone",
-    "lonely"
-   ]
-  },
-  {
-   "tags": [
-    "storm",
-    "rain",
-    "thunder"
-   ],
-   "or": [
-    "ଝଡ଼",
-    "ତୋଫାନ",
-    "ବର୍ଷା"
-   ],
-   "hi": [
-    "तूफान",
-    "आंधी",
-    "बारिश"
-   ],
-   "en": [
-    "storm",
-    "rain"
-   ]
-  },
-  {
-   "tags": [
-    "fire",
-    "spark",
-    "forest"
-   ],
-   "or": [
-    "ନିଆଁ",
-    "ଅଗ୍ନି"
-   ],
-   "hi": [
-    "आग",
-    "अग्नि",
-    "चिंगारी"
-   ],
-   "en": [
-    "fire",
-    "spark",
-    "flame"
-   ]
-  },
-  {
-   "tags": [
-    "earth",
-    "pristine",
-    "ancient",
-    "creation",
-    "world",
-    "ocean"
-   ],
-   "or": [
-    "ପୃଥିବୀ",
-    "ଜଗତ",
-    "ସୃଷ୍ଟି",
-    "ମୂଳଦୁଆ"
-   ],
-   "hi": [
-    "पृथ्वी",
-    "संसार",
-    "दुनिया",
-    "सृष्टि",
-    "नींव"
-   ],
-   "en": [
-    "earth",
-    "world",
-    "creation",
-    "foundation"
-   ]
-  },
-  {
-   "tags": [
-    "river",
-    "water",
-    "dewdrop",
-    "ocean"
-   ],
-   "or": [
-    "ପାଣି",
-    "ନଦୀ",
-    "ଜଳ",
-    "ସମୁଦ୍ର"
-   ],
-   "hi": [
-    "पानी",
-    "नदी",
-    "जल",
-    "समुद्र"
-   ],
-   "en": [
-    "water",
-    "river",
-    "sea"
-   ]
-  },
-  {
-   "tags": [
-    "vine",
-    "branches",
-    "tree",
-    "field",
-    "fruitful"
-   ],
-   "or": [
-    "ଗଛ",
-    "ଦ୍ରାକ୍ଷା",
-    "ଡାଳ",
-    "ଫଳ"
-   ],
-   "hi": [
-    "पेड़",
-    "दाखलता",
-    "डाली",
-    "फल"
-   ],
-   "en": [
-    "vine",
-    "branch",
-    "tree",
-    "fruit"
-   ]
-  },
-  {
-   "tags": [
-    "sower",
-    "seed",
-    "field"
-   ],
-   "or": [
-    "ବୀଜ",
-    "ବୁଣ"
-   ],
-   "hi": [
-    "बीज",
-    "बोने"
-   ],
-   "en": [
-    "seed",
-    "sow"
-   ]
-  },
-  {
-   "tags": [
-    "worship",
-    "praise",
-    "instruments",
-    "music",
-    "flute",
-    "team"
-   ],
-   "or": [
-    "ପ୍ରଶଂସା",
-    "ଆରାଧନା",
-    "ସଙ୍ଗୀତ",
-    "ଗୀତ",
-    "ବାଦ୍ୟ"
-   ],
-   "hi": [
-    "आराधना",
-    "स्तुति",
-    "संगीत",
-    "गीत"
-   ],
-   "en": [
-    "worship",
-    "praise",
-    "music",
-    "song"
-   ]
-  },
-  {
-   "tags": [
-    "money",
-    "offering"
-   ],
-   "or": [
-    "ଟଙ୍କା",
-    "ଦାନ"
-   ],
-   "hi": [
-    "पैसा",
-    "पैसे",
-    "दान"
-   ],
-   "en": [
-    "money",
-    "offering"
-   ]
-  },
-  {
-   "tags": [
-    "despair",
-    "discouraged",
-    "depression",
-    "storm"
-   ],
-   "or": [
-    "ଦୁଃଖ",
-    "ଡିପ୍ରେସନ",
-    "ନିରାଶ",
-    "ହତାଶ",
-    "ଡିସକରେଜ",
-    "ଡିସ୍କରେଜ",
-    "ଡିସଆପଏଣ୍ଟ",
-    "ଡିସଅପଏଣ୍ଟ",
-    "ନିରୁତ୍ସାହ"
-   ],
-   "hi": [
-    "दुख",
-    "निराश",
-    "डिप्रेशन",
-    "हताश",
-    "डिसकरेज",
-    "डिप्रेस",
-    "निराशा",
-    "उदास"
-   ],
-   "en": [
-    "depressed",
-    "depression",
-    "discouraged",
-    "despair",
-    "discourage",
-    "disappoint",
-    "depress"
-   ]
-  },
-  {
-   "tags": [
-    "rising",
-    "victory",
-    "hilltop",
-    "standing",
-    "resurrection"
-   ],
-   "or": [
-    "ବିଜୟ",
-    "ଜୟ",
-    "ଉଠ"
-   ],
-   "hi": [
-    "विजय",
-    "जय",
-    "जीत",
-    "उठ"
-   ],
-   "en": [
-    "victory",
-    "rise",
-    "overcome"
-   ]
-  },
-  {
-   "tags": [
-    "battle",
-    "angels",
-    "war"
-   ],
-   "or": [
-    "ଯୁଦ୍ଧ",
-    "ଲଢ଼େଇ"
-   ],
-   "hi": [
-    "युद्ध",
-    "लड़ाई"
-   ],
-   "en": [
-    "war",
-    "battle",
-    "fight"
-   ]
-  },
-  {
-   "tags": [
-    "path",
-    "way",
-    "road",
-    "foggy",
-    "showing"
-   ],
-   "or": [
-    "ରାସ୍ତା",
-    "ବାଟ",
-    "ପଥ"
-   ],
-   "hi": [
-    "रास्ता",
-    "मार्ग",
-    "राह"
-   ],
-   "en": [
-    "path",
-    "road",
-    "way"
-   ]
-  },
-  {
-   "tags": [
-    "mountain",
-    "hilltop",
-    "stairs"
-   ],
-   "or": [
-    "ପର୍ବତ",
-    "ପାହାଡ଼"
-   ],
-   "hi": [
-    "पहाड़",
-    "पर्वत"
-   ],
-   "en": [
-    "mountain",
-    "hill"
-   ]
-  },
-  {
-   "tags": [
-    "church",
-    "believer",
-    "worship"
-   ],
-   "or": [
-    "ମଣ୍ଡଳୀ",
-    "ଚର୍ଚ୍ଚ"
-   ],
-   "hi": [
-    "कलीसिया",
-    "चर्च"
-   ],
-   "en": [
-    "church"
-   ]
-  },
-  {
-   "tags": [
-    "painting",
-    "painter",
-    "art",
-    "brush",
-    "gallery",
-    "masterpiece"
-   ],
-   "or": [
-    "ଚିତ୍ର"
-   ],
-   "hi": [
-    "चित्र",
-    "पेंटिंग",
-    "पेंटर",
-    "चित्रकार"
-   ],
-   "en": [
-    "paint",
-    "painting",
-    "artist"
-   ]
-  },
-  {
-   "tags": [
-    "door",
-    "closed"
-   ],
-   "or": [
-    "ଦୁଆର",
-    "କବାଟ"
-   ],
-   "hi": [
-    "दरवाजा",
-    "द्वार"
-   ],
-   "en": [
-    "door"
-   ]
-  },
-  {
-   "tags": [
-    "youth",
-    "boy",
-    "child",
-    "lost"
-   ],
-   "or": [
-    "ପିଲା",
-    "ଯୁବକ",
-    "ଯୁବ"
-   ],
-   "hi": [
-    "बच्चा",
-    "बच्चे",
-    "जवान",
-    "युवा"
-   ],
-   "en": [
-    "child",
-    "youth",
-    "young"
-   ]
-  },
-  {
-   "tags": [
-    "sin",
-    "pride",
-    "mirror",
-    "rituals"
-   ],
-   "or": [
-    "ପାପ",
-    "ଅହଙ୍କାର"
-   ],
-   "hi": [
-    "पाप",
-    "घमंड"
-   ],
-   "en": [
-    "sin",
-    "pride"
-   ]
-  },
-  {
-   "tags": [
-    "hand",
-    "hands",
-    "light"
-   ],
-   "or": [
-    "ହାତ"
-   ],
-   "hi": [
-    "हाथ"
-   ],
-   "en": [
-    "hand"
-   ]
-  },
-  {
-   "tags": [
-    "harsh",
-    "words",
-    "voice",
-    "doubt"
-   ],
-   "or": [
-    "କଥା",
-    "ଶବ୍ଦ"
-   ],
-   "hi": [
-    "बात",
-    "शब्द",
-    "आवाज"
-   ],
-   "en": [
-    "words",
-    "voice"
-   ]
-  },
-  {
-   "tags": [
-    "thief",
-    "cross"
-   ],
-   "or": [
-    "ଚୋର"
-   ],
-   "hi": [
-    "चोर",
-    "डाकू"
-   ],
-   "en": [
-    "thief"
-   ]
-  },
-  {
-   "tags": [
-    "fasting",
-    "rituals",
-    "candles"
-   ],
-   "or": [
-    "ଉପବାସ"
-   ],
-   "hi": [
-    "उपवास"
-   ],
-   "en": [
-    "fasting",
-    "fast"
-   ]
-  }
+  {"name": "enemy",
+   "tags": ["satan", "devil", "lucifer", "demon", "fallen angel", "serpent", "shadow whisper", "fall from heaven", "shadow over home"],
+   "or": ["ଶୟତାନ", "ଶୈତାନ", "ସୟତାନ", "ସଇତାନ", "ଲୁସିଫ", "ଲୁସିଫୋ", "ଲୋସିଫ", "ଲୁସୀଫ", "ଲୁସିପ", "ଦୁଷ୍ଟ", "ଶତ୍ରୁ", "ସର୍ପ", "ସାପ", "ଅଜଗର", "ଭୂତ", "ମନ୍ଦ ଆତ୍ମା", "ଅଶୁଚି ଆତ୍ମା", "ଦିଆବଲ", "ଡେଭିଲ", "ବିଦ୍ରୋହ", "ଶୟତାନୀ"],
+   "hi": ["शैतान", "चैतान", "सैतान", "शेतान", "लूसिफ", "लूसीफ", "लुसिफ", "लुसीफ", "लुसीप", "लूसीप", "दुष्ट", "दुश्मन", "शत्रु", "सांप", "साँप", "सर्प", "अजगर", "इब्लीस", "बुरी आत्मा", "अशुद्ध आत्मा", "भूत", "विद्रोह", "बगावत", "डेविल"],
+   "en": ["satan", "devil", "lucifer", "enemy", "serpent", "demon"]},
+  {"name": "defeat",
+   "tags": ["defeat", "defeated", "cross dark sky", "three crosses", "resurrection light", "fall from heaven", "fallen angel", "rising up", "angels battle"],
+   "or": ["ପରାଜୟ", "ପରାଜିତ", "ପରାସ୍ତ", "ହରାଇ", "ହରେଇ", "ହାରିଗଲା", "ହାରିଯିବ", "ଚୂଡ଼ାନ୍ତ ପରାଜୟ", "ଚୁଡ଼ାନ୍ତ", "ଚୂଡ଼ାନ୍ତ", "ବିନାଶ", "ବିନଷ୍ଟ", "ଧ୍ୱଂସ", "ଚୂର୍ଣ୍ଣ", "ସମାପ୍ତ କଲା", "ଶେଷ କରିଦେଲେ"],
+   "hi": ["हरा दिया", "हराया", "हराना", "हार गया", "पराजय", "पराजित", "परास्त", "विनाश", "ध्वंस", "ध्वस", "कुचल", "खत्म कर", "समाप्त कर", "नाश कर", "अंतिम हार"],
+   "en": ["defeat", "defeated", "crushed"]},
+  {"name": "cross",
+   "tags": ["cross", "crosses", "three crosses", "cross dark sky", "calvary", "crucifixion"],
+   "or": ["କ୍ରୁଶ", "କ୍ରୁସ", "କ୍ରସ", "କୃଷିୟ", "କୃଷରେ", "କୃଶ", "କାଲଭାରି", "କଲଭରୀ", "ଗଲଗଥା", "କଣ୍ଟା ମୁକୁଟ", "ପେରେକ", "ରକ୍ତ", "କ୍ରୁଶବିଦ୍ଧ"],
+   "hi": ["क्रूस", "क्रुस", "क्रॉस", "सलीब", "कलवरी", "गुलगुता", "कीलें", "कीलों", "कांटों का ताज", "लहू", "खून", "क्रूसित"],
+   "en": ["cross", "calvary", "crucified", "blood"]},
+  {"name": "death",
+   "tags": ["tomb", "sealed tomb", "empty tomb", "cross dark sky"],
+   "or": ["ମୃତ୍ୟୁ", "କବର", "ସମାଧି", "ମୃତମାନ", "ମରିଗଲେ", "ମରିଯାଇଥିଲେ", "ମରିବା"],
+   "hi": ["मृत्यु", "मौत", "कब्र", "क़ब्र", "समाधि", "मर गया", "मरे हुओं", "मरा"],
+   "en": ["death", "tomb", "grave", "died"]},
+  {"name": "resurrection",
+   "tags": ["resurrection", "resurrection light", "empty tomb", "rising up", "risen"],
+   "or": ["ପୁନରୁତ୍ଥାନ", "ପୁନରୁଦ୍ଧାନ", "ପୁନରୁତ୍ଥିତ", "ପୁନର୍ଜୀବିତ", "ଜୀଇଉଠି", "ଜୀବିତ ହେଲେ", "ତୃତୀୟ ଦିନ", "ମୃତମାନଙ୍କ ମଧ୍ୟରୁ"],
+   "hi": ["पुनरुत्थान", "जी उठा", "जी उठे", "जिलाया", "मुर्दों में से", "तीसरे दिन", "पुनर्जीवित"],
+   "en": ["resurrection", "risen", "rose again"]},
+  {"name": "victory",
+   "tags": ["victory", "rising up", "hilltop sunrise", "standing rain", "lifted up", "standing"],
+   "or": ["ବିଜୟ", "ବିଜୟୀ", "ଜୟଯୁକ୍ତ", "ଜିତିବା", "ଜିତିଲେ", "ଜିତିଛ", "ଭିକ୍ଟୋରି", "ଉଠନ୍ତୁ", "ଠିଆ ହୁଅ", "ଅସମ୍ଭବ ନାହିଁ", "କରିପାରିବି", "କରିପାରେ", "ସାହସ", "ଶକ୍ତି", "ସାମର୍ଥ୍ୟ", "ପାୱାର", "ଆଗକୁ ବଢ଼"],
+   "hi": ["जीत", "विजय", "विजयी", "जयवंत", "कर सकूँगा", "कर सकूंगा", "सकूंगा", "सकूँगा", "कर सकता हूँ", "कर सकता हूं", "उठो", "उठिए", "खड़े रहो", "हिम्मत", "साहस", "ताकत", "सामर्थ्य", "शक्ति", "आगे बढ़ो"],
+   "en": ["victory", "overcome", "rise", "strength"]},
+  {"name": "high",
+   "tags": ["hilltop", "hilltop sunrise", "lifted up", "mountain", "endless stairs"],
+   "or": ["ଉଚ୍ଚ ସ୍ଥାନ", "ଉଚ୍ଚସ୍ଥାନ", "ଉଚ୍ଚତା", "ଉଚ୍ଚସ୍ତର", "ପର୍ବତ", "ପାହାଡ଼", "ପାହାଡ", "ଶିଖର", "ହିମାଳୟ", "ହିମଳୟ", "ଏଭରେଟ", "ଏଭରେଷ୍ଟ", "ଉର୍ଦ୍ଧ୍ୱ"],
+   "hi": ["पहाड़", "पर्वत", "ऊँचा", "ऊंचा", "ऊँचे", "ऊंचे", "ऊँचाई", "ऊंचाई", "चोटी", "हिमालय", "उच्च स्थान", "शिखर"],
+   "en": ["mountain", "hill", "high place"]},
+  {"name": "heaven",
+   "tags": ["heaven", "heaven light", "heavenly", "fall from heaven", "sky", "clouds", "paradise"],
+   "or": ["ସ୍ୱର୍ଗ", "ସ୍ଵର୍ଗ", "ମେଘ", "ଆକାଶ", "ଆରୋହଣ", "ତାରାଗଣ", "ତାରା", "ନକ୍ଷତ୍ର", "ସିଂହାସନ", "ସିଂହନ", "ଅନନ୍ତ ଜୀବନ", "ସ୍ୱର୍ଗରାଜ୍ୟ"],
+   "hi": ["स्वर्ग", "आकाश", "आसमान", "बादल", "मेघ", "तारे", "तारा", "तारों", "सिंहासन", "परलोक", "अनंत जीवन", "स्वर्गलोक"],
+   "en": ["heaven", "sky", "clouds", "throne", "stars"]},
+  {"name": "pride",
+   "tags": ["pride", "pride mirror", "mirror"],
+   "or": ["ଅହଂକାର", "ଅହଙ୍କାର", "ଗର୍ବ", "ଦର୍ପ", "ଅଭିମାନ", "ଇଗୋ", "ତୁଲ୍ୟ ହେବି", "ନିଜକୁ ବଡ଼"],
+   "hi": ["अहंकार", "घमंड", "घमण्ड", "गर्व", "अभिमान", "ईगो", "अकेला ही काफी", "अपने आप को बड़ा", "बराबर हो"],
+   "en": ["pride", "ego", "proud"]},
+  {"name": "fall",
+   "tags": ["fall from heaven", "fallen angel", "fallen"],
+   "or": ["ପତନ", "ଖସିଗଲା", "ଖସିପଡ଼", "ପଡ଼ିଗଲା", "ତଳକୁ ପକେଇ", "ତଳେ ପଡ଼ି", "ଫିଙ୍ଗିଦେଲେ"],
+   "hi": ["पतन", "गिर गया", "गिरा दिया", "गिराया", "गिरना", "गिरने", "गिरावट", "नीचे गिर", "फेंक दिया"],
+   "en": ["fall", "fell", "fallen"]},
+  {"name": "angels",
+   "tags": ["angel", "angels", "angels battle", "heavenly", "battle"],
+   "or": ["ଦୂତ", "ସ୍ୱର୍ଗଦୂତ", "ମିଖାଏଲ", "ଯୁଦ୍ଧ", "ଯୋଦ୍ଧା", "ଆକ୍ରମଣ", "ସୈନ୍ୟ", "ଆର୍ମି", "ଲଢ଼େଇ", "ଅଞ୍ଜଲ"],
+   "hi": ["स्वर्गदूत", "दूत", "मीकाएल", "युद्ध", "लड़ाई", "सेना", "आक्रमण", "हमला", "संग्राम", "एंजल"],
+   "en": ["angel", "battle", "war", "army"]},
+  {"name": "despair",
+   "tags": ["despair", "discouraged", "storm depression", "depression", "tears"],
+   "or": ["ଡିସକରେଜ", "ଡିସ୍କରେଜ", "ଡିସଆପଏଣ୍ଟ", "ଡିସଅପଏଣ୍ଟ", "ଡିସପଏଣ୍ଟ", "ଡିପ୍ରେସନ", "ନିରାଶ", "ହତାଶ", "ଦୁଃଖ", "ଚିନ୍ତା", "ଭୟ", "ଲୁହ", "କାନ୍ଦି", "ଭାଙ୍ଗିପଡ଼", "ମନ ଦୁଃଖ"],
+   "hi": ["डिस्करेज", "डिसकरेज", "डिस्करेज", "डिप्रेशन", "डिप्रेसन", "निराश", "हताश", "उदास", "दुख", "दुःख", "चिंता", "डर", "भय", "आँसू", "आंसू", "रोना", "रोते", "टूट गया", "मायूस"],
+   "en": ["discourage", "depress", "despair", "fear", "sad", "worry"]},
+  {"name": "storm",
+   "tags": ["storm", "storm depression", "rain", "standing rain"],
+   "or": ["ଝଡ଼", "ତୋଫାନ", "ତୁଫାନ", "ବର୍ଷା", "ବନ୍ୟା", "ପ୍ଲାବନ", "ସମସ୍ୟା", "ବିପଦ", "କଷ୍ଟ", "ସଙ୍କଟ"],
+   "hi": ["तूफान", "तूफ़ान", "आंधी", "आँधी", "बारिश", "बरसात", "बाढ़", "मुसीबत", "संकट", "परेशानी", "समस्या", "कष्ट", "विपत्ति"],
+   "en": ["storm", "rain", "flood", "trouble", "problem"]},
+  {"name": "alone",
+   "tags": ["walking alone", "alone", "lonely", "foggy road"],
+   "or": ["ଏକୁଟିଆ", "ଏକାକୀ", "ଏକଲା", "ନିର୍ଜନ", "ନିଃସଙ୍ଗ"],
+   "hi": ["अकेला", "अकेले", "अकेली", "अकेलापन", "तन्हा", "सुनसान"],
+   "en": ["alone", "lonely"]},
+  {"name": "bible",
+   "tags": ["bible", "open bible", "bible light", "glowing bible", "call bible", "dusty bible", "family bible", "scroll", "scrolls"],
+   "or": ["ବାଇବେଲ", "ବାଇବଲ", "ବାଇବିଲ", "ବାକ୍ୟ", "ଶାସ୍ତ୍ର", "ପୁସ୍ତକ", "ଲେଖାଅଛି", "ଲେଖାଯାଇଛି", "ଲେଖାଯାଇଅଛି", "ଲେଖାଯାଏ", "ପୁରାତନ ନିୟମ", "ନୂତନ ନିୟମ", "ସୁସମାଚାର", "ବଚନ"],
+   "hi": ["बाइबल", "बाइबिल", "बैबेल", "वचन", "शास्त्र", "पवित्रशास्त्र", "पुस्तक", "लिखा है", "लिखा हुआ", "नया नियम", "पुराना नियम", "सुसमाचार", "आयत"],
+   "en": ["bible", "scripture", "word of god"]},
+  {"name": "paul",
+   "tags": ["paul letter", "paul", "letter", "scroll"],
+   "or": ["ପାଉଲ", "ପାଉଲଙ୍କ", "ଚିଠି", "ପତ୍ର", "ରୋମୀୟ", "କଲସୀୟ", "ଏଫିସୀୟ", "ଫିଲିପୀୟ"],
+   "hi": ["पौलुस", "पॉलुस", "पौलूस", "पोलुस", "पत्री", "चिट्ठी", "पत्र", "रोमियों", "फिलिप्पियों", "इफिसियों"],
+   "en": ["paul", "letter", "epistle"]},
+  {"name": "eyes",
+   "tags": ["bible eyes open", "eyes", "bible light", "light within"],
+   "or": ["ଚକ୍ଷୁ", "ଆଖି", "ଜ୍ଞାନ", "ଦୃଷ୍ଟି", "ଅନ୍ଧ"],
+   "hi": ["आँख", "आंख", "चक्षु", "ज्ञान", "दृष्टि", "अंधा", "अंधे"],
+   "en": ["eyes", "blind", "knowledge"]},
+  {"name": "heart",
+   "tags": ["heart", "heart faith", "hand heart", "confess believe", "faith"],
+   "or": ["ହୃଦୟ", "ବିଶ୍ୱାସ", "ବିଶ୍ବାସ", "ସ୍ୱୀକାର", "ଅନ୍ତର", "ମୁଖରେ ସ୍ୱୀକାର"],
+   "hi": ["दिल", "हृदय", "विश्वास", "भरोसा", "अंगीकार", "कबूल", "मुँह से", "मुंह से"],
+   "en": ["heart", "faith", "believe", "confess"]},
+  {"name": "repent",
+   "tags": ["confess believe", "kneeling", "night prayer tears", "thief turns", "sin"],
+   "or": ["ଭୁଲ", "ପାପ", "ଅପରାଧ", "ଦୋଷ", "ଅଧର୍ମ", "ଅନୁତାପ", "କ୍ଷମା", "ମନ ପରିବର୍ତ୍ତନ"],
+   "hi": ["गलती", "ग़लती", "पाप", "अपराध", "दोष", "अधर्म", "पश्चाताप", "मन फिराओ", "क्षमा", "माफ़", "माफी", "माफ़ी", "मानना"],
+   "en": ["sin", "mistake", "repent", "forgive"]},
+  {"name": "prayer",
+   "tags": ["prayer", "praying", "kneeling", "whisper prayer", "night prayer tears", "family prayer", "prayer list", "hands light"],
+   "or": ["ପ୍ରାର୍ଥନା", "ଆଣ୍ଠୁ", "ମିନତି", "ନିବେଦନ", "ଡାକିବା"],
+   "hi": ["प्रार्थना", "दुआ", "विनती", "बिनती", "घुटने", "मांगते", "माँगते", "मांगो", "माँगो"],
+   "en": ["pray", "prayer", "kneel"]},
+  {"name": "rituals",
+   "tags": ["fasting", "rituals", "rituals candles", "church rituals", "candles"],
+   "or": ["ଉପବାସ", "ରୀତିନୀତି", "ରିଚୁଆଲ", "ବିଧିବିଧାନ", "ମହମବତୀ", "ପୂଜା", "କର୍ମରୁ", "କର୍ମ ଦ୍ୱାରା"],
+   "hi": ["उपवास", "व्रत", "रीति", "रिवाज", "कर्मकांड", "पूजा", "मोमबत्ती", "विधि", "कर्मों से"],
+   "en": ["fasting", "ritual", "works"]},
+  {"name": "worship",
+   "tags": ["worship", "worship team", "praise", "heavenly praise", "instruments", "flute", "music", "angel music"],
+   "or": ["ଆରାଧନା", "ପ୍ରଶଂସା", "ସ୍ତୁତି", "ଗୀତ", "ବାଦ୍ୟ", "ବଂଶୀ", "ଇନଷ୍ଟ୍ରୁମେଣ୍ଟ", "ୱାର୍ସିପ", "ଫ୍ଲୁଟ", "ବଜାନ୍ତି", "ମହିମା"],
+   "hi": ["आराधना", "स्तुति", "प्रशंसा", "गीत", "भजन", "बांसुरी", "बाँसुरी", "वाद्य", "संगीत", "आराधक", "महिमा"],
+   "en": ["worship", "praise", "music", "sing"]},
+  {"name": "offering",
+   "tags": ["offering", "offering money", "money", "lakh rupees", "crooked offering"],
+   "or": ["ଦଶମାଂଶ", "ଦଶମାଂସ", "ଟଙ୍କା", "ପଇସା", "ଲକ୍ଷ", "ବଳି", "ଉତ୍ସର୍ଗ", "ଭେଟି", "ଦାନ ଦେ"],
+   "hi": ["दान", "दशमांश", "पैसा", "पैसे", "रुपये", "रुपया", "लाख", "भेंट", "चढ़ावा", "बलिदान", "बलि", "कमाई", "इनकम"],
+   "en": ["offering", "money", "tithe", "sacrifice"]},
+  {"name": "light",
+   "tags": ["light", "sunrise", "glow", "lamp", "dawn", "light within", "heaven light"],
+   "or": ["ଆଲୋକ", "ଆଲୁଅ", "ଜ୍ୟୋତି", "ପ୍ରକାଶ", "ଦୀପ୍ତି", "ଉଜ୍ଜ୍ୱଳ", "ସୂର୍ଯ୍ୟ", "ସକାଳ", "ଦୀପ"],
+   "hi": ["रोशनी", "प्रकाश", "ज्योति", "उजियाला", "उजाला", "दीप्ति", "सूरज", "सूर्य", "चमक", "दीपक"],
+   "en": ["light", "shine", "lamp"]},
+  {"name": "darkness",
+   "tags": ["darkness", "dark", "shadow", "night", "village darkness"],
+   "or": ["ଅନ୍ଧାର", "ଅନ୍ଧକାର", "ଛାୟା", "ରାତି", "ରାତ୍ରି"],
+   "hi": ["अंधकार", "अंधेरा", "अँधेरा", "छाया", "साया", "रात"],
+   "en": ["dark", "shadow", "night"]},
+  {"name": "family",
+   "tags": ["family", "home", "father", "hug", "embrace", "fathers house", "family bible", "family prayer"],
+   "or": ["ପରିବାର", "ଘର", "ପିତା", "ବାପା", "ମାଆ", "ପିଲାମାନେ", "ସ୍ୱାମୀ", "ସ୍ତ୍ରୀ", "ପୁଅ", "ଝିଅ", "ଘରେ"],
+   "hi": ["परिवार", "घर", "पिता", "पापा", "बाप", "माँ", "मां", "बेटा", "बेटी", "पति", "पत्नी", "घराना"],
+   "en": ["family", "home", "father", "mother"]},
+  {"name": "youth",
+   "tags": ["youth", "youth lost", "child"],
+   "or": ["ଯୁବକ", "ଯୁବପିଢ଼ି", "ଯୁବ", "କିଶୋର", "ପିଲା", "ଛୁଆ"],
+   "hi": ["जवान", "युवा", "युवक", "नौजवान", "लड़का", "बच्चा", "बच्चे", "बचपन"],
+   "en": ["youth", "young", "boy", "child"]},
+  {"name": "path",
+   "tags": ["path", "path light", "showing way", "foggy road", "lost path", "road", "walk god"],
+   "or": ["ବାଟ", "ରାସ୍ତା", "ମାର୍ଗ", "ଯାତ୍ରା", "ଚାଲିବା", "ପଥପ୍ରଦର୍ଶକ", "ଦିଗ"],
+   "hi": ["रास्ता", "रास्ते", "मार्ग", "राह", "सफर", "सफ़र", "यात्रा", "चलना", "चलते", "दिशा"],
+   "en": ["path", "way", "road", "walk", "journey"]},
+  {"name": "lost",
+   "tags": ["lost path", "youth lost", "lost"],
+   "or": ["ହଜି", "ହଜିଗଲା", "ବାଟବଣା", "ଭ୍ରାନ୍ତ"],
+   "hi": ["खो गया", "खोया", "भटक", "गुमराह"],
+   "en": ["lost", "astray"]},
+  {"name": "door",
+   "tags": ["closed door", "door"],
+   "or": ["ଦ୍ୱାର", "କବାଟ", "ଦରଜା"],
+   "hi": ["दरवाज़ा", "दरवाजा", "द्वार", "किवाड़"],
+   "en": ["door", "gate"]},
+  {"name": "church",
+   "tags": ["church", "early church", "believers serving", "first believer", "leaving church", "seen crowd", "disciples"],
+   "or": ["ମଣ୍ଡଳୀ", "ଚର୍ଚ୍ଚରେ", "ଚର୍ଚ୍ଚକୁ", "ଚର୍ଚ୍ଚର", "ଚୋର୍ଚ", "ବିଶ୍ୱାସୀ", "ବିଶ୍ବାସୀ", "ଶିଷ୍ୟ", "ସଭା", "ସମାଗମ"],
+   "hi": ["चर्च", "कलीसिया", "मण्डली", "मंडली", "विश्वासी", "चेले", "चेला", "चेलों", "शिष्य", "संगति", "सहभागिता"],
+   "en": ["church", "believers", "disciples", "fellowship"]},
+  {"name": "gospel",
+   "tags": ["sharing gospel", "sent out", "calling out", "call bible"],
+   "or": ["ପ୍ରଚାର", "ସାକ୍ଷ୍ୟ", "ସାକ୍ଷୀ", "ପଠାଇ", "ମିଶନ", "ମିନିଷ୍ଟ୍ରି"],
+   "hi": ["प्रचार", "गवाही", "भेजा", "मिशन", "सेवकाई", "बुलाहट", "बुलाया"],
+   "en": ["preach", "gospel", "witness", "mission"]},
+  {"name": "serve",
+   "tags": ["washing feet", "believers serving", "serving", "kindness"],
+   "or": ["ନମ୍ରତା", "ନମ୍ର", "ସେବା", "ଗୋଡ଼ ଧୋଇ", "ପାଦ ଧୋଇ", "ଦୟା"],
+   "hi": ["नम्रता", "नम्र", "दीन", "पैर धो", "पाँव धो", "दया", "सेवा"],
+   "en": ["serve", "humble", "kindness"]},
+  {"name": "hand",
+   "tags": ["hand light", "hands light", "lifted up", "walk god", "light within"],
+   "or": ["ସାହାଯ୍ୟ", "ସହାୟତା", "ସହିତ ଅଛନ୍ତି", "ଉପସ୍ଥିତି", "ହସ୍ତ", "ଖ୍ରୀଷ୍ଟ ମୋ ଭିତରେ"],
+   "hi": ["सहायता", "मदद", "साथ है", "साथ देते", "उपस्थिति", "हस्त", "थाम", "जरिए से", "ज़रिए से"],
+   "en": ["help", "presence", "hand of god"]},
+  {"name": "art",
+   "tags": ["painting", "painter", "art", "brush", "gallery", "masterpiece", "master brush", "pen dot"],
+   "or": ["ଚିତ୍ର", "ପେଣ୍ଟିଂ", "କଳାକାର", "ଛବି", "ତୁଳୀ"],
+   "hi": ["पेंटिंग", "पेन्टिंग", "पेंटर", "पेन्टर", "चित्र", "कलाकार", "कलाकारी", "तस्वीर", "ब्रश", "स्केच", "कैनवास", "गैलरी", "मास्टरपीस", "आर्टिस्ट"],
+   "en": ["painting", "painter", "artist", "masterpiece"]},
+  {"name": "market",
+   "tags": ["market painting", "boy selling", "buyers", "empty stall", "unsold paintings", "art fair"],
+   "or": ["ବଜାର", "ଦୋକାନ", "ବିକ୍ରି", "କିଣି"],
+   "hi": ["बाज़ार", "बाजार", "मार्केट", "बेचा", "बेचना", "बेचता", "बेचने", "बेचते", "खरीद", "ख़रीद", "ग्राहक", "दुकान", "स्टॉल"],
+   "en": ["market", "sell", "buy"]},
+  {"name": "creation",
+   "tags": ["earth", "pristine", "ancient", "creation", "world", "ocean", "light over ocean"],
+   "or": ["ସୃଷ୍ଟି", "ପୃଥିବୀ", "ଜଗତ", "ଭୂମଣ୍ଡଳ", "ବିଶ୍ୱକୁ", "ବିଶ୍ୱରେ", "ସମୁଦ୍ର", "ସମୁନ୍ଦର", "ପଶୁପକ୍ଷୀ", "ଚନ୍ଦ୍ର", "ଏଦନ", "ଉଦ୍ୟାନ", "ଆଦମ"],
+   "hi": ["सृष्टि", "पृथ्वी", "धरती", "जगत", "संसार", "दुनिया", "समुद्र", "सागर", "पशु", "पक्षी", "अदन", "बगीचा", "आदम", "विश्व में", "विश्व को"],
+   "en": ["creation", "earth", "world", "ocean"]},
+  {"name": "water",
+   "tags": ["river", "water", "dewdrop", "ocean", "water guest", "clear river"],
+   "or": ["ନଦୀ", "ଜଳ", "ପାଣି", "ଶିଶିର", "ବାପ୍ତିସ୍ମ"],
+   "hi": ["नदी", "पानी", "जल", "ओस", "झरना", "बपतिस्मा"],
+   "en": ["river", "water", "baptism"]},
+  {"name": "vine",
+   "tags": ["vine", "vine branches", "branches", "tree", "field", "fruitful", "fruitful field"],
+   "or": ["ଦ୍ରାକ୍ଷାଲତା", "ଦ୍ରାକ୍ଷା", "ଡାଳ", "ଫଳ", "ବୃକ୍ଷ", "ଗଛ", "ଲତା", "ଅଙ୍ଗୁର"],
+   "hi": ["दाखलता", "दाख", "डाली", "डालियाँ", "फल", "पेड़", "वृक्ष", "बेल", "अंगूर"],
+   "en": ["vine", "branch", "fruit", "tree"]},
+  {"name": "sower",
+   "tags": ["sower", "seed", "field", "fruitful field"],
+   "or": ["ବୀଜ", "ବୁଣି", "ଚାଷ", "କ୍ଷେତ", "ଅମଳ"],
+   "hi": ["बीज", "बोया", "बोना", "बोने", "खेत", "फसल", "कटनी", "किसान"],
+   "en": ["sow", "seed", "harvest"]},
+  {"name": "fire",
+   "tags": ["fire", "spark", "forest", "spark forest fire"],
+   "or": ["ନିଆଁ", "ଅଗ୍ନି", "ସ୍ପାର୍କ", "ଜଙ୍ଗଲ", "ଜଳିଯିବ"],
+   "hi": ["आग", "अग्नि", "चिंगारी", "जंगल", "जल जा", "जला दे", "जलाना"],
+   "en": ["fire", "spark", "flame"]},
+  {"name": "words",
+   "tags": ["harsh words", "voice doubt", "whisper", "words", "voice"],
+   "or": ["ଜିଭ", "ଜିହ୍ୱା", "କଟୁ କଥା", "ଶବ୍ଦ", "ସ୍ୱର", "ଭଏସ", "ୱାଏସ", "ଭଏସ୍", "ଗାଳି"],
+   "hi": ["जीभ", "जुबान", "ज़ुबान", "शब्द", "वॉयस", "वॉइस", "आवाज़", "आवाज", "कड़वे", "ताने", "गाली"],
+   "en": ["tongue", "words", "voice"]},
+  {"name": "doubt",
+   "tags": ["voice doubt", "shadow whisper", "whisper"],
+   "or": ["ସନ୍ଦେହ", "ଫୁସଫୁସ", "କାନରେ", "ପାରିବିନି", "ହେବନାହିଁ"],
+   "hi": ["शक", "संदेह", "फुसफुसा", "कानों में", "नहीं कर पाऊंगा", "नहीं कर सकते", "नहीं हो सकता", "कर पाऊंगा"],
+   "en": ["doubt", "whisper", "lie"]},
+  {"name": "thief",
+   "tags": ["thief", "thief turns", "three crosses", "paradise"],
+   "or": ["ଚୋର", "ଡକାୟତ", "ପାରଦୀସ"],
+   "hi": ["चोर", "डाकू", "फिरदौस", "स्वर्गलोक"],
+   "en": ["thief", "paradise"]},
+  {"name": "time",
+   "tags": ["hourglass"],
+   "or": ["ଘଡ଼ି", "ସମୟ ସରି", "ଶେଷ ସମୟ"],
+   "hi": ["घड़ी", "समय निकल", "आखिरी समय"],
+   "en": ["hourglass", "time running"]},
+  {"name": "healing",
+   "tags": ["hem garment", "white robe", "healing"],
+   "or": ["ବସ୍ତ୍ର", "ଲୁଗା", "ଆଞ୍ଚଳ", "ସୁସ୍ଥ", "ଆରୋଗ୍ୟ", "ଚଙ୍ଗା", "ରୋଗ"],
+   "hi": ["वस्त्र", "कपड़ा", "आँचल", "चंगा", "चंगाई", "स्वस्थ", "बीमार", "रोग"],
+   "en": ["healing", "garment", "sick"]},
+  {"name": "peace",
+   "tags": ["brothers reconcile", "embrace", "hug", "kindness", "father embrace"],
+   "or": ["ଶାନ୍ତି", "ମିଳନ", "ପ୍ରେମ", "ଆଲିଙ୍ଗନ", "ଭାଇଚାରା"],
+   "hi": ["शांति", "शान्ति", "मेलमिलाप", "प्रेम", "प्यार", "गले लगा"],
+   "en": ["peace", "love", "reconcile", "hug"]},
+  {"name": "conflict",
+   "tags": ["couple fighting", "fighting"],
+   "or": ["ଝଗଡ଼ା", "କଳହ", "ରାଗ", "କ୍ରୋଧ"],
+   "hi": ["झगड़ा", "झगड़े", "तलाक", "क्रोध", "गुस्सा"],
+   "en": ["fight", "quarrel", "anger"]},
+  {"name": "phone",
+   "tags": ["family online", "late night chat", "online"],
+   "or": ["ମୋବାଇଲ", "ଫୋନ", "ଅନଲାଇନ", "ଇଣ୍ଟରନେଟ", "ଫେସବୁକ", "ୟୁଟ୍ୟୁବ", "ହ୍ୱାଟସଆପ"],
+   "hi": ["मोबाइल", "फोन", "फ़ोन", "ऑनलाइन", "अनलैन", "इंटरनेट", "फेसबुक", "यूट्यूब", "व्हाट्सएप"],
+   "en": ["phone", "online", "internet", "mobile"]},
+  {"name": "stairs",
+   "tags": ["endless stairs", "stairs"],
+   "or": ["ସିଡ଼ି", "ପାହାଚ", "ଷ୍ଟେପ"],
+   "hi": ["सीढ़ी", "सीढ़ियाँ", "सीढ़ियां", "कदम"],
+   "en": ["stairs", "steps", "ladder"]},
+  {"name": "shepherd",
+   "tags": ["shepherd", "sheep", "lamb"],
+   "or": ["ମେଷପାଳକ", "ମେଣ୍ଢା", "ମେଷ", "ଚରବାହୀ"],
+   "hi": ["चरवाहा", "भेड़", "मेमना"],
+   "en": ["shepherd", "sheep", "lamb"]},
+  {"name": "communion",
+   "tags": ["bread", "communion", "disciples", "luke23 lamp"],
+   "or": ["ରୋଟି", "ପ୍ରଭୁଭୋଜ", "ଭୋଜନ"],
+   "hi": ["रोटी", "प्रभुभोज", "भोज"],
+   "en": ["bread", "communion", "supper"]},
+  {"name": "king",
+   "tags": ["king", "crown", "throne", "heaven light"],
+   "or": ["ରାଜା", "ରାଜ୍ୟ", "ମୁକୁଟ"],
+   "hi": ["राजा", "राज्य", "मुकुट"],
+   "en": ["king", "kingdom", "crown"]},
+  {"name": "history",
+   "tags": ["history scrolls", "archaeology", "scroll", "ancient"],
+   "or": ["ଇତିହାସ", "ପ୍ରାଚୀନ", "ପୁରାତନ", "ପ୍ରମାଣ", "ଏଭିଡେନ୍ସ"],
+   "hi": ["इतिहास", "प्राचीन", "पुराना", "प्रमाण", "सबूत"],
+   "en": ["history", "ancient", "evidence"]}
  ]
 }
