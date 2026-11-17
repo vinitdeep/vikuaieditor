@@ -95,7 +95,11 @@ class Job:
     def popen(self, args, **kw) -> subprocess.Popen:
         self.check()
         kw.setdefault("creationflags", CREATE_NO_WINDOW)
-        p = subprocess.Popen([str(a) for a in args], **kw)
+        try:
+            p = subprocess.Popen([str(a) for a in args], **kw)
+        except FileNotFoundError:
+            raise JobError(f"{Path_name(args[0])} not found - finish first-run setup (Settings > Models, "
+                           "POST /models/install)") from None
         with self._plock:
             self._procs.append(p)
         if self._cancel.is_set():

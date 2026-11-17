@@ -1,14 +1,20 @@
-"""English ASR through ffmpeg's built-in `whisper` filter (whisper.cpp) + a ggml model
-(settings paths.whisper_model, default ~/.cache/whisper/ggml-base.en.bin).
+"""English ASR.
+
+1. faster-whisper (CTranslate2, MIT) in a subprocess of the engine's env (viku/runners/whisper_runner.py) with the model
+   manager's Whisper model (`whisper-small` if installed, else `whisper-base-en`; settings paths.faster_whisper_model).
+2. Fallback: ffmpeg's built-in `whisper` filter (whisper.cpp, ffmpeg 8+ full builds only) + a ggml model
+   (settings paths.whisper_model, or the legacy ~/.cache/whisper/ggml-base.en.bin).
 
 Every chunk is cut from the wav and transcribed on its own, so cue times are the chunk times
 (same as the IndicConformer path).
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -31,9 +37,64 @@ def has_filter() -> bool:
     return _has_filter
 
 
+RUNNER = Path(__file__).resolve().parent.parent / "runners" / "whisper_runner.py"
+
+
+def fw_model() -> str:
+    from .. import models
+    return models.whisper_model_dir()
+
+
+def fw_available() -> bool:
+    return bool(fw_model()) and importlib.util.find_spec("faster_whisper") is not None
+
+
+def ggml_model() -> str:
+    m = config.path("whisper_model") or config.legacy("whisper_model")
+    return m if m and Path(m).exists() else ""
+
+
+def engine() -> str:
+    if fw_available():
+        return "faster-whisper:" + Path(fw_model()).name
+    if ggml_model() and has_filter():
+        return "ffmpeg-whisper"
+    return ""
+
+
 def available() -> bool:
-    m = config.path("whisper_model")
-    return bool(m) and Path(m).exists() and has_filter()
+    return bool(engine())
+
+
+def _fw_transcribe(wav: str, chunks: list, job: Job) -> list[dict]:
+    tmp = Path(tempfile.mkdtemp(prefix="viku_fw_"))
+    req, res = tmp / "req.json", tmp / "res.json"
+    req.write_text(json.dumps({"model_dir": fw_model(), "wav": str(wav), "chunks": chunks, "lang": "en"}),
+                   encoding="utf-8")
+    p = job.popen([sys.executable, "-X", "utf8", str(RUNNER), str(req), str(res)], stdout=subprocess.PIPE,
+                  stderr=subprocess.STDOUT, cwd=str(tmp))
+    tail = []
+    try:
+        for line in iter(p.stdout.readline, b""):
+            s = line.decode("utf-8", "replace").strip()
+            if s.startswith("PROGRESS"):
+                _, d, n = s.split()
+                job.update(int(d) / max(int(n), 1), f"transcribing {d}/{n}")
+            elif s:
+                tail = (tail + [s])[-20:]
+        p.wait()
+    finally:
+        job.release(p)
+    job.check()
+    if p.returncode != 0 or not res.exists():
+        raise JobError("faster-whisper runner failed: " + " | ".join(tail[-6:]))
+    out = []
+    for it in json.loads(res.read_text(encoding="utf-8"))["chunks"]:
+        t = it["text"]
+        if t and not re.fullmatch(r"\s*[\[(].*[\])]\s*", t):
+            out.append({"start": round(it["start"], 3), "end": round(it["end"], 3), "text": t, "lang": "en",
+                        "conf": it.get("conf", 1.0), "alt": None})
+    return out
 
 
 def _parse(path: Path) -> str:
@@ -54,11 +115,12 @@ def _parse(path: Path) -> str:
 
 
 def transcribe(wav: str, chunks: list, job: Job) -> list[dict]:
-    if not has_filter():
-        raise JobError("this ffmpeg has no 'whisper' filter - English ASR unavailable (install an ffmpeg 8+ full build)")
-    model = config.path("whisper_model")
-    if not model or not Path(model).exists():
-        raise JobError("whisper model not found - put ggml-base.en.bin in ~/.cache/whisper or set paths.whisper_model")
+    if fw_available():
+        return _fw_transcribe(wav, chunks, job)
+    model = ggml_model()
+    if not model or not has_filter():
+        raise JobError("English speech recognition is not installed - install the Whisper model "
+                       "(POST /models/install {\"ids\": [\"whisper-base-en\"]})")
     tmp = Path(tempfile.mkdtemp(prefix="viku_whisper_"))
     out = []
     for i, (s, e) in enumerate(chunks):

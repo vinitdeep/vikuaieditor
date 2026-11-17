@@ -39,7 +39,8 @@ def run(job: Job, video_path: str = "", language: str = "or", count: int = 3, rn
     n = max(len(sug), 1)
     for i, s in enumerate(sug):
         a, b = 0.5 + 0.5 * i / n, 0.5 + 0.5 * (i + 1) / n
-        r = reel.create(pid, s["segments"], s["title"], "", {"suggestion": s["id"], "score": s["score"]})
+        r = reel.create(pid, s["segments"], s["title"], "", {"suggestion": s["id"], "score": s["score"],
+                                                          "title_auto": True, "sub_auto": True})
         with job.scope(a, a + (b - a) * 0.4):
             reel.autobuild(r["id"], job)
         res = {"reel": r["id"], "title": s["title"], "score": s["score"]}

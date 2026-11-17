@@ -233,11 +233,23 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
     if steps["music"]:
         music = pick_music(rid)
     sfx = plan_sfx([c for c in cutaways if c.get("img") and Path(c["img"]).exists()])
-    title = r.get("title") or (captions[0]["text"][:40] if captions else "")
+    # hook title + sub (verse ref / English gist) unless the editor wrote their own
+    from ..brain import hooks
+    hk = hooks.hook(captions, r["language"], verses) if captions else {"title": "", "sub": ""}
+    title_auto = not r.get("title") or bool(r.get("title_auto"))
+    sub_auto = not r.get("sub") or bool(r.get("sub_auto"))
+    title = hk["title"] if title_auto and hk["title"] else r.get("title", "")
+    sub = hk["sub"] if sub_auto and hk["sub"] else r.get("sub", "")
 
     def upd2(rr):
         rr.update({"captions": captions, "cutaways": cutaways, "verses": verses, "music": music, "sfx": sfx,
-                   "title": title, "status": "built"})
+                   "title": title, "sub": sub, "title_auto": title_auto, "sub_auto": sub_auto, "status": "built"})
+        th = rr.get("thumbnail") or {}
+        if title_auto:
+            th["title"] = title
+        if sub_auto:
+            th["sub"] = sub
+        rr["thumbnail"] = th
     _save_reel(rid, upd2)
     return projects.find_reel(rid)[1]
 

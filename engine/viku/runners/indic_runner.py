@@ -1,6 +1,10 @@
-"""IndicConformer batch runner - executed by the IndicConformerASR venv's python, NOT the engine env.
+"""IndicConformer batch runner - a subprocess of the engine (the engine's own env, `asr` dependency group: torch CPU +
+onnxruntime), or any python with those packages (settings paths.indic_python).
 
-    <indic python> indic_runner.py <request.json> <result.json>
+    <python> indic_runner.py <request.json> <result.json>
+
+Model code: the vendored `indic_model.py` next to this file (MIT, AI4Bharat); weights: the model manager's
+<data>/models/indic-conformer-600m (or settings paths.indic_dir).
 
 request = {"model_dir": ".../models/indic-conformer-600m", "wav": "16k mono wav",
            "chunks": [[s, e], ...] (seconds in that wav), "lang": "or"|"hi"|"auto",
@@ -25,8 +29,8 @@ import torch
 def main():
     req = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     out_path = Path(sys.argv[2])
-    sys.path.insert(0, req["model_dir"])
-    from model_onnx import IndicASRConfig, IndicASRModel  # noqa: E402
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from indic_model import IndicASRConfig, IndicASRModel  # noqa: E402
 
     model = IndicASRModel(IndicASRConfig(ts_folder=req["model_dir"]))
     blank = model.config.BLANK_ID

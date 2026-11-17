@@ -231,11 +231,9 @@ def suggest(p: dict, count: int = 8, rng: list | None = None, job=None) -> list[
 
 
 def pick_title(items: list[dict], lang: str) -> str:
-    last = items[-1]["text"]
-    if T.lex_hits(last, "hope_end", lang):
-        return T.short_title(last)
-    best = max(items, key=lambda it: (T.lex_hits(it["text"], "victory", lang), len(it["text"])))
-    return T.short_title(best["text"])
+    """Hook title (<= 6 words + "!" / "?") from the window's lines - see brain/hooks.py."""
+    from . import hooks
+    return hooks.hook(items, lang)["title"] or T.short_title(items[-1]["text"])
 
 
 def window_features(p: dict, segments: list, lang: str) -> dict:

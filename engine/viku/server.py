@@ -60,13 +60,52 @@ def gpu_name() -> str:
 
 @app.get("/health")
 def health():
+    from . import llm, models
+    from .asr import indic, whisper
     a = asr.available()
+    items = models.list_items()
+    missing = [x["id"] for x in items if x["required"] and not x["installed"]]
+    if not indic.runtime_ok() and not indic.python():
+        missing.append("asr-runtime")
     return {"ok": True, "version": __version__, "gpu": gpu_name() or None, "data_dir": str(config.data_dir()),
-            "offline_ready": {"asr": a["indic"] or a["whisper"], "denoise": True, "embed": embed.available(),
-                              "bible": bible.ready(), "library": library.count() > 0},
-            "details": {"asr_indic": a["indic"], "asr_whisper_en": a["whisper"], "denoise_engine": enhance.mode(),
+            "setup_needed": bool(missing), "setup_missing": missing,
+            "offline_ready": {"asr": a["indic"] or a["whisper"], "denoise": enhance.mode() != "ffmpeg-afftdn",
+                              "embed": embed.available(), "bible": bible.ready(), "library": library.count() > 0,
+                              "ffmpeg": models.ffmpeg_source() is not None},
+            "models": {x["id"]: {"installed": x["installed"], "source": x["source"], "required": x["required"]}
+                       for x in items},
+            "llm": llm.status(),
+            "details": {"asr_indic": a["indic"], "asr_whisper_en": a["whisper"], "asr_en_engine": whisper.engine() or None,
+                        "asr_runtime": indic.runtime_ok(), "denoise_engine": enhance.mode(),
+                        "ffmpeg": models.ffmpeg(), "ffmpeg_source": models.ffmpeg_source(),
                         "bible": bible.status(), "library_images": library.count(), "music_tracks": len(music.list_tracks()),
                         "fonts": assets_setup.fonts_ready(), "sfx": assets_setup.sfx_ready()}}
+
+
+# ------------------------------------------------------------------ models --
+@app.get("/models")
+def models_list():
+    from . import models
+    return models.list_items()
+
+
+class ModelsReq(BaseModel):
+    ids: list[str] | None = None   # None = every required item that is missing
+    source_dir: str | None = None  # install from a local folder (offline) instead of downloading
+
+
+@app.post("/models/install")
+def models_install(b: ModelsReq | None = None):
+    from . import models
+    b = b or ModelsReq()
+    return job_ref(MANAGER.submit("models_install", lambda job: models.install(job, b.ids, b.source_dir),
+                                  {"ids": b.ids}))
+
+
+@app.post("/models/remove")
+def models_remove(b: ModelsReq):
+    from . import models
+    return models.remove(b.ids or [])
 
 
 # ---------------------------------------------------------------- settings --
@@ -107,7 +146,13 @@ def put_project(pid: str, body: dict[str, Any]):
     if body.get("id") != pid:
         raise projects.Invalid("id in body must match the URL")
     with projects.lock(pid):
-        projects.load(pid)
+        old = {r["id"]: r for r in projects.load(pid).get("reels", [])}
+        for r in body.get("reels", []):  # an edited title / sub is the editor's: autobuild stops rewriting it
+            o = old.get(r.get("id"))
+            if o and r.get("title") != o.get("title") and r.get("title_auto") == o.get("title_auto"):
+                r["title_auto"] = False
+            if o and r.get("sub") != o.get("sub") and r.get("sub_auto") == o.get("sub_auto"):
+                r["sub_auto"] = False
         return projects.save(body)
 
 
@@ -206,6 +251,17 @@ def thumbnail(rid: str, b: ThumbReq | None = None):
 def thumbnail_styles():
     from .media import thumbs
     return [{"id": k, "label": v.get("label", k)} for k, v in thumbs.STYLES.items()]
+
+
+class DescribeReq(BaseModel):
+    use_llm: bool = False   # True: draft with a local Ollama model when one is running (optional, never required)
+
+
+@app.post("/reels/{rid}/describe")
+def reel_describe(rid: str, b: DescribeReq | None = None):
+    from . import llm
+    projects.find_reel(rid)
+    return llm.describe(rid, (b or DescribeReq()).use_llm)
 
 
 @app.get("/reels/{rid}/needs")

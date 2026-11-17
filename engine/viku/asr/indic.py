@@ -1,7 +1,8 @@
 """IndicConformer (AI4Bharat 600M multilingual, ONNX) adapter for Odia / Hindi.
 
-Runs viku/runners/indic_runner.py with the IndicConformerASR venv's python (settings
-paths.indic_python, paths.indic_dir). One process per call: the model loads once and
+Runs viku/runners/indic_runner.py (vendored AI4Bharat model code, viku/runners/indic_model.py) as a subprocess with the
+engine's own python (needs the `asr` dependency group: torch CPU + onnxruntime) or settings paths.indic_python; weights
+from the model manager (<data>/models/indic-conformer-600m) or settings paths.indic_dir. One process per call: the model loads once and
 transcribes every chunk; RNNT text is the caption, CTC text rides along as "alt" so the
 caption fixer can flag words where the two decoders disagree.
 
@@ -13,7 +14,9 @@ smoothed language differs from their own are re-decoded with the smoothed langua
 """
 from __future__ import annotations
 
+import importlib.util
 import json
+import sys
 import tempfile
 from pathlib import Path
 
@@ -25,24 +28,47 @@ CANDS = ["or", "hi"]
 
 
 def model_dir() -> Path:
-    return Path(config.path("indic_dir") or ".") / "models" / "indic-conformer-600m"
+    from .. import models
+    return Path(models.indic_model_dir() or ".")
+
+
+def python() -> str:
+    """Interpreter for the runner: settings.paths.indic_python -> this env (when torch is installed) -> legacy venv."""
+    py = config.path("indic_python")
+    if py and Path(py).is_file():
+        return py
+    if runtime_ok():
+        return sys.executable
+    return config.legacy("indic_python")
+
+
+_rt: bool | None = None
+
+
+def runtime_ok() -> bool:
+    """torch + onnxruntime importable in the engine env (checked without importing torch into the server)."""
+    global _rt
+    if _rt is None:
+        _rt = all(importlib.util.find_spec(m) is not None for m in ("torch", "onnxruntime", "soundfile"))
+    return _rt
 
 
 def available() -> bool:
-    py = config.path("indic_python")
+    py = python()
     return bool(py) and Path(py).exists() and (model_dir() / "assets" / "encoder.onnx").exists()
 
 
 def _run(wav: str, chunks: list, lang: str, job: Job, ctc: bool, prog=(0.0, 1.0)) -> list[dict]:
     if not available():
-        raise JobError("IndicConformer not found - set paths.indic_python / paths.indic_dir in /settings")
+        raise JobError("IndicConformer (Odia/Hindi speech recognition) is not installed - finish first-run setup "
+                       "(POST /models/install {\"ids\": [\"indic-conformer\"]})")
     tmp = Path(tempfile.mkdtemp(prefix="viku_asr_"))
     req = tmp / "req.json"
     res = tmp / "res.json"
     req.write_text(json.dumps({"model_dir": str(model_dir()), "wav": str(wav), "chunks": chunks, "lang": lang,
                                "candidates": CANDS, "ctc": ctc}), encoding="utf-8")
     import subprocess
-    p = job.popen([config.path("indic_python"), "-X", "utf8", str(RUNNER), str(req), str(res)],
+    p = job.popen([python(), "-X", "utf8", str(RUNNER), str(req), str(res)],
                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=str(tmp))
     tail = []
     try:

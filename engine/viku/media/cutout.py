@@ -16,7 +16,6 @@ Pipeline (bust() / cut()):
 from __future__ import annotations
 
 import threading
-import urllib.request
 from pathlib import Path
 
 import cv2
@@ -58,21 +57,13 @@ def ready() -> bool:
 
 
 def ensure_model(job=None) -> Path:
+    """Installed by the model manager (item `u2net-human-seg`: pinned URL, SHA-256 verified, resumable)."""
     f = model_path()
     if not f.exists():
         if job is not None:
             job.update(None, "downloading cut-out model (176 MB, once)")
-        tmp = f.with_suffix(".part")
-        req = urllib.request.Request(URL, headers={"User-Agent": "viku-engine"})
-        with urllib.request.urlopen(req, timeout=300) as r, tmp.open("wb") as out:
-            while True:
-                b = r.read(1 << 20)
-                if not b:
-                    break
-                out.write(b)
-                if job is not None:
-                    job.check()
-        tmp.replace(f)
+        from .. import models
+        models.ensure("u2net-human-seg", job)
     lic = model_dir() / "LICENSE.txt"
     if not lic.exists():
         lic.write_text(LICENCE.format(url=URL), encoding="utf-8")

@@ -7,18 +7,20 @@ from pathlib import Path
 
 import numpy as np
 
-from .. import config
 from ..jobs import CREATE_NO_WINDOW, Job
 
 SR16 = 16000
 
 
 def ffmpeg() -> str:
-    return config.path("ffmpeg") or "ffmpeg"
+    """Resolved by the model manager: settings.paths.ffmpeg -> <data>/tools/ffmpeg -> suitable PATH ffmpeg."""
+    from .. import models
+    return models.ffmpeg()
 
 
 def ffprobe() -> str:
-    return config.path("ffprobe") or "ffprobe"
+    from .. import models
+    return models.ffprobe()
 
 
 def probe(path: str) -> dict:

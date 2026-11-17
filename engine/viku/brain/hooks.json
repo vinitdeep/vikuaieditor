@@ -1,0 +1,72 @@
+{
+ "_doc": "Hook writer data (brain/hooks.py). Words match like lexicon.json (token prefixes; <= 2 letters whole tokens; phrases with a space as substrings). themes: the English gist used as the reel's sub line when it has no verse card (first theme with the most hits wins; 'gist' is the sub, 'tags' become hashtags). Edit freely.",
+ "dangling_start": {
+  "or": ["ତାହେଲେ", "କିନ୍ତୁ", "ଆଉ", "ଏବଂ", "ଯେ", "ଯଦି", "ତେଣୁ", "କାରଣ", "ସେଥିପାଇଁ", "ମାନେ", "ଅର୍ଥାତ", "ତ", "ବି", "ଏଇଟା", "ଯେଉଁ", "ଯାହା", "ଯାହାକି", "କି"],
+  "hi": ["तो", "और", "लेकिन", "पर", "कि", "क्योंकि", "अगर", "जो", "की", "के", "का", "में", "से", "को", "ने", "है", "यानी", "मतलब", "भी", "ही", "जब", "इसलिए"],
+  "en": ["and", "but", "so", "that", "because", "if", "the", "a", "an", "to", "of", "in", "which", "then", "or"]
+ },
+ "dangling_end": {
+  "or": ["ତାହେଲେ", "କିନ୍ତୁ", "ଆଉ", "ଏବଂ", "ଯେ", "ଯଦି", "ତେଣୁ", "କାରଣ", "ଯେଉଁ", "ଯାହା", "ର", "କୁ", "ରେ", "ପାଇଁ", "ସହିତ", "ମୁଁ", "ଆମେ", "ସେ", "ଏହି", "ସେହି", "ଗୋଟିଏ", "ଏକ", "ଯେମିତି", "ଭଳି"],
+  "hi": ["तो", "और", "लेकिन", "पर", "कि", "क्योंकि", "अगर", "जो", "की", "के", "का", "में", "से", "को", "ने", "यह", "वह", "एक", "मैं", "हम", "इस", "उस", "जैसे", "लिए", "साथ"],
+  "en": ["and", "but", "so", "that", "because", "if", "the", "a", "an", "to", "of", "in", "which", "then", "or", "is", "are", "i", "we", "my", "your", "with", "for"]
+ },
+ "fillers": {
+  "or": ["ଓକେ", "ଓକେ", "ହଁ", "ଆଚ୍ଛା", "ଠିକ୍", "ଠିକ", "ମାନେ", "ଆମେନ", "ଆମେନ୍", "ହାଲେଲୁୟା", "ଧନ୍ୟବାଦ", "ଜୋରରେ", "ଟିକେ"],
+  "hi": ["ओके", "हाँ", "हां", "अच्छा", "ठीक", "मतलब", "आमीन", "हालेलूय्याह", "हल्लेलूय्याह", "धन्यवाद", "जोर से"],
+  "en": ["ok", "okay", "yes", "yeah", "amen", "hallelujah", "right", "uh", "um", "louder"]
+ },
+ "question": {
+  "or": ["କାହିଁକି", "କାହିଁ", "କିଏ", "କ'ଣ", "କଣ", "କିପରି", "କେମିତି", "କେଉଁ", "କେବେ", "କେତେ", "କି"],
+  "hi": ["क्या", "क्यों", "कैसे", "कौन", "कहाँ", "कहां", "कब", "कितना", "कितने", "किसको", "किसने"],
+  "en": ["what", "why", "how", "who", "where", "when", "which", "can you", "do you", "are you", "will you"]
+ },
+ "strong": {
+  "or": ["ଈଶ୍ୱର", "ପରମେଶ୍ୱର", "ପ୍ରଭୁ", "ଯୀଶୁ", "ଖ୍ରୀଷ୍ଟ", "ପବିତ୍ର ଆତ୍ମା", "ନିଶ୍ଚୟ", "ନିଶ୍ଚିତ", "କେବେ ନୁହେଁ", "ଏକୁଟିଆ ନୁହେଁ", "ପାରିବ", "ପାରିବା", "ପାରିବେ", "ମୁକ୍ତ", "ପ୍ରେମ", "ଆଶୀର୍ବାଦ", "ପରାଜିତ", "ପରାଜୟ", "ଜିତି", "ଜୟ"],
+  "hi": ["परमेश्वर", "प्रभु", "यीशु", "मसीह", "पवित्र आत्मा", "ज़रूर", "जरूर", "अवश्य", "कभी नहीं", "अकेले नहीं", "सकते", "सकोगे", "सकूँगा", "सकूंगा", "मुक्त", "प्रेम", "आशीष", "हार", "जीत", "जय"],
+  "en": ["god", "jesus", "christ", "lord", "holy spirit", "never", "always", "not alone", "can", "will", "free", "love", "blessed", "defeated"]
+ },
+ "themes": [
+  {"id": "not_alone", "gist": "You are not alone", "tags": ["NotAlone", "GodIsWithYou"],
+   "or": ["ଏକୁଟିଆ", "ଏକା", "ସାଙ୍ଗରେ ଅଛନ୍ତି", "ସାଥିରେ"], "hi": ["अकेले", "अकेला", "साथ है", "साथ हैं", "संग"], "en": ["alone", "with you", "lonely"]},
+  {"id": "enemy_defeated", "gist": "The enemy is defeated", "tags": ["Victory", "SpiritualWarfare"],
+   "or": ["ଶୟତାନ", "ଲୁସିଫ", "ଶତ୍ରୁ", "ପରାଜୟ", "ପରାଜିତ", "ପତନ", "ହାରି"], "hi": ["शैतान", "चैतान", "लूसिफर", "शत्रु", "दुश्मन", "हार", "पतन", "गिरा"], "en": ["satan", "devil", "enemy", "defeated", "lucifer"]},
+  {"id": "can_do", "gist": "You can do all things through Christ", "tags": ["Faith", "Strength"],
+   "or": ["ସବୁ କିଛି କରିପାରିବ", "ସବୁ କରିପାରେ", "ଶକ୍ତି", "ସାମର୍ଥ୍ୟ"], "hi": ["सब कुछ कर", "कर सकता", "कर सकूँगा", "कर सकूंगा", "शक्ति", "सामर्थ"], "en": ["can do all things", "strength", "strong"]},
+  {"id": "fear_not", "gist": "Do not be afraid", "tags": ["FearNot", "Courage"],
+   "or": ["ଭୟ", "ଡର", "ସାହସ"], "hi": ["डर", "भय", "डरो", "साहस", "हिम्मत"], "en": ["fear", "afraid", "courage"]},
+  {"id": "depression", "gist": "Freedom from depression", "tags": ["Hope", "Freedom"],
+   "or": ["ଡିପ୍ରେସନ", "ନିରାଶ", "ହତାଶ", "ଦୁଃଖ"], "hi": ["डिप्रेशन", "निराश", "उदास", "दुख"], "en": ["depression", "depressed", "discouraged", "hopeless"]},
+  {"id": "pride", "gist": "Pride comes before a fall", "tags": ["Humility"],
+   "or": ["ଅହଂକାର", "ଗର୍ବ", "ଆରୋହଣ", "ତାରାଗଣ", "ସିଂହାସନ"], "hi": ["घमंड", "अहंकार", "गर्व", "सिंहासन"], "en": ["pride", "proud", "throne", "above the stars"]},
+  {"id": "foundation", "gist": "Build on the right foundation", "tags": ["Foundation", "Faith"],
+   "or": ["ମୂଳଦୁଆ", "ମୂଳ", "ପଥର", "ଶୈଳ"], "hi": ["नींव", "चट्टान", "बुनियाद"], "en": ["foundation", "rock"]},
+  {"id": "vine", "gist": "Abide in the vine", "tags": ["AbideInChrist"],
+   "or": ["ଦ୍ରାକ୍ଷା", "ଡାଳ", "ଫଳ"], "hi": ["दाखलता", "डाली", "डालियाँ", "फल"], "en": ["vine", "branch", "fruit"]},
+  {"id": "prayer", "gist": "The power of prayer", "tags": ["Prayer"],
+   "or": ["ପ୍ରାର୍ଥନା"], "hi": ["प्रार्थना", "दुआ"], "en": ["prayer", "pray"]},
+  {"id": "salvation", "gist": "Believe and be saved", "tags": ["Salvation", "Gospel"],
+   "or": ["ପରିତ୍ରାଣ", "ଉଦ୍ଧାର", "ବିଶ୍ୱାସ କର", "ସ୍ୱୀକାର", "ମୁକ୍ତି"], "hi": ["उद्धार", "मुक्ति", "विश्वास कर", "अंगीकार", "बचाया"], "en": ["saved", "salvation", "believe", "confess"]},
+  {"id": "cross", "gist": "The power of the cross", "tags": ["Cross", "Jesus"],
+   "or": ["କ୍ରୁଶ", "ରକ୍ତ"], "hi": ["क्रूस", "लहू", "खून"], "en": ["cross", "blood"]},
+  {"id": "resurrection", "gist": "He is risen", "tags": ["Resurrection", "Jesus"],
+   "or": ["ପୁନରୁତ୍ଥାନ", "ପୁନରୁଦ୍ଧାନ", "ଜୀବିତ ହେଲେ", "କବର"], "hi": ["पुनरुत्थान", "जी उठे", "जी उठा", "कब्र"], "en": ["resurrection", "risen", "tomb"]},
+  {"id": "healing", "gist": "Jesus still heals", "tags": ["Healing"],
+   "or": ["ସୁସ୍ଥ", "ଆରୋଗ୍ୟ", "ରୋଗ"], "hi": ["चंगा", "चंगाई", "बीमारी", "रोग"], "en": ["heal", "healing", "sick"]},
+  {"id": "love", "gist": "God loves you", "tags": ["GodsLove"],
+   "or": ["ପ୍ରେମ", "ଭଲପାଆନ୍ତି", "ଭଲ ପାଆନ୍ତି"], "hi": ["प्रेम", "प्यार"], "en": ["love", "loves"]},
+  {"id": "words", "gist": "Your words have power", "tags": ["Words", "Faith"],
+   "or": ["ଜିଭ", "କଥା", "ମୁଖ", "ବାକ୍ୟ"], "hi": ["जीभ", "ज़ुबान", "जुबान", "मुँह", "वचन"], "en": ["tongue", "words", "mouth"]},
+  {"id": "family", "gist": "God's plan for your family", "tags": ["Family"],
+   "or": ["ପରିବାର", "ଘର", "ପିଲା", "ସ୍ୱାମୀ", "ସ୍ତ୍ରୀ"], "hi": ["परिवार", "घर", "बच्चे", "पति", "पत्नी"], "en": ["family", "home", "children"]},
+  {"id": "storm", "gist": "Peace in the storm", "tags": ["Peace", "Trust"],
+   "or": ["ଝଡ଼", "ତୋଫାନ", "ସମସ୍ୟା", "ଶାନ୍ତି"], "hi": ["तूफ़ान", "तूफान", "आँधी", "समस्या", "शांति"], "en": ["storm", "problem", "peace"]},
+  {"id": "light", "gist": "Walk in the light", "tags": ["Light"],
+   "or": ["ଆଲୋକ", "ଅନ୍ଧକାର"], "hi": ["ज्योति", "रोशनी", "अंधकार", "अंधेरा"], "en": ["light", "darkness"]},
+  {"id": "spirit", "gist": "Filled with the Holy Spirit", "tags": ["HolySpirit"],
+   "or": ["ପବିତ୍ର ଆତ୍ମା", "ଆତ୍ମା"], "hi": ["पवित्र आत्मा", "आत्मा"], "en": ["holy spirit", "spirit"]},
+  {"id": "victory", "gist": "Victory is yours in Christ", "tags": ["Victory", "Faith"],
+   "or": ["ବିଜୟ", "ଜୟ", "ଜିତି", "ଜିତିବ"], "hi": ["विजय", "जय", "जीत", "जयवंत"], "en": ["victory", "win", "overcome"]},
+  {"id": "hope", "gist": "There is hope in Jesus", "tags": ["Hope"],
+   "or": ["ଆଶା", "ଭରସା"], "hi": ["आशा", "उम्मीद", "भरोसा"], "en": ["hope", "trust"]}
+ ]
+}

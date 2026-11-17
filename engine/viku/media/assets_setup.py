@@ -1,8 +1,7 @@
-"""First-run assets: Noto fonts (OFL, downloaded once into <data>/fonts) and synthesized SFX
+"""First-run assets: Noto fonts (OFL, downloaded once into <data>/fonts by the model manager) and synthesized SFX
 (<data>/sfx/impact.wav + swell.wav; port of make_sfx.py - the bell "shimmer" is deliberately gone)."""
 from __future__ import annotations
 
-import urllib.request
 import wave
 from pathlib import Path
 
@@ -33,15 +32,11 @@ def fonts_ready() -> bool:
 
 
 def ensure_fonts() -> Path:
-    d = fonts_dir()
-    for f, u in FONTS.items():
-        if not (d / f).exists():
-            tmp = d / (f + ".part")
-            req = urllib.request.Request(FONT_BASE + u, headers={"User-Agent": "viku-engine"})
-            with urllib.request.urlopen(req, timeout=60) as r:
-                tmp.write_bytes(r.read())
-            tmp.replace(d / f)
-    return d
+    """Installed by the model manager (item `fonts`: pinned notofonts commit, SHA-256 verified)."""
+    if not fonts_ready():
+        from .. import models
+        models.ensure("fonts")
+    return fonts_dir()
 
 
 # ---------------------------------------------------------------- SFX ----

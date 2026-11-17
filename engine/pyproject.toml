@@ -26,3 +26,21 @@ packages = ["viku"]
 
 [dependency-groups]
 dev = ["httpx>=0.27"]
+# Speech recognition runners (run as subprocesses of the engine, same env):
+#   IndicConformer (vendored viku/runners/indic_model.py: TorchScript preprocessor + ONNX) and faster-whisper.
+asr = [
+    "torch>=2.5",
+    "faster-whisper>=1.1",
+]
+
+[tool.uv]
+# `uv sync` (dev) installs the ASR runners too; the installer runs `uv sync --frozen --no-dev --group asr`.
+default-groups = ["dev", "asr"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

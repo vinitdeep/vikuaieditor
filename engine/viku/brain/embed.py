@@ -15,11 +15,9 @@ Embeddings are cached by sha1(prefix + text) in <data>/models/embed/cache.sqlite
 from __future__ import annotations
 
 import hashlib
-import shutil
 import sqlite3
 import threading
 import time
-import urllib.request
 from pathlib import Path
 
 import numpy as np
@@ -29,7 +27,6 @@ from .. import config
 NAME = "multilingual-e5-small"
 DIM = 384
 MAX_LEN = 512
-HF = "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/"
 FILES = {"model.onnx": "onnx/model.onnx", "tokenizer.json": "onnx/tokenizer.json"}
 REPO_DIR = Path(__file__).resolve().parents[3] / "models" / "embed" / NAME / "onnx"
 
@@ -53,29 +50,18 @@ def available() -> bool:
 
 
 def ensure_model(job=None) -> Path:
+    """Installed by the model manager (item `e5-small`: copied from the repo's models/ when present, else downloaded
+    from Hugging Face at a pinned revision; SHA-256 verified)."""
     d = model_dir()
-    d.mkdir(parents=True, exist_ok=True)
-    for f, rel in FILES.items():
-        dst = d / f
-        if dst.exists():
-            continue
-        src = REPO_DIR / f
-        tmp = dst.with_suffix(dst.suffix + ".part")
-        if src.exists():
-            if job:
-                job.update(0.0, f"copying embedding model {f}")
-            shutil.copyfile(src, tmp)
-        else:
-            if job:
-                job.update(0.0, f"downloading embedding model {f} (Hugging Face)")
-            req = urllib.request.Request(HF + rel, headers={"User-Agent": "viku-engine"})
-            with urllib.request.urlopen(req, timeout=600) as r, open(tmp, "wb") as o:
-                shutil.copyfileobj(r, o, 1 << 20)
-        tmp.replace(dst)
+    if not all((d / f).exists() for f in FILES):
+        if job:
+            job.update(None, "installing the embedding model (once)")
+        from .. import models
+        models.ensure("e5-small", job)
     lic = d / "LICENSE.txt"
     if not lic.exists():
-        lic.write_text("intfloat/multilingual-e5-small - MIT License - https://huggingface.co/intfloat/multilingual-e5-small\n",
-                       encoding="utf-8")
+        lic.write_text("intfloat/multilingual-e5-small - MIT License - "
+                       "https://huggingface.co/intfloat/multilingual-e5-small\n", encoding="utf-8")
     return d
 
 
