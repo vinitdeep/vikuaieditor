@@ -284,6 +284,19 @@ export class MockApi implements VikuApi {
       { msg: 'Viku Brain: ranking 128 windows', ms: 300 },
       { msg: 'planning jump cuts', ms: 200 }
     ]
+    if (body.pick) {
+      // single-reel runs: analyse + suggest only, the editor picks the clip (engine: {project, stage, suggestions})
+      return this.job('automate', [...steps, { msg: `ranking clips for ≈ ${body.max_seconds} s reels`, ms: 400 }], () => ({
+        project: 'p-btf',
+        stage: 'pick',
+        suggestions: M.mockCandidates('p-btf')
+          .slice(0, body.pick)
+          .map((c, i) => {
+            const d = Math.min(body.max_seconds, c.segments.reduce((a, [s, e]) => a + e - s, 0))
+            return { ...c, id: `s${i + 1}`, duration: d, target_seconds: body.max_seconds, short_of_target: d < body.max_seconds * 0.9 }
+          })
+      }))
+    }
     const per = 5000 / n
     for (let i = 1; i <= n; i++) {
       steps.push({ msg: `reel ${i}/${n} · captions: re-transcribing the joined clip`, ms: per * 0.25 })
@@ -303,6 +316,26 @@ export class MockApi implements VikuApi {
       }))
       return { project: 'p-btf', reels }
     })
+  }
+  async automateBuild(projectId: string, c: Candidate) {
+    const steps: Step[] = [
+      { msg: 'captions: re-transcribing the joined clip', ms: 1200 },
+      { msg: 'verse cards, cutaways, music', ms: 700 },
+      { msg: 'speech enhancement', ms: 800 },
+      { msg: 'rendering final', ms: 1600 }
+    ]
+    return this.job('automate_build', steps, () => ({
+      project: projectId,
+      reels: [
+        {
+          reel: c.id === 's1' ? 'r-satan-defeated' : `r-pick-${c.id}`,
+          title: c.title,
+          duration: c.duration ?? c.segments.reduce((a, [s, e]) => a + e - s, 0),
+          score: c.score,
+          path: `D:\\Viku\\exports\\pick\\${c.id}.mp4`
+        }
+      ]
+    }))
   }
   async cancelJob(jobId: string) {
     if (!this.timers.has(jobId)) return false

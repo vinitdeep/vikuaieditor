@@ -21,8 +21,8 @@ import {
   X
 } from 'lucide-react'
 import { api } from '@/api'
-import type { AutomateRequest, AutomateResultReel, LangOpt, Project, Reel } from '@/api/types'
-import { isRec, num, str } from '@/api/normalize'
+import type { AutomateRequest, AutomateResultReel, Candidate, LangOpt, Project, Reel, Seg } from '@/api/types'
+import { candidates as normCandidates, isRec, num, str } from '@/api/normalize'
 import { toast, useApp } from '@/state/app'
 import { useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
@@ -32,9 +32,23 @@ import { Button, IconButton, LangBadge, Progress, Segmented, Toggle } from '../u
 import { ThumbPreview } from '../ThumbPreview'
 import { resultPath } from '../inspector/ReelPanel'
 
+/** single-reel runs stop after "Find clips" and show this many to choose from */
+export const PICK_COUNT = 5
+
+interface Picks {
+  project_id: string
+  items: Candidate[]
+}
+
 interface AutoState {
   form: AutomateRequest
   jobId: string | null
+  /** run = make N reels in one go · pick = finding clips to choose from · build = making the picked clip */
+  phase: 'run' | 'pick' | 'build'
+  picks: Picks | null
+  /** candidate id -> reel id it became */
+  built: Record<string, string>
+  buildingId: string | null
   results: AutomateResultReel[]
   reels: Record<string, Reel>
   projects: Record<string, Project>
@@ -45,6 +59,10 @@ interface AutoState {
 export const useAuto = create<AutoState>((set, get) => ({
   form: { video_path: '', language: 'auto', count: 3, max_seconds: 60, illustrations: 'library', music: 'library', thumbnails: true },
   jobId: null,
+  phase: 'run',
+  picks: null,
+  built: {},
+  buildingId: null,
   results: [],
   reels: {},
   projects: {},
@@ -70,10 +88,144 @@ function capLabel(sec: number): string {
   return r ? `${m} min ${r} s` : `${m} min`
 }
 
-function stageOf(message: string, progress: number): number {
+function stageOf(message: string, progress: number, phase: AutoState['phase']): number {
+  if (phase === 'build') return RENDER_RE.test(message) ? 3 : 2
+  if (phase === 'pick') return progress < 0.9 ? 0 : 1
   if (progress < 0.45) return 0
   if (progress < 0.5) return 1
   return RENDER_RE.test(message) ? 3 : 2
+}
+
+/** progress range of stage i in the current job (pick: analyse 0–0.9, find 0.9–1; build: build + render 0–1) */
+function rangeOf(i: number, phase: AutoState['phase']): readonly [number, number] {
+  if (phase === 'pick') return i === 0 ? [0, 0.9] : [0.9, 1]
+  if (phase === 'build') return [0, 1]
+  return STAGES[i].range
+}
+
+/** engine pick result: {project, stage: "pick", suggestions: [...]} */
+function parsePicks(result: unknown): Picks | null {
+  if (!isRec(result) || result.stage !== 'pick' || !Array.isArray(result.suggestions)) return null
+  return { project_id: str(result.project_id ?? result.project), items: normCandidates(result.suggestions) }
+}
+
+function segTotal(segs: Seg[]): number {
+  return segs.reduce((a, [s, e]) => a + e - s, 0)
+}
+
+/** the proxy that holds source second t, with the source second it starts at */
+function proxyFor(project: Project | null | undefined, t: number): { path: string; offset: number } | null {
+  if (!project) return null
+  const pr = project.proxies?.find((x) => x.start <= t + 0.01 && t < x.end)
+  if (pr) return { path: pr.path, offset: pr.start }
+  return project.proxy ? { path: project.proxy, offset: project.proxy_offset ?? 0 } : null
+}
+
+/** plays a clip's jump-cut segments from the 540p proxy, skipping the parts the reel leaves out */
+function ClipPreview({ project, segments, onEnd }: { project: Project | null; segments: Seg[]; onEnd: () => void }) {
+  const k = useRef(0)
+  const src = segments.length ? proxyFor(project, segments[0][0]) : null
+  if (!src) return <div className="pick-noprev small muted">Preview needs the analysed proxy</div>
+  return (
+    <video
+      className="pick-video"
+      src={api().mediaUrl(src.path)}
+      autoPlay
+      playsInline
+      onLoadedMetadata={(e) => {
+        k.current = 0
+        e.currentTarget.currentTime = Math.max(0, segments[0][0] - src.offset)
+      }}
+      onTimeUpdate={(e) => {
+        const v = e.currentTarget
+        const seg = segments[k.current]
+        if (!seg || v.currentTime + src.offset < seg[1] - 0.02) return
+        k.current += 1
+        if (k.current >= segments.length) {
+          v.pause()
+          onEnd()
+        } else v.currentTime = Math.max(0, segments[k.current][0] - src.offset)
+      }}
+      onError={() => {
+        toast('warn', 'Could not play the preview')
+        onEnd()
+      }}
+    />
+  )
+}
+
+interface PickCardProps {
+  c: Candidate
+  rank: number
+  project: Project | null
+  previewing: boolean
+  onPreview: (on: boolean) => void
+  building: boolean
+  locked: boolean
+  made: boolean
+  onChoose: () => void
+  onOpen: () => void
+}
+
+function PickCard({ c, rank, project, previewing, onPreview, building, locked, made, onChoose, onOpen }: PickCardProps) {
+  const secs = c.duration ?? segTotal(c.segments)
+  const pct = scorePct(c.score) ?? 0
+  const start = c.window?.[0] ?? c.segments[0]?.[0] ?? 0
+  return (
+    <article className={`ccard pick${made ? ' kept' : ''}${building ? ' is-building' : ''}`}>
+      <header>
+        <span className="ccard-rank num">#{rank}</span>
+        <span className={`ccard-title lang-${c.language}`} title={c.title}>
+          {c.title || `Clip ${rank}`}
+        </span>
+        <LangBadge lang={c.language} />
+      </header>
+      <div className="pick-len">
+        <span className="pick-dur num">{capLabel(Math.round(secs))}</span>
+        <span className="small muted num">
+          from {clock(start)} · {c.segments.length} cut{c.segments.length > 1 ? 's' : ''}
+        </span>
+      </div>
+      {c.short_of_target && (
+        <div className="pick-short small" title="Not enough speech around this clip to reach the length you chose">
+          <CircleAlert size={12} aria-hidden /> Shorter than the {capLabel(c.target_seconds ?? 60)} you asked for
+        </div>
+      )}
+      <div className="score">
+        <span className="score-bar" aria-label={`Score ${pct}`}>
+          <span style={{ width: `${pct}%` }} className={pct >= 80 ? 'hi' : pct >= 60 ? 'mid' : 'lo'} />
+        </span>
+        <span className="num score-val">{pct}</span>
+      </div>
+      {c.reasons.length > 0 && (
+        <div className="reasons">
+          {c.reasons.slice(0, 3).map((r) => (
+            <span key={r} className="reason">
+              {r}
+            </span>
+          ))}
+        </div>
+      )}
+      {previewing && <ClipPreview project={project} segments={c.segments} onEnd={() => onPreview(false)} />}
+      <footer>
+        <IconButton icon={previewing ? Square : Play} label={previewing ? 'Stop preview' : 'Preview this clip'} onClick={() => onPreview(!previewing)} />
+        <span className="grow" />
+        {made ? (
+          <Button size="sm" variant="ghost" icon={Check} onClick={onOpen}>
+            Made · open
+          </Button>
+        ) : building ? (
+          <span className="pick-busy small">
+            <Loader2 size={12} className="spin" aria-hidden /> Making…
+          </span>
+        ) : (
+          <Button size="sm" variant="primary" icon={Wand2} onClick={onChoose} disabled={locked}>
+            Make this reel
+          </Button>
+        )}
+      </footer>
+    </article>
+  )
 }
 
 function parseResults(result: unknown): AutomateResultReel[] {
@@ -243,13 +395,20 @@ function ResultCard({ r, index, reel, project, playing, onPlay }: { r: AutomateR
 }
 
 export function AutomateView() {
-  const { form, setForm, jobId, results, reels, projects: autoProjects, set } = useAuto()
+  const { form, setForm, jobId, phase, picks, built, buildingId, results, reels, projects: autoProjects, set } = useAuto()
   const job = useJobs((s) => (jobId ? s.jobs[jobId] : undefined))
   const projects = useEditor((s) => s.projects)
   const settings = useApp((s) => s.settings)
   const running = job && (job.state === 'running' || job.state === 'queued')
-  const stage = job ? stageOf(job.message, job.progress) : -1
+  const stage = job ? stageOf(job.message, job.progress, phase) : -1
   const [playing, setPlaying] = useState<string | null>(null)
+  const [previewing, setPreviewing] = useState<string | null>(null)
+  const single = form.count === 1
+  const waitingForPick = phase === 'pick' && job?.state === 'done' && Boolean(picks?.items.length)
+  const picksRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (picks?.items.length) picksRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [picks])
   const scrollRef = useRef<HTMLDivElement>(null)
   const [setupOpen, setSetupOpen] = useState(false)
   const shown = results.length
@@ -279,36 +438,53 @@ export function AutomateView() {
     if (files[0]) setForm({ video_path: files[0] })
   }
 
+  /** load the projects (and their reels) behind these ids into the result-card maps, keeping what is there */
+  const loadProjects = async (pids: string[]): Promise<void> => {
+    const map: Record<string, Reel> = { ...useAuto.getState().reels }
+    const pmap: Record<string, Project> = { ...useAuto.getState().projects }
+    for (const pid of [...new Set(pids.filter(Boolean))]) {
+      try {
+        const p = await api().getProject(pid)
+        pmap[pid] = p
+        for (const r of p.reels) map[r.id] = r
+      } catch {
+        /* thumbnails fall back to titles, previews say so */
+      }
+    }
+    set({ reels: map, projects: pmap })
+  }
+
   const run = async (): Promise<void> => {
     if (!form.video_path) return toast('warn', 'Choose a sermon video first')
     if (partBad) return toast('warn', 'Sermon part: use times like 2:10:50 or seconds, at least 20 s apart')
     const body: AutomateRequest = { ...form }
     delete body.range
     delete body.project_id
+    delete body.pick
     if (fromS !== null || toS !== null) body.range = [fromS ?? 0, toS ?? 1e9]
     // the same video was analysed before: continue in its project (keeps the transcript and earlier reels)
     if (sameVideo) body.project_id = sameVideo.id
+    // one reel: find the best clips first and let the editor choose which one becomes the reel
+    if (single) body.pick = PICK_COUNT
     setForm({ range: body.range })
     try {
       const ref = await api().automate(body)
-      set({ jobId: ref.job, results: [], reels: {} })
+      set({ jobId: ref.job, phase: single ? 'pick' : 'run', picks: null, built: {}, buildingId: null, results: [], reels: {} })
+      setPreviewing(null)
       useJobs.getState().track(ref, `Automate · ${form.video_path.split(/[\\/]/).pop()}`, {
         onDone: async (ev) => {
+          const found = parsePicks(ev.result)
+          if (found) {
+            set({ picks: found })
+            await loadProjects([found.project_id])
+            void useEditor.getState().loadProjects()
+            if (found.items.length) toast('success', `${found.items.length} clips found — choose the one to make`)
+            else toast('warn', 'No clips found in this part — try a longer sermon part')
+            return
+          }
           const res = parseResults(ev.result)
           set({ results: res })
-          const pids = [...new Set(res.map((r) => r.project_id).filter(Boolean))]
-          const map: Record<string, Reel> = {}
-          const pmap: Record<string, Project> = {}
-          for (const pid of pids) {
-            try {
-              const p = await api().getProject(pid)
-              pmap[pid] = p
-              for (const r of p.reels) map[r.id] = r
-            } catch {
-              /* thumbnails fall back to titles */
-            }
-          }
-          set({ reels: map, projects: pmap })
+          await loadProjects(res.map((r) => r.project_id))
           void useEditor.getState().loadProjects()
           toast('success', `${res.length} reels ready`)
         }
@@ -316,6 +492,36 @@ export function AutomateView() {
     } catch (e) {
       toast('error', `Automate failed to start: ${e instanceof Error ? e.message : String(e)}`)
     }
+  }
+
+  const choose = async (c: Candidate): Promise<void> => {
+    if (!picks) return
+    setPreviewing(null)
+    try {
+      const ref = await api().automateBuild(picks.project_id, c)
+      set({ jobId: ref.job, phase: 'build', buildingId: c.id })
+      const done = (): void => set({ buildingId: null })
+      useJobs.getState().track(ref, `Automate · ${c.title || 'picked clip'}`, {
+        onDone: async (ev) => {
+          const res = parseResults(ev.result)
+          const cur = useAuto.getState()
+          set({ results: [...res, ...cur.results], built: { ...cur.built, [c.id]: res[0]?.reel_id ?? '' }, buildingId: null })
+          await loadProjects(res.map((r) => r.project_id))
+          void useEditor.getState().loadProjects()
+          toast('success', 'Your reel is ready')
+        },
+        onError: done,
+        onCancel: done
+      })
+    } catch (e) {
+      toast('error', `Could not start this reel: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  const openBuilt = async (c: Candidate): Promise<void> => {
+    if (!picks) return
+    await useEditor.getState().openProject(picks.project_id, built[c.id] || undefined)
+    useApp.getState().set({ mode: 'manual' })
   }
 
   const fileName = form.video_path ? form.video_path.split(/[\\/]/).pop() : ''
@@ -420,6 +626,7 @@ export function AutomateView() {
                     </button>
                   </span>
                 </div>
+                {single && <div className="part-hint muted small">One reel: Viku first shows the {PICK_COUNT} best clips with their title and length — you choose which one it makes.</div>}
                 <div className="auto-row">
                   <span className="muted" title="Each reel lands between 90 % and 100 % of this length (after jump cuts), unless the sermon part is too short">Reel length</span>
                   <input
@@ -520,8 +727,8 @@ export function AutomateView() {
                   Cancel
                 </Button>
               ) : (
-                <Button variant="primary" className="run-btn" icon={Wand2} onClick={() => void run()} disabled={!form.video_path}>
-                  Make {form.count} reel{form.count > 1 ? 's' : ''}
+                <Button variant="primary" className="run-btn" icon={single ? Sparkles : Wand2} onClick={() => void run()} disabled={!form.video_path}>
+                  {single ? `Find ${PICK_COUNT} clips to choose from` : `Make ${form.count} reels`}
                 </Button>
               )}
             </div>
@@ -544,10 +751,28 @@ export function AutomateView() {
               {STAGES.map((s, i) => {
                 // build and render interleave per reel, so build stays active while reels render
                 const current = i === stage || (i === 2 && stage === 3)
-                const st = !job ? 'idle' : job.state === 'done' ? 'done' : current ? (job.state === 'error' ? 'error' : job.state === 'cancelled' ? 'idle' : 'active') : i < stage ? 'done' : 'idle'
-                const local = st === 'active' && job ? Math.max(0, Math.min(1, (job.progress - s.range[0]) / (s.range[1] - s.range[0]))) : st === 'done' ? 1 : 0
+                const st = !job
+                  ? 'idle'
+                  : phase === 'build' && i < 2
+                    ? 'done' // the clips were found by the earlier pick run
+                    : phase === 'pick' && i >= 2
+                      ? 'idle' // nothing is built until the editor picks a clip
+                      : job.state === 'done'
+                        ? 'done'
+                        : current
+                          ? job.state === 'error'
+                            ? 'error'
+                            : job.state === 'cancelled'
+                              ? 'idle'
+                              : 'active'
+                          : i < stage
+                            ? 'done'
+                            : 'idle'
+                const [r0, r1] = rangeOf(i, phase)
+                const local = st === 'active' && job ? Math.max(0, Math.min(1, (job.progress - r0) / (r1 - r0))) : st === 'done' ? 1 : 0
+                const detail = st === 'active' && job ? job.message : i === 2 && waitingForPick ? 'Waiting for you — choose a clip below' : s.detail
                 return (
-                  <li key={s.id} className={`pstage st-${st}`}>
+                  <li key={s.id} className={`pstage st-${st}${i === 2 && waitingForPick ? ' st-waiting' : ''}`}>
                     <span className="stage-icon">
                       {st === 'done' ? <Check size={14} aria-hidden /> : st === 'active' ? <Loader2 size={14} className="spin" aria-hidden /> : <s.icon size={14} aria-hidden />}
                     </span>
@@ -556,7 +781,7 @@ export function AutomateView() {
                         <span>{s.label}</span>
                         {st === 'active' && <span className="num muted">{Math.round(local * 100)}%</span>}
                       </div>
-                      <div className="stage-detail small">{st === 'active' && job ? job.message : s.detail}</div>
+                      <div className="stage-detail small">{detail}</div>
                       {(st === 'active' || st === 'done') && <Progress value={local} tone={st === 'done' ? 'green' : 'gold'} />}
                     </div>
                   </li>
@@ -574,7 +799,7 @@ export function AutomateView() {
             {!job && (
               <div className="pipe-idle">
                 <AudioWaveform size={18} aria-hidden />
-                <span>Every reel ends on an encouraging line, stays under {capLabel(form.max_seconds)} and follows your house style.</span>
+                <span>Every reel ends on an encouraging line, lands at about {capLabel(form.max_seconds)} and follows your house style.</span>
               </div>
             )}
           </section>
@@ -605,6 +830,36 @@ export function AutomateView() {
                   project={autoProjects[r.project_id] ?? null}
                   playing={playing === (r.reel_id || String(i))}
                   onPlay={(on) => setPlaying(on ? r.reel_id || String(i) : null)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {picks && picks.items.length > 0 && (
+          <section className="results picks" aria-label="Choose a clip" ref={picksRef}>
+            <div className="results-head">
+              <div>
+                <h2>{Object.keys(built).length ? 'More clips from this sermon' : 'Choose your reel'}</h2>
+                <span className="muted small">
+                  The {picks.items.length} best clips at about {capLabel(form.max_seconds)} · press play to hear one, then make the one you like
+                </span>
+              </div>
+            </div>
+            <div className="pgrid">
+              {picks.items.map((c, i) => (
+                <PickCard
+                  key={c.id}
+                  c={c}
+                  rank={i + 1}
+                  project={autoProjects[picks.project_id] ?? null}
+                  previewing={previewing === c.id}
+                  onPreview={(on) => setPreviewing(on ? c.id : null)}
+                  building={buildingId === c.id}
+                  locked={Boolean(running)}
+                  made={c.id in built}
+                  onChoose={() => void choose(c)}
+                  onOpen={() => void openBuilt(c)}
                 />
               ))}
             </div>

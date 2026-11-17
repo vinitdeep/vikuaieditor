@@ -119,6 +119,15 @@ export class HttpApi implements VikuApi {
   render = async (reelId: string, preset?: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/render`, preset ? { preset } : {}), 'render')
   thumbnail = async (reelId: string) => N.jobRef(await this.call('POST', `/reels/${encodeURIComponent(reelId)}/thumbnail`, {}), 'thumbnail')
   automate = async (body: Parameters<VikuApi['automate']>[0]) => N.jobRef(await this.call('POST', '/automate', body), 'automate')
+  automateBuild = async (projectId: string, c: Candidate) =>
+    N.jobRef(
+      await this.call('POST', '/automate/build', {
+        project_id: projectId,
+        suggestion_id: c.id,
+        suggestion: { id: c.id, segments: c.segments, title: c.title, score: c.score }
+      }),
+      'automate_build'
+    )
   cancelJob = async (jobId: string) => {
     try {
       await this.call('POST', `/jobs/${encodeURIComponent(jobId)}/cancel`, {})

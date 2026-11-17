@@ -303,13 +303,36 @@ class AutomateReq(BaseModel):
     range: list[float] | None = None
     project_id: str | None = None
     render: bool = True
-    max_seconds: float = Field(60.0, ge=10, le=300)   # reel length cap: 10 s - 5 min
+    max_seconds: float = Field(60.0, ge=10, le=300)   # reel length: 10 s - 5 min
+    pick: int = Field(0, ge=0, le=12)   # > 0: stop after suggest, return this many suggestions to choose from
 
 
 @app.post("/automate")
 def automate_ep(b: AutomateReq):
     j = MANAGER.submit("automate", lambda job: automate.run(job, b.video_path, b.language, b.count, b.range,
-                                                            b.project_id, render=b.render, max_seconds=b.max_seconds))
+                                                            b.project_id, render=b.render, max_seconds=b.max_seconds,
+                                                            pick=b.pick))
+    return job_ref(j)
+
+
+class AutomateBuildReq(BaseModel):
+    project_id: str
+    suggestion_id: str = ""
+    suggestion: dict | None = None   # {id, segments, title, score} as shown to the editor (preferred)
+    render: bool = True
+
+
+@app.post("/automate/build")
+def automate_build(b: AutomateBuildReq):
+    """Build (+ render) the suggestion the editor chose after POST /automate with pick > 0."""
+    from .jobs import JobError
+    projects.load(b.project_id)
+    try:
+        s = automate.find_suggestion(b.project_id, b.suggestion_id, b.suggestion)
+    except JobError as e:
+        raise HTTPException(404 if b.suggestion is None else 422, str(e)) from e
+    j = MANAGER.submit("automate_build", lambda job: automate.build_suggestion(job, b.project_id, s, b.render),
+                       {"project": b.project_id})
     return job_ref(j)
 
 

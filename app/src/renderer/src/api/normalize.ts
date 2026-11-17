@@ -266,7 +266,11 @@ export function candidate(x: unknown, i: number): Candidate {
     title: str(r.title),
     segments: segs(r.segments),
     reasons: arr(r.reasons).map((s) => str(s)),
-    language: lang(r.language)
+    language: lang(r.language),
+    duration: r.duration === undefined ? undefined : num(r.duration),
+    window: Array.isArray(r.window) && r.window.length === 2 ? [num(r.window[0]), num(r.window[1])] : undefined,
+    target_seconds: r.target_seconds === undefined ? undefined : num(r.target_seconds),
+    short_of_target: r.short_of_target === undefined ? undefined : bool(r.short_of_target)
   }
 }
 

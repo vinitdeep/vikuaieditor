@@ -9,6 +9,23 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
 - Verified live (dev): simulated .crdownload -> rename in Downloads filed as `browser-mode-test.jpg`, queue item -> captured via browser; an image with no waiting prompt ignored; typecheck + lint clean. Not yet: a real AI Studio download end-to-end, installer rebuild.
 - **Length cap 10 s - 5 min** (Automate slider 10-300 s, step 5 below 1 min / 15 above; label "2 min 30 s"). Before this the slider was cosmetic: the engine ignored max_seconds and always used 20-60 s windows + a 60 s planner cap. Now `AutomateReq.max_seconds` / `SuggestReq.max_seconds` (10-300, default 60, 422 outside) -> `clipfinder.length_bounds(cap)` = (min window max(5, min(20, cap/2)), cap, ideal 0.75 cap) -> `build_windows`, `planner.plan(max_len)`, `ranker.raw_features(target)` (duration_fit = same 45 +/- 25 shape scaled to the target). 60 s gives exactly the old bounds. Caps > 60 s keep at most 16 evenly spaced ends per start; windows never span a > 10 s hole between cues (un-analysed gaps). Live: 6d0d / 4f96 at 10 s -> 6-9 s reels; at 60 s unchanged; at 300 s still ~28-34 s (the cap is a maximum; the ranker prefers those). tests/test_length_cap.py; 62 passed.
 
+## Session 7b (2026-11-17): single-reel Automate = choose 1 of the 5 best clips
+- User asked: with 1 reel, show 5 suggestions (title + length) after analysing and let them pick.
+- Engine: `AutomateReq.pick` (0-12): > 0 stops after analyze (0-0.9) + suggest (0.9-1) and returns
+  `{project, stage: "pick", suggestions}`; suggestions here may overlap up to 50 % (`clipfinder.suggest(max_overlap)`,
+  separate reels keep 25 %) - a 4 min part gave only 4 clips at 25 %. `POST /automate/build {project_id,
+  suggestion_id, suggestion?, render}` -> job `automate_build`, same result shape as /automate (the app sends the
+  suggestion it showed, so a later Manual /suggest cannot swap it). `automate.build_reel()` is the shared per-reel step.
+  tests/test_automate_pick.py (71 pass).
+- App: How many = 1 -> button "Find 5 clips to choose from" + hint; result section "Choose your reel": 5 cards (rank,
+  title in its script, length, start time, cuts, score, reasons, "shorter than asked" warning), inline preview that
+  plays the jump-cut segments from the proxy, "Make this reel" -> build + render -> the normal reel card; the clip card
+  becomes "Made · open", the others stay pickable ("More clips from this sermon"). Pipeline shows Analyze + Find clips
+  done and "Waiting for you — choose a clip below". 2+ reels unchanged.
+- Verified: `VIKU_PORT=8799 node scripts/e2e-pick.mjs` (dev build, own Electron profile via VIKU_USER_DATA because an
+  open Viku holds the single-instance lock) on the TAPP sermon 32:00-36:00: 5 cards 57 / 59 / 59 / 59 / 54 s, preview
+  played, clip 2 made -> reel ~3, 59.4 s, 1080x1920, -14 LUFS; 0 console errors. Screenshots `app/screenshots/pick-01..06`.
+
 ## Session 7 (2026-11-17): reel length = the slider (not just a cap)
 - Bug (user): slider 1 min -> a 29.8 s reel (TAPP Church project 20261117-100233-3b05). Cause: the slider was only a
   ceiling; windows were 20-60 s with the ranker's ideal at 0.75 x cap (45 s), then jump cuts removed 10-30 % more; and a

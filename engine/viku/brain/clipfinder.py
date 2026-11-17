@@ -304,7 +304,10 @@ def _window_lang(its: list[dict], lang_default: str) -> str:
     return max(langs, key=langs.get)
 
 
-def suggest(p: dict, count: int = 8, rng: list | None = None, job=None, max_seconds: float = 60.0) -> list[dict]:
+def suggest(p: dict, count: int = 8, rng: list | None = None, job=None, max_seconds: float = 60.0,
+            max_overlap: float = 0.25) -> list[dict]:
+    """max_overlap: share of a clip that may overlap an earlier pick (0.25 = separate reels; Automate's single-reel
+    picker allows 0.5, since its clips are alternatives and only one is made)."""
     min_len, max_len, target = length_bounds(max_seconds)
     items = sorted([t for t in p.get("transcript", []) if t.get("text")], key=lambda t: t["start"])
     if rng:
@@ -327,7 +330,7 @@ def suggest(p: dict, count: int = 8, rng: list | None = None, job=None, max_seco
     spans: list[tuple[float, float]] = []
 
     def overlaps(s: float, e: float) -> bool:
-        return any(min(e, b) - max(s, a) > 0.25 * (e - s) for a, b in spans)
+        return any(min(e, b) - max(s, a) > max_overlap * (e - s) for a, b in spans)
     tries = 0
     too_short = 0.75 * reel_floor(target)
     spare: list[tuple] = []   # fitted windows far below the target: used only if not enough others fit

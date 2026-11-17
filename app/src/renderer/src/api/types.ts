@@ -213,6 +213,13 @@ export interface Candidate {
   segments: Seg[]
   reasons: string[]
   language: Lang
+  /** jump-cut length in seconds (engine); falls back to the segment sum */
+  duration?: number
+  /** source span [start, end] the clip comes from */
+  window?: [number, number]
+  /** the reel length the editor asked for, and whether this clip could not reach 90 % of it */
+  target_seconds?: number
+  short_of_target?: boolean
 }
 
 export type JobState = 'queued' | 'running' | 'done' | 'error' | 'cancelled'
@@ -374,6 +381,8 @@ export interface AutomateRequest {
   range?: [number, number]
   /** reuse the project of this video (its analysis is kept) instead of starting a new one */
   project_id?: string
+  /** > 0: stop after analyse + suggest and return this many clips to choose from (single-reel runs) */
+  pick?: number
 }
 
 export interface AutomateResultReel {
