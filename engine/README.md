@@ -31,8 +31,28 @@ POST /music/heygen {"intent": "..."}      # optional, needs `npx hyperframes aut
 
 ## Model & tool manager (`viku/models.py`, `viku/manifests/`)
 `GET /models` -> `[{id, name, purpose, size_mb, licence, licence_url, required, installed, source, path, gated,
-partial_mb}]`; `POST /models/install {ids?, source_dir?}` -> job (byte progress in `message` / `result`);
-`POST /models/remove {ids}`. Every file is pinned (release tag / HF revision + size + SHA-256). Downloads go to
+needs_token, accept_url, token_set, partial_mb}]`; `POST /models/install {ids?, source_dir?, hf_token?, mirror_url?}`
+-> job (byte progress in `message` / `result`); `POST /models/remove {ids}`. A failed install job carries
+`error_code` + `error_info` (also on the SSE event):
+
+| error_code | when | error_info |
+|---|---|---|
+| `hf_auth_required` | huggingface.co answered 401 / 403 (no token, bad token, or terms not accepted) | `accept_url` (https://huggingface.co/ai4bharat/indic-conformer-600m-multilingual - open it, accept the terms), `http_status`, `token_sent` |
+| `network` | connection refused / DNS / timeout after 4 retries, or a 4xx/5xx from a mirror / GitHub | `host`, `http_status?` |
+| `checksum` | the bytes do not match the pinned SHA-256 (corrupt download or a mirror serving another file) | `file`, `expected_sha256` |
+| `bad_request` | `mirror_url` not http(s), `source_dir` not a folder | |
+
+**HF token**: `hf_token` (in `/models/install` or `POST /settings`) is stored with Windows DPAPI (`viku/vault.py`,
+ctypes `CryptProtectData`, current-user scope) as `settings.hf_token_dpapi` - never plaintext on disk (an old plaintext
+`hf_token` is migrated on load), never returned by `GET /settings` (which shows `hf_token_set: bool`), never logged or
+put in job meta. `{"hf_token": null}` clears it; `""` leaves it unchanged. It is sent as `Authorization: Bearer` only to
+`huggingface.co` (dropped on the CDN redirect). Env `HF_TOKEN` / `HUGGING_FACE_HUB_TOKEN` still work.
+**Mirror**: `settings.models_mirror_url` (or `mirror_url` per install, saved after a successful install) replaces
+`https://huggingface.co/` for every HF item: `<mirror>/<repo>/resolve/<revision>/<path>` - a church can host a copy
+of the pinned files (static file server, same layout). `model_mirrors {id: base}` still overrides one item.
+Verified (fresh data dir, port 8765): anonymous -> `hf_auth_required` + accept_url; a bogus token -> same with
+`token_sent: true`; a local mirror serving a wrong file -> `checksum`; a dead mirror -> `network`; `source_dir` ->
+IndicConformer installed (2.56 GB, SHA-verified) without any token. Every file is pinned (release tag / HF revision + size + SHA-256). Downloads go to
 `<data>/downloads/<id>/*.part`, resume with HTTP Range after a cancel / network drop (tested: cancelled at 185 MB,
 resumed from there), are SHA-256 verified, then moved into place with `os.replace`. `source_dir` installs from a local
 folder (USB stick / another PC), still verified. The Authorization header is never forwarded to redirect hosts.
@@ -51,8 +71,8 @@ folder (USB stick / another PC), still verified. The Authorization header is nev
 
 Required total ~3.2 GB download (+ ~0.35 GB of Python packages via bootstrap). **IndicConformer is a gated Hugging
 Face repo** (anonymous download = HTTP 401): the user needs a free HF account, "agree" on the model page and a read
-token in settings `hf_token` (or env `HF_TOKEN`); or the app sets `settings.model_mirrors["indic-conformer"]` to a
-mirror base URL (MIT allows redistribution); or installs from a folder. HF masks its LFS hashes for anonymous callers,
+token (`hf_token`, stored DPAPI-encrypted - see above); or a mirror (`models_mirror_url`; MIT allows
+redistribution); or installs from a folder. HF masks its LFS hashes for anonymous callers,
 so the manifest SHA-256s come from the working copy that produced the verified transcripts (all sizes and every
 non-LFS git blob hash match HF). Re-pin any model with `scripts/make_manifest.py <repo> <revision> <out.json>`.
 
@@ -61,6 +81,23 @@ Tool resolution: `ffmpeg()` / `ffprobe()` = settings `paths.ffmpeg` -> managed c
 original dev machine's venvs (`config.legacy_paths()`) as a last resort. `/health` -> `setup_needed`,
 `setup_missing` (required ids, plus `asr-runtime` when torch is missing), `models {id: {installed, source, required}}`,
 `llm` (Ollama), `details.ffmpeg / ffmpeg_source / denoise_engine / asr_en_engine / asr_runtime`.
+
+## Licences (`viku/licences.py`)
+`GET /licences` -> `{generated, count, components:[{id, kind: runtime|tool|model|font|data|python, name, version,
+licence, url, download?, source?, delivered, attribution?, notice?}]}`: CPython / uv / faster-whisper+CTranslate2,
+ffmpeg (GPL-3.0 build + source pointers), deep-filter, IndicConformer (MIT), e5, Whisper, U-2-Net, YuNet, Noto (OFL),
+the three Bible texts with the exact attribution strings printed on verse cards, and every Python package of the
+shipped env (closure of the main + `asr` dependencies in uv.lock - dev-only packages excluded - licence from the
+installed metadata, hand overrides in `LICENCE_OVERRIDES`). The repo's `THIRD_PARTY_NOTICES.md` is generated from the
+same data: `uv run python -m viku.licences` (rerun after changing dependencies or manifests).
+
+## Tests
+`uv run pytest` (offline, ~seconds; a temp `VIKU_DATA`, no models, no network, e5 stubbed off): USFM parse + verse
+lookup (tiny in-memory eBible zip), jump-cut segment remap (`reel.segment_offsets / src_to_reel / reel_to_src`),
+caption fixer (dictionary fix, RNNT/CTC flag, learned edit), ranker scoring with the seed model, cutaway planner house
+rules (`cutaways.check`: hook, closing line, gaps >= 0.75 s, lengths, pans, alternating zoom), hook titles (enemy
+rule, theme fallback), the true-peak loudness guard (`reel.tp_guard_gain`), HF token storage / mirror URLs / error
+codes, and the licence inventory.
 
 ## Speech models
 | Part | Engine | Notes |
@@ -75,14 +112,18 @@ on that language's tokens, for `or` and `hi`; the decision is smoothed (duration
 because preachers switch language in blocks) and chunks that flip are re-decoded with the smoothed language.
 
 ## Jobs + events
-Long work returns `{"job", "kind", "state"}`. Progress: `GET /events` (SSE, `data: {"job","kind","progress","message","state","result","error"}`),
+Long work returns `{"job", "kind", "state"}`. Progress: `GET /events` (SSE, `data: {"job","kind","progress","message","state","result","error","error_code","error_info"}`;
+`error_code` is a stable reason for the app, e.g. `hf_auth_required`, `network`, `checksum`, `cancelled`),
 or poll `GET /jobs/{id}`; cancel with `POST /jobs/{id}/cancel` (kills its ffmpeg / runner subprocesses). Two jobs run at a time.
 
 ## Pipeline (ports of the illustrating-sermon-reels skill scripts)
 - `media/analyze.py` - whole-file 16 kHz wav, peaks (100/s), pauses (>= 0.25 s); per `range`: 540p proxy (keyframe every 1 s,
   `proxy_offset` = range start), shot cuts (frame difference), transcription (energy segmenter, max 6 s cues).
 - `media/reel.py` - jump-cut join (frame-snapped, 12 ms fades) -> `framing.py` fixed crop per shot/segment (YuNet only chooses;
-  still -> 405 px 9:16, walking -> wider crop over blurred fill; segments alternate z 1.0/1.12) -> DeepFilterNet -> caption re-ASR
+  still -> 405 px 9:16, walking -> wider crop over a blurred fill built from the FULL source frame: blur first,
+  cover-scaled 9:16 around the speaker, x0.55 brightness, +15 % saturation, rows darker than the frame's mean colour
+  lifted toward it so the bands are never near-black, and the source's own black letterbox rows trimmed off the
+  foreground; segments alternate z 1.0/1.12) -> DeepFilterNet -> caption re-ASR
   per segment (max 3.5 s, no cue crosses a join) -> cutaways + verse cards + music + SFX -> render: graded base, cross-zoom
   dissolves (0.7 s), shade, ASS (libass, `fontsdir=<data>/fonts`), voice + music bed (-19 dB, side-chain ducked, crossfade loop)
   + impact/swell SFX (never bell/chime/shimmer), two-pass loudnorm to -14 LUFS / TP -2 (=> <= -1.5 dBTP after AAC).
@@ -110,8 +151,16 @@ or poll `GET /jobs/{id}`; cancel with `POST /jobs/{id}/cancel` (kills its ffmpeg
 - `hooks.py` + `hooks.json` hook writer: every 2-6 word span of every caption is scored (victory / hope / strong words /
   direct address / theme / question; finished clause = line end or before a conjunction; closing line; e5 "sounds like
   kept reels"; penalties for dangling conjunctions / postpositions, fillers, admin notices, refs / digits, code-mixing,
-  repeats, death words) -> title <= 6 words + "?" (question word) or "!" (lexical hit); sub = theme gist (+ " · "
-  verse ref). Used by `/suggest` and by autobuild while `title_auto` / `sub_auto` (an edited title via PUT clears them).
+  repeats, death words, people "losing") -> title <= 6 words + "?" (question word) or "!" (lexical hit); sub = theme
+  gist (+ " · " verse ref). **The enemy is never the hero**: a span naming Satan / Lucifer / devil / "spirit of
+  depression" or an enemy action ("हराना चाहता", "ହରାଇବାକୁ ଚାହିଁ" = wants to defeat) gets -3, a span whose line or
+  previous line does (no divine name in the span) -2.5 - unless the line states his defeat (`enemy_defeat`:
+  ପରାଜୟ / ପରାଜିତ / ହାରି..., हार / पराजित / हरा दिया..., defeated). A clause ends only before a conjunction
+  (`conjunctions`), not a postposition. Best span < 3.5 -> the theme's native title (`themes[].title`, e.g.
+  "ଶୟତାନ ପରାଜିତ!"). Reels ~1..~5 before -> after: ~2 "ନିଜକୁ ବିଜୟୀ ମନେ କରିଥିଲା!" (Satan "considered himself
+  victorious") -> "ଚୂଡ଼ାନ୍ତ ପରାଜୟ ସମ୍ଭବ କଲା!" (made the final defeat possible); ~3 "ଲୁସିଫର୍ ଆପଣଙ୍କ ଜୀବନରେ ଆଣିଥାଏ!"
+  (what Lucifer brings into your life) -> "ଶୟତାନ ପରାଜିତ!" (fallback); ~4 "ନିଜକୁ ବିଜୟୀ ମନେ କରିଥିଲା!" -> "ଆସିକରି
+  ଯୀଶୁଙ୍କୁ କଣ କହୁଛି?"; ~1 / ~5 unchanged. Used by `/suggest` and by autobuild while `title_auto` / `sub_auto` (an edited title via PUT clears them).
   `POST /reels/{id}/describe {use_llm}` drafts title / sub / description / hashtags offline, or with a local Ollama
   model when one runs (`/health llm`; settings `ollama_url`, `ollama_model`); stored as `reel.describe`.
 - `cutaways.py` cutaway planner (SKILL "Choosing cutaways"): cut points snapped into the reel's voice pauses; speaker
@@ -172,6 +221,7 @@ GET  /library/search?q=fallen angel           GET /music
 POST /captions/fix {"text","lang","alt"}      POST /feedback {"reel_id","kind","before","after"}   POST /learn
 GET  /bible/similar?text=...&lang=hi          GET /reels/{id}/needs     POST /reels/{id}/cutaways/{i}/image {"path","tags"}
 POST /reels/{id}/thumbnail {"style","pose_t","title","sub","verse","renderer"}   GET /thumbnails/styles
-GET  /models   POST /models/install {"ids":[...], "source_dir"}   POST /models/remove {"ids":[...]}
+GET  /models   POST /models/install {"ids":[...], "source_dir", "hf_token", "mirror_url"}   POST /models/remove {"ids":[...]}
+GET  /licences
 POST /reels/{id}/describe {"use_llm": false}
 ```

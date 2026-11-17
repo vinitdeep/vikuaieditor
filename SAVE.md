@@ -3,6 +3,36 @@
 Contract: `ARCHITECTURE.md`. Update this file every session.
 
 ## Engine
+**State (2026-11-17, session 4): gated download, licences, fill fix, enemy-aware titles, tests.** Commits 4618800
+(HF token / mirror / error codes), 4f24268 (licences), 57ea713 (fill + titles), e61b9bb (tests + title fixes), + docs.
+- `POST /models/install {ids, hf_token?, source_dir?, mirror_url?}`: token stored with DPAPI (`viku/vault.py`, ctypes;
+  `settings.hf_token_dpapi`, never in GET /settings, never logged), sent as Bearer to huggingface.co only;
+  `settings.models_mirror_url` replaces huggingface.co for every HF item. Job `error_code`: `hf_auth_required`
+  (+ `error_info.accept_url` = the IndicConformer model page), `network`, `checksum`, `bad_request`. `GET /models`
+  items: `needs_token`, `accept_url`, `token_set`. Verified on a fresh data dir: anonymous -> hf_auth_required, bogus
+  token -> same (token_sent true), local wrong-file mirror -> checksum, dead mirror -> network, source_dir -> 2.56 GB
+  installed + verified with no token.
+- `GET /licences` (60 components) + generated `THIRD_PARTY_NOTICES.md` (`uv run python -m viku.licences`).
+- Wide-shot fill now from the full frame (blur, cover, 0.55, +sat, luma floor) + source letterbox rows trimmed:
+  re-rendered ~2 -> top band luma ~50 (was ~0 / black), 1319 frames, -13.9 LUFS / -1.9 dBTP.
+- Titles never make the enemy the subject unless the line states his defeat. Before -> after: ~2 "ନିଜକୁ ବିଜୟୀ ମନେ
+  କରିଥିଲା!" -> "ଚୂଡ଼ାନ୍ତ ପରାଜୟ ସମ୍ଭବ କଲା!"; ~3 "ଲୁସିଫର୍ ଆପଣଙ୍କ ଜୀବନରେ ଆଣିଥାଏ!" -> "ଶୟତାନ ପରାଜିତ!" (theme fallback);
+  ~4 "ନିଜକୁ ବିଜୟୀ ମନେ କରିଥିଲା!" -> "ଆସିକରି ଯୀଶୁଙ୍କୁ କଣ କହୁଛି?"; ~1, ~5 unchanged.
+- Robustness on new ranges, language auto: project 20261117-063755-fee2, 7850-8000 s: analyze 64 s (24 or + 15 hi
+  cues), suggest 6 s, autobuild 28 s, render 78 s -> 1080x1920, 875 frames / 29.17 s, -14.2 LUFS / -1.9 dBTP, 56 %
+  cutaways, no crash. `/automate` count 2 on 3600-3900 (project 20261117-064118-4f96) in 420 s: Hindi 32.2 s
+  (-14.1 / -1.8) + Odia 28.3 s with a Genesis 1:1 card (-14.0 / -1.9), both 1080x1920, 51-52 % cutaways.
+- `cd engine && uv run pytest` -> 41 passed in < 1 s (offline).
+
+**Gaps / next (session 4)**
+- Hook titles are still heuristic: an implicit enemy subject several lines away is missed (~4 "what is he saying to
+  Jesus?"); the theme fallback can assert "Satan is defeated" for a reel that never says it; titles produced by the
+  running engine before these fixes (automate reels above) are not rewritten until the next autobuild.
+- No church mirror exists yet - decide on hosting one (MIT permits) or ship the token flow; the app's setup screen
+  must show `accept_url` on `hf_auth_required`.
+- `THIRD_PARTY_NOTICES.md` must be regenerated when dependencies change; music seed / library seed content (the
+  user's own generated assets) is not listed.
+
 **State (2026-11-17, session 3): engine is self-contained - no dependence on personal folders.** Commits 14c921a
 (manager, ASR/denoise in engine env, bootstrap, hook titles), 019a97f (Odia/Hindi concept matching), + docs.
 - `GET /models`, `POST /models/install {ids, source_dir}`, `POST /models/remove`; `/health.setup_needed`. Tested here:
