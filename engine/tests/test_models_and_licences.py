@@ -49,7 +49,7 @@ def test_hf_auth_error_code(monkeypatch, tmp_path, code, expected):
 def test_licences_cover_every_component_kind():
     cs = licences.components()
     kinds = {c["kind"] for c in cs}
-    assert {"python", "runtime", "tool", "model", "font", "data"} <= kinds
+    assert {"python", "runtime", "tool", "model", "font", "data", "content"} <= kinds
     by = {c["id"]: c for c in cs}
     assert by["indic-conformer"]["licence"] == "MIT"
     assert "OFL" in by["fonts"]["licence"] or "Open Font" in by["fonts"]["licence"]
@@ -61,3 +61,6 @@ def test_licences_cover_every_component_kind():
     assert all(c["licence"] for c in cs)
     md = licences.notices_markdown()
     assert "## Bible texts" in md and "| torch |" in md
+    assert by["viku:starter-illustrations"]["licence"] == ("AI-generated (Google Gemini / AI Studio) by the Viku "
+                                                           "project, free to use in Viku videos")
+    assert "Viku starter illustrations" in md and "Viku generated music" in md

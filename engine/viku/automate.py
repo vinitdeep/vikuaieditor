@@ -43,9 +43,13 @@ def run(job: Job, video_path: str = "", language: str = "or", count: int = 3, rn
                                                           "title_auto": True, "sub_auto": True})
         with job.scope(a, a + (b - a) * 0.4):
             reel.autobuild(r["id"], job)
-        res = {"reel": r["id"], "title": s["title"], "score": s["score"]}
+        res = {"reel": r["id"], "score": s["score"], "suggested_title": s["title"]}
         if render:
             with job.scope(a + (b - a) * 0.4, b):
                 res |= reel.render(r["id"], job)
+        # the title the reel actually carries: autobuild's hook writer + ASR-quality gate replace the suggestion's
+        stored = projects.find_reel(r["id"])[1]
+        res |= {"title": stored.get("title") or s["title"], "sub": stored.get("sub", ""),
+                "title_flag": stored.get("title_flag"), "mood": stored.get("mood")}
         out.append(res)
     return {"project": pid, "reels": out}

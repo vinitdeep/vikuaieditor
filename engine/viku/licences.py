@@ -193,9 +193,35 @@ def _bible_components() -> list[dict]:
     return out
 
 
+STARTER_LICENCE = ("AI-generated (Google Gemini / AI Studio) by the Viku project, free to use in Viku videos")
+
+
+def _content_components() -> list[dict]:
+    """Viku's own bundled / generated content (not third-party, listed so editors know what they may publish)."""
+    from . import library
+    st = library.starter_status()
+    n = st.get("count") or 119
+    return [
+        {"id": "viku:starter-illustrations", "kind": "content", "name": "Viku starter illustrations", "version": "",
+         "licence": STARTER_LICENCE, "url": "",
+         "delivered": f"bundled with the installer ({n} images, 1080x1920 JPEG), imported into an empty library on "
+                      "first run",
+         "notice": "Created for Viku's sermon reels with Google Gemini / AI Studio image generation. Free to use in "
+                   "videos made with Viku; Google's Generative AI terms apply to the generation."},
+        {"id": "viku:generated-music", "kind": "content", "name": "Viku generated music", "version": "",
+         "licence": "Royalty-free - generated on your PC by Viku's music generator; free to use in any video",
+         "url": "",
+         "delivered": "made on first run (5 default moods) and on demand (Library > Music > Generate music); "
+                      "no recordings, samples or licensed tracks are shipped",
+         "notice": "Procedural synthesis (viku/music_gen.py). Tracks from HeyGen or your own files keep their own "
+                   "licences."},
+    ]
+
+
 def components() -> list[dict]:
-    order = {"runtime": 0, "tool": 1, "model": 2, "font": 3, "data": 4, "python": 5}
-    items = _runtime_components() + _model_components() + _bible_components() + python_components()
+    order = {"runtime": 0, "tool": 1, "model": 2, "font": 3, "data": 4, "content": 5, "python": 6}
+    items = (_runtime_components() + _model_components() + _bible_components() + _content_components()
+             + python_components())
     return sorted(items, key=lambda c: (order.get(c["kind"], 9), c["name"].lower()))
 
 
@@ -206,7 +232,8 @@ def summary() -> dict:
 
 # ------------------------------------------------------------ markdown ---
 TITLES = {"runtime": "Runtime", "tool": "Tools (downloaded on first run)", "model": "Models",
-          "font": "Fonts", "data": "Bible texts", "python": "Python packages (engine environment)"}
+          "font": "Fonts", "data": "Bible texts", "content": "Viku content (bundled / generated)",
+          "python": "Python packages (engine environment)"}
 
 
 def notices_markdown() -> str:
@@ -228,7 +255,7 @@ def notices_markdown() -> str:
         for c in group:
             ver = f" {c['version']}" if c.get("version") and c["version"] not in c["name"] else ""
             out.append(f"### {c['name']}{ver}")
-            out.append(f"- Licence: {c['licence']} - {c['url']}")
+            out.append(f"- Licence: {c['licence']}" + (f" - {c['url']}" if c.get("url") else ""))
             if c.get("attribution"):
                 out.append(f"- Attribution (exact): \"{c['attribution']}\"")
             if c.get("download"):

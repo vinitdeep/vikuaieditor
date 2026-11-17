@@ -13,3 +13,4 @@ data/projects/
 *.log
 .env
 vendor/
+data/starter/music_samples/

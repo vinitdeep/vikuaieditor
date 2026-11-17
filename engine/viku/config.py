@@ -23,6 +23,20 @@ def data_dir() -> Path:
     return p
 
 
+def starter_dir() -> Path | None:
+    """Bundled starter content (illustrations/index.json, ...): env VIKU_STARTER (the installed app passes
+    <resources>/starter), else the repo's data/starter in a dev checkout. None when neither exists."""
+    for c in (os.environ.get("VIKU_STARTER"), Path(__file__).resolve().parents[2] / "data" / "starter"):
+        if c and Path(c).is_dir():
+            return Path(c)
+    return None
+
+
+def dev_mode() -> bool:
+    """VIKU_DEV=1: dev-machine extras (seed the library / music from the original project folders)."""
+    return os.environ.get("VIKU_DEV", "") == "1"
+
+
 def sub(name: str) -> Path:
     p = data_dir() / name
     p.mkdir(parents=True, exist_ok=True)

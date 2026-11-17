@@ -9,7 +9,6 @@ Ports jumpcut.py, static_tracks.py, enhance_audio.py, reel_illus.py and mix_reel
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import shutil
@@ -262,8 +261,6 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
         cutaways = cutplan.plan(captions, dur, r["language"], jumps, xv, ref)
         job.update(0.6, "matching verses")
         verses = scripture.place_verses(captions, cutaways, r["language"])
-    if steps["music"]:
-        music = pick_music(rid)
     sfx = plan_sfx([c for c in cutaways if c.get("img") and Path(c["img"]).exists()])
     # hook title + sub (verse ref / English gist) unless the editor wrote their own
     from ..brain import hooks
@@ -271,6 +268,10 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
     hk = (hooks.hook(captions, r["language"], verses, sermon=[t.get("text", "") for t in p.get("transcript", [])],
                      fallback_name=f"{T_short(p.get('name') or 'Sermon')} · Reel {n}")
           if captions else {"title": "", "sub": "", "title_flag": None})
+    from ..music_gen import mood_for_theme
+    mood = mood_for_theme(hk.get("theme"))
+    if steps["music"]:   # bed by the reel's theme: victory -> victorious, prayer -> prayerful, depression -> reflective...
+        music = pick_music(rid, mood)
     title_auto = not r.get("title") or bool(r.get("title_auto"))
     sub_auto = not r.get("sub") or bool(r.get("sub_auto"))
     title = hk["title"] if title_auto and hk["title"] else r.get("title", "")
@@ -278,7 +279,8 @@ def autobuild(rid: str, job: Job, steps: dict | None = None) -> dict:
 
     def upd2(rr):
         rr.update({"captions": captions, "cutaways": cutaways, "verses": verses, "music": music, "sfx": sfx,
-                   "title": title, "sub": sub, "title_auto": title_auto, "sub_auto": sub_auto, "status": "built"})
+                   "mood": mood, "theme": hk.get("theme"), "title": title, "sub": sub, "title_auto": title_auto,
+                   "sub_auto": sub_auto, "status": "built"})
         if title_auto:  # "review": no caption line passed the ASR-quality gate - the app highlights the title
             rr["title_flag"] = hk.get("title_flag")
         th = rr.get("thumbnail") or {}
@@ -305,14 +307,13 @@ def deoverlap(caps: list[dict]):
             a["t1"], b["t0"] = m, m
 
 
-def pick_music(rid: str) -> dict | None:
+def pick_music(rid: str, mood: str | None = None) -> dict | None:
     from .. import music
-    tracks = music.list_tracks()
-    if not tracks:
+    t = music.pick(mood, rid)
+    if not t:
         return None
-    h = int(hashlib.md5(rid.encode()).hexdigest(), 16)
-    t = tracks[h % len(tracks)]
-    return {"path": t["path"], "gain_db": config.settings().get("music_gain_db", -19.0), "start": 0.0}
+    return {"path": t["path"], "gain_db": config.settings().get("music_gain_db", -19.0), "start": 0.0,
+            "mood": t.get("mood") or mood}
 
 
 def plan_sfx(cutaways: list) -> list[dict]:

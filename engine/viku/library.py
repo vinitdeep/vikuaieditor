@@ -9,6 +9,7 @@ prefix (cached by text hash) and blended into /library/search, and the cutaway p
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import shutil
 import sqlite3
@@ -21,6 +22,7 @@ from . import config
 IMG_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 STOP = {"the", "a", "an", "of", "and", "in", "on", "to", "for", "with", "part", "part1", "part2", "hi", "or", "en",
         "img", "image", "final", "v1", "v2", "v3", "copy"}
+# dev machine only (VIKU_DEV=1): the original reel folders the starter pack was built from
 SEED_GLOBS = [
     (Path.home() / "Downloads" / "Before the Foundation reels" / "illustrations", "*/*.png"),
     (Path.home() / "Downloads" / "Salvation reels" / "illustrations", "*/*.png"),
@@ -103,11 +105,71 @@ def import_paths(paths: list[str], tags: list[str] | None = None, desc: str = ""
 
 
 def seed() -> dict:
-    paths = []
-    for root, pat in SEED_GLOBS:
-        if root.exists():
-            paths += [str(f) for f in sorted(root.glob(pat))]
-    return import_paths(paths)
+    """POST /library/import {seed: true}: the bundled starter pack; on a dev machine (VIKU_DEV=1) also the
+    original reel folders."""
+    res = import_starter()
+    if config.dev_mode():
+        paths = []
+        for root, pat in SEED_GLOBS:
+            if root.exists():
+                paths += [str(f) for f in sorted(root.glob(pat))]
+        r2 = import_paths(paths)
+        res = {"added": res["added"] + r2["added"], "skipped": res["skipped"] + r2["skipped"],
+               "items": res["items"] + r2["items"], "ids": res.get("ids", []) + r2["ids"]}
+    return res
+
+
+def starter_index() -> dict | None:
+    d = config.starter_dir()
+    f = d / "illustrations" / "index.json" if d else None
+    if not f or not f.exists():
+        return None
+    idx = json.loads(f.read_text(encoding="utf-8"))
+    idx["root"] = str(f.parent)
+    return idx
+
+
+def import_starter() -> dict:
+    """Import the bundled starter illustrations (data/starter/illustrations/index.json: id, file, title, tags, desc,
+    set) into the library. Ids are the JPEG's sha1 like any import, so a re-run skips what is already there."""
+    idx = starter_index()
+    if not idx:
+        return {"added": 0, "skipped": 0, "items": [], "ids": [], "starter": None}
+    root = Path(idx["root"])
+    added, skipped, ids = [], 0, []
+    with _lock:
+        c = db()
+        for it in idx.get("items", []):
+            src = root / it["file"]
+            if not src.exists():
+                continue
+            ids.append(it["id"])
+            if c.execute("SELECT 1 FROM images WHERE id=?", (it["id"],)).fetchone():
+                skipped += 1
+                continue
+            dst = ldir() / "images" / f"{it['id']}{src.suffix.lower()}"
+            shutil.copy2(src, dst)
+            c.execute("INSERT INTO images(id, path, orig, title, tags, user_tags, width, height, added, emb, desc, setname)"
+                      " VALUES(?,?,?,?,?,?,?,?,?,NULL,?,?)",
+                      (it["id"], str(dst), str(src), it.get("title") or src.stem, " ".join(it.get("tags", [])), "starter",
+                       it.get("width", 0), it.get("height", 0), time.time(), it.get("desc") or None,
+                       it.get("set") or src.parent.name))
+            added.append({"id": it["id"], "path": str(dst), "tags": it.get("tags", [])})
+        c.commit()
+        c.close()
+    return {"added": len(added), "skipped": skipped, "items": added, "ids": ids, "starter": idx.get("count")}
+
+
+def starter_status() -> dict:
+    idx = starter_index()
+    if not idx:
+        return {"available": False, "count": 0, "imported": 0}
+    ids = [it["id"] for it in idx.get("items", [])]
+    c = db()
+    have = {r[0] for r in c.execute("SELECT id FROM images")}
+    c.close()
+    return {"available": True, "count": len(ids), "imported": sum(1 for i in ids if i in have),
+            "size_mb": round(idx.get("bytes", 0) / 1e6, 1), "licence": idx.get("licence", ""), "path": idx["root"]}
 
 
 def count() -> int:

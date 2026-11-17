@@ -104,6 +104,18 @@ are installed next to downloaded tools and models (LICENSE*.txt) or available at
 - Delivered: downloaded on first run (eBible.org USFM)
 - Notice: The name "World English Bible" is a trademark; the text is public domain.
 
+## Viku content (bundled / generated)
+
+### Viku generated music
+- Licence: Royalty-free - generated on your PC by Viku's music generator; free to use in any video
+- Delivered: made on first run (5 default moods) and on demand (Library > Music > Generate music); no recordings, samples or licensed tracks are shipped
+- Notice: Procedural synthesis (viku/music_gen.py). Tracks from HeyGen or your own files keep their own licences.
+
+### Viku starter illustrations
+- Licence: AI-generated (Google Gemini / AI Studio) by the Viku project, free to use in Viku videos
+- Delivered: bundled with the installer (119 images, 1080x1920 JPEG), imported into an empty library on first run
+- Notice: Created for Viku's sermon reels with Google Gemini / AI Studio image generation. Free to use in videos made with Viku; Google's Generative AI terms apply to the generation.
+
 ## Python packages (engine environment)
 
 | Package | Version | Licence | Project |

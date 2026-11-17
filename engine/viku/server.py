@@ -79,6 +79,7 @@ def health():
                         "asr_runtime": indic.runtime_ok(), "denoise_engine": enhance.mode(),
                         "ffmpeg": models.ffmpeg(), "ffmpeg_source": models.ffmpeg_source(),
                         "bible": bible.status(), "library_images": library.count(), "music_tracks": len(music.list_tracks()),
+                        "starter_images": library.starter_status().get("imported", 0),
                         "fonts": assets_setup.fonts_ready(), "sfx": assets_setup.sfx_ready()}}
 
 
@@ -405,6 +406,55 @@ def music_seed():
     return {"added": music.seed()}
 
 
+@app.get("/music/moods")
+def music_moods():
+    from . import music_gen
+    return [{"id": k, **v} for k, v in music_gen.MOODS.items()]
+
+
+class MusicGenReq(BaseModel):
+    mood: str = "hopeful"
+    seed: int | None = None       # None = a new random seed
+    duration: float = 90.0        # seconds (20-240); the bed loops seamlessly
+    preview: bool = False         # True: render into <data>/music_previews; POST /music/keep adds it
+
+
+@app.post("/music/generate")
+def music_generate(b: MusicGenReq):
+    """Job: an offline, royalty-free underscore bed (viku.music_gen) -> the music library, tagged "viku generated"."""
+    return job_ref(MANAGER.submit("music_generate",
+                                  lambda job: music.generate(job, b.mood, b.seed, b.duration, b.preview),
+                                  {"mood": b.mood}))
+
+
+class MusicKeepReq(BaseModel):
+    path: str
+
+
+@app.post("/music/keep")
+def music_keep(b: MusicKeepReq):
+    try:
+        return music.keep(b.path)
+    except JobError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/music/{name}")
+def music_delete(name: str):
+    if not music.remove(name):
+        raise HTTPException(404, "no such track")
+    return {"ok": True}
+
+
+@app.get("/starter")
+def starter():
+    """Bundled starter content: illustration pack status + generated default music."""
+    tracks = music.list_tracks()
+    return {"illustrations": library.starter_status(),
+            "music": {"generated": sum(1 for t in tracks if t.get("source") == "viku"), "tracks": len(tracks),
+                      "defaults_job": _DEFAULTS_JOB.get("id")}}
+
+
 class HeygenReq(BaseModel):
     intent: str
 
@@ -504,16 +554,32 @@ def media(path: str = Query(...)):
 
 
 # ---------------------------------------------------------------- startup --
+_DEFAULTS_JOB: dict = {}
+
+
 def _first_run():
+    """Fresh install: the bundled starter illustrations into an empty library, the 5 default music beds into an
+    empty music library (a visible `music_defaults` job), SFX, fonts. The user-folder seeds run only with VIKU_DEV=1."""
+    try:
+        if library.count() == 0:
+            r = library.import_starter()
+            print(f"starter illustrations: {r['added']} imported", flush=True)
+    except Exception as e:  # noqa: BLE001
+        print("starter illustrations failed:", e, flush=True)
+    try:
+        music.seed()          # dev machine only (VIKU_DEV=1)
+        if not music.list_tracks():
+            _DEFAULTS_JOB["id"] = MANAGER.submit("music_defaults", music.ensure_defaults).id
+    except Exception as e:  # noqa: BLE001
+        print("default music failed:", e, flush=True)
     try:
         assets_setup.ensure_sfx()
-        music.seed()
     except Exception as e:  # noqa: BLE001
-        print("first-run assets:", e)
+        print("first-run sfx:", e, flush=True)
     try:
         assets_setup.ensure_fonts()
     except Exception as e:  # noqa: BLE001
-        print("fonts download failed (offline?) - will retry at render:", e)
+        print("fonts download failed (offline?) - will retry at render:", e, flush=True)
 
 
 @app.on_event("startup")
