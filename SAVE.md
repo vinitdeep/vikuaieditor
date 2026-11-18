@@ -14,6 +14,7 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
   storage.session. Extension 0.2.3.
 - Engine aipics.fill: session-1 era cutaways with no text/need take the captions spoken under them (else the nearest
   caption) as the sermon line. test_aipics new case.
+- Installer rebuilt + silently reinstalled 2026-11-18 21:59 (app.asar has the busy pause, resources/extension 0.2.3).
 - Verified: engine 85 passed; typecheck + lint clean; test-queue PASS; `scripts/e2e-extension.mjs` PASS incl. a new
   BUSYME case (queued, tries 0, paused 2.0 min; Send next lifts it).
 
