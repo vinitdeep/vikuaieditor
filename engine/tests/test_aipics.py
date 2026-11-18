@@ -95,3 +95,10 @@ def test_not_set_up_is_refused(monkeypatch):
     monkeypatch.setattr(aipics, "cfg", lambda: {"url": "", "key": ""})
     with pytest.raises(aipics.NotSetUp):
         aipics.scene("x", "or")
+
+
+def test_old_reels_without_a_line_use_the_captions_under_the_cutaway(world):
+    r = world["p"]["reels"][0]
+    r["cutaways"] = [{"t0": 3.2, "t1": 5.5, "img": "lib/old.png"}]   # session-1 era: no text, no need
+    res = aipics.fill("p1~2", replace=True)
+    assert res["made"] == 1 and r["cutaways"][0]["ai"]["scene"] == "scene for ଲାଇନ ଦୁଇ"

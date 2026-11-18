@@ -73,7 +73,7 @@ export function AiPicturesDrawer() {
   }
   const total = n.waiting + n.making + n.done
   const busy = n.waiting + n.making > 0
-  const pausedMin = ext?.pausedUntil ? Math.max(1, Math.ceil((ext.pausedUntil - Date.now()) / 60000)) : 0
+  const pausedMin = ext?.pausedUntil && ext.pausedUntil > Date.now() ? Math.max(1, Math.ceil((ext.pausedUntil - Date.now()) / 60000)) : 0
 
   let tone: 'ok' | 'work' | 'warn' | 'off' = 'ok'
   let headline: string
@@ -88,12 +88,13 @@ export function AiPicturesDrawer() {
     sub = 'Set up once: the Viku extension makes each picture in your Chrome or Edge, with your own Google account, for free.'
   } else if (pausedMin) {
     tone = 'warn'
-    headline = `Paused — AI Studio limit reached`
+    headline = /unavailable|busy|try again later/i.test(ext?.note ?? '') ? 'Paused — AI Studio is busy (Google’s side)' : 'Paused — AI Studio limit reached'
     sub = `Carries on by itself in about ${pausedMin} min.`
   } else if (busy) {
     tone = 'work'
     headline = `Making picture ${Math.min(total, n.done + 1)} of ${total}`
-    sub = 'In an AI Studio tab of your browser, one at a time. Each picture lands on its cutaway by itself.'
+    // what the Viku tab is doing right now ("Attaching the face photo", "AI Studio is drawing"...)
+    sub = ext?.state === 'working' && ext.note ? `${ext.note}…` : 'In an AI Studio tab of your browser, one at a time. Each picture lands on its cutaway by itself.'
   } else if (n.done) {
     headline = `${n.done} picture${n.done === 1 ? '' : 's'} made`
     sub = 'Reels that were already rendered are re-rendered with their new pictures.'

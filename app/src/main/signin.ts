@@ -639,6 +639,7 @@ export class SignInManager implements ExtHandler {
       version: '1',
       enabled,
       waiting: enabled && !paused ? this.items.filter((i) => i.status === 'queued').length : 0,
+      working: this.items.filter((i) => i.status === 'sent' && i.sentBy === 'extension').length,
       model: EXT_MODEL,
       paused
     }
@@ -694,6 +695,11 @@ export class SignInManager implements ExtHandler {
       pause = true
       this.ext.pausedUntil = Date.now() + 10 * 60_000
       this.toast({ kind: 'warn', text: `${error} — Viku waits 10 minutes, then carries on. Press Send next to try sooner.` })
+    } else if (kind === 'busy') {
+      // AI Studio itself is busy ("service is unavailable"): not this prompt's fault, try it again in 2 minutes
+      pause = true
+      this.ext.pausedUntil = Date.now() + 2 * 60_000
+      this.toast({ kind: 'warn', text: 'AI Studio is busy right now (Google’s side) — Viku tries again in 2 minutes.' })
     } else if (kind === 'attention') {
       pause = true
       this.ext.pausedUntil = Date.now() + 2 * 60_000

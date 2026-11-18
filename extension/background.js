@@ -130,17 +130,29 @@ async function tick(reason) {
   }
   await setStatus({ viku: true, port: await sget('port', 0), waiting: h.body.waiting, version: h.body.version })
   if (!h.body.enabled) return // Viku is not in "Your browser" mode
-  if (h.body.waiting > 0) {
+  if (h.body.waiting > 0 || h.body.working > 0) {
     const tab = await workerTab(h.body.model, h.page === 'signin')
     if (h.page === 'signin') await setStatus({ state: 'signin', note: 'Sign in to Google in the AI Studio tab' })
     // wake the content script (background tabs throttle its timers). A tab Chrome put to sleep to save memory, or one
     // still running an old copy of the script, does not answer: load it again so the script runs.
-    if (tab.discarded) await chrome.tabs.reload(tab.id).catch(() => undefined)
-    else
-      await chrome.tabs.sendMessage(tab.id, { type: 'poke', reason }).catch(async () => {
-        const t = await chrome.tabs.get(tab.id).catch(() => null)
-        if (t && t.status === 'complete' && /^https:\/\/aistudio\.google\.com\//.test(t.url || '')) await chrome.tabs.reload(tab.id).catch(() => undefined)
-      })
+    // Chrome can also pause a tab that has been in the background a long time, in the middle of a picture.
+    let answered = false
+    if (!tab.discarded) {
+      const pong = await chrome.tabs.sendMessage(tab.id, { type: 'poke', reason }).catch(() => null)
+      answered = Boolean(pong?.ok)
+    }
+    if (!answered) {
+      const t = await chrome.tabs.get(tab.id).catch(() => null)
+      if (t && (t.discarded || t.status === 'complete') && /^https:\/\/aistudio\.google\.com\//.test(t.url || '')) {
+        await chrome.tabs.reload(tab.id).catch(() => undefined)
+        // the prompt it was making is lost with the page: give it back to Viku so it is made again right away
+        const current = await sget('current', '')
+        if (current) {
+          await sset({ current: '' })
+          await viku('/viku/fail', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: current, error: 'The AI Studio tab stopped answering - trying again', kind: 'error' }) }).catch(() => undefined)
+        }
+      }
+    }
   }
 }
 
@@ -184,8 +196,9 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
         if (!isWorker || !(await get('enabled', true))) return reply({ item: null, worker: Boolean(isWorker) })
         try {
           const r = await viku('/viku/next', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
-          if (r.item) await setStatus({ state: 'working', note: r.item.name })
+          if (r.item) await setStatus({ state: 'working', note: 'Starting the next picture' })
           else await setStatus({ state: 'idle', note: '' })
+          await sset({ current: r.item?.id ?? '' })
           return reply({ item: r.item ?? null, model: r.model || MODEL_DEFAULT, worker: true })
         } catch (e) {
           await setStatus({ state: 'no-viku', note: 'Open Viku on this computer' })
@@ -195,6 +208,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       case 'result': {
         if (!isWorker) return reply({ ok: false })
         const r = await viku('/viku/result', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: msg.id, mime: msg.mime, b64: msg.b64 }) })
+        await sset({ current: '' })
         const done = (await get('done', 0)) + 1
         await chrome.storage.local.set({ done })
         await setStatus({ state: 'idle', note: '', last: msg.name || '' })
@@ -202,6 +216,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       }
       case 'fail': {
         if (!isWorker) return reply({ ok: false })
+        await sset({ current: '' })
         const r = await viku('/viku/fail', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: msg.id, error: msg.error, kind: msg.kind }) }).catch(() => ({ pause: true }))
         await setStatus({ state: r.pause ? 'paused' : 'idle', note: msg.error })
         if (msg.kind === 'attention') await workerTab(undefined, true) // show the tab so the user can see what AI Studio wants
@@ -215,6 +230,12 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       case 'enable': {
         await chrome.storage.local.set({ enabled: Boolean(msg.on) })
         await tick('toggle').catch(() => undefined)
+        return reply({ ok: true })
+      }
+      case 'progress': {
+        if (!isWorker) return reply({ ok: false })
+        await setStatus({ state: 'working', note: String(msg.note || '') })
+        await hello().catch(() => undefined) // tell Viku now, not at the next tick
         return reply({ ok: true })
       }
       case 'show-tab': {

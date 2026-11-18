@@ -31,6 +31,8 @@
     }
   }
   let busy = false
+  // what the Viku tab is doing right now, shown in Viku's AI pictures panel (and handy when something stalls)
+  const step = (note) => send({ type: 'progress', note })
   let model = 'gemini-3.1-flash-image'
 
   const freshUrl = () => `https://aistudio.google.com/prompts/new_chat?model=${encodeURIComponent(model)}`
@@ -108,6 +110,7 @@
     for (let i = 0; i < 60; i++) {
       await sleep(500)
       if (document.querySelector(ACK)) {
+        step('Waiting for you to click Acknowledge in AI Studio')
         await send({ type: 'show-tab' }) // the user answers it; until then the prompt waits (2 minutes, then Viku pauses)
         for (let j = 0; j < 240 && document.querySelector(ACK); j++) await sleep(500)
         if (document.querySelector(ACK)) return { error: 'AI Studio asks you to acknowledge its rules for uploaded photos once — click Acknowledge in the Viku tab', kind: 'attention' }
@@ -151,6 +154,7 @@
 
   function classify(text) {
     if (/no image generated/i.test(text)) return 'noimage' // AI Studio could not draw this prompt
+    if (/unavailable|overloaded|try again later|internal error/i.test(text)) return 'busy' // Google's side: wait a little, then the same prompt again
     if (/quota|rate limit|exhausted|too many|permission denied/i.test(text)) return 'limit' // stop for now, try later
     if (/safety|polic/i.test(text)) return 'content' // this prompt will not work: skip it
     return 'error'
@@ -188,6 +192,7 @@
     if (performance.now() < 10000) await sleep(10000 - performance.now())
     // 2a. "Same face": the reference photo goes in first
     if (item.refs?.length) {
+      step('Attaching the face photo')
       const bad = await attach(item.refs)
       if (bad) return bad
     }
@@ -200,6 +205,7 @@
     box.focus()
     setter.call(box, item.prompt)
     box.dispatchEvent(new Event('input', { bubbles: true }))
+    step('Typing the prompt in AI Studio')
     await imagesOnly()
     // 3. press Run, and make sure AI Studio took it: the prompt shows up as a chat turn (on a page that has only just
     //    loaded, the button can exist before it works). Up to 3 presses, then give up quickly so Viku retries.
@@ -222,6 +228,7 @@
     }
     if (!submitted()) return { error: 'AI Studio did not take the prompt', kind: 'error' }
 
+    step('AI Studio is drawing')
     // 4. wait for the picture (or an error) - up to 3 minutes
     const t0 = Date.now()
     while (Date.now() - t0 < 180000) {

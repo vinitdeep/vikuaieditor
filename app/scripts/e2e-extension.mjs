@@ -74,6 +74,9 @@ const STAND_IN = `<!doctype html><html><head><title>Google AI Studio (stand-in)<
       if (/NOIMAGE/.test(prompt)) {
         const e = document.createElement('div'); e.textContent = 'No image generated'; turns.appendChild(e); return
       }
+      if (/BUSYME/.test(prompt)) {
+        const e = document.createElement('div'); e.textContent = 'The service is currently unavailable. Please try again later.'; turns.appendChild(e); return
+      }
       if (/LIMITME/.test(prompt)) {
         const e = document.createElement('div'); e.textContent = 'Permission denied. Please check your account permissions and project settings.'; turns.appendChild(e); return
       }
@@ -246,9 +249,28 @@ try {
   if (ni?.status !== 'failed' || ni.tries !== 1) throw new Error('a no-image answer should fail at once')
   await st((id) => window.viku.signin.remove(id), ni.id)
 
+  // AI Studio busy on Google's side ("service is unavailable"): a short 2-minute pause, prompt kept, no try used up
+  await st(() => window.viku.signin.clearDone())
+  await st(() => window.viku.signin.queue([{ prompt: 'BUSYME a shepherd at dawn', name: 'reel1-cut08-busy' }]))
+  let bi = null
+  const until0 = Date.now() + 90000
+  while (Date.now() < until0) {
+    await sleep(2000)
+    s = await st(() => window.viku.signin.geminiState())
+    bi = (await st(() => window.viku.signin.list())).find((i) => i.name === 'reel1-cut08-busy')
+    if (s.extension.pausedUntil > Date.now()) break
+  }
+  const busyMin = s.extension.pausedUntil ? (s.extension.pausedUntil - Date.now()) / 60000 : 0
+  log('busy prompt:', JSON.stringify({ status: bi?.status, tries: bi?.tries, error: bi?.error, pausedMin: busyMin.toFixed(1) }))
+  if (bi?.status !== 'queued' || (bi.tries ?? 0) !== 0 || busyMin <= 0 || busyMin > 2.1) throw new Error('a busy answer should pause ~2 min and keep the prompt')
+  await st((id) => window.viku.signin.remove(id), bi.id)
+
   // an AI Studio limit pauses the queue and keeps the prompt
   await st(() => window.viku.signin.clearDone())
   await st(() => window.viku.signin.queue([{ prompt: 'LIMITME vertical 9:16', name: 'reel1-cut03-limit' }]))
+  await st(() => window.viku.signin.sendNext()) // ends the busy pause, like the user pressing Send next
+  s = await st(() => window.viku.signin.geminiState())
+  if (s.extension.pausedUntil) throw new Error('Send next did not lift the busy pause')
   let item = null
   const until2 = Date.now() + 90000
   while (Date.now() < until2) {

@@ -39,6 +39,8 @@ export interface ExtHello {
   waiting: number
   model: string
   paused: boolean
+  /** prompts the extension took and has not answered yet */
+  working: number
 }
 
 export const EXT_PORTS = [47917, 47918, 47919, 47920, 47921]

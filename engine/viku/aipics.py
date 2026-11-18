@@ -122,6 +122,11 @@ def _around(captions: list[dict], t0: float, t1: float, pad: float = 6.0) -> str
     return " ".join(c["text"] for c in captions if c["t1"] > t0 - pad and c["t0"] < t1 + pad and c.get("text"))[:600]
 
 
+def _nearest(captions: list[dict], t: float) -> str:
+    cs = [c for c in captions if c.get("text")]
+    return min(cs, key=lambda c: abs((c["t0"] + c["t1"]) / 2 - t))["text"] if cs else ""
+
+
 def fill(rid: str, job: Job | None = None, replace: bool = False) -> dict:
     """Make a new AI picture for every cutaway that needs one (replace=True: every cutaway, library pictures
     included). -> {"made", "failed", "errors"}. Saves the reel after each picture, so a stop keeps what was made."""
@@ -145,7 +150,9 @@ def fill(rid: str, job: Job | None = None, replace: bool = False) -> dict:
             continue
         c = r["cutaways"][i]
         need = c.get("need") or c.get("need_done") or {}
-        line = (need.get("text") or c.get("text") or "").strip()
+        # older reels have no line on the cutaway: take the captions spoken under it (else the nearest one)
+        line = (need.get("text") or c.get("text") or _around(r.get("captions", []), c["t0"], c["t1"], 0.0)
+                or _nearest(r.get("captions", []), (c["t0"] + c["t1"]) / 2)).strip()
         if not line:
             errors.append(f"cutaway {i + 1}: no sermon line")
             continue

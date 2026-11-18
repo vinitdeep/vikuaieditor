@@ -2,6 +2,21 @@
 
 Contract: `ARCHITECTURE.md`. Update this file every session.
 
+## Session 9d (2026-11-18): AI Studio "busy", live progress, stalled-tab recovery, old reels
+- AI Studio "service unavailable / overloaded / try again later / internal error" -> content.js kind `busy` ->
+  SignInManager pauses 2 min (not 10), prompt back in the queue, the try is NOT used up; drawer headline says
+  "Paused - AI Studio is busy (Google's side)". Drawer pause countdown ignores a pausedUntil already in the past.
+- Live progress: content.js `step(note)` -> background `progress` message -> status + immediate hello; ExtHello has
+  `working` (prompts sent to the extension, not yet answered); drawer sub-line shows the step ("Attaching the face
+  photo", "Typing the prompt in AI Studio", "AI Studio is drawing").
+- Background also pokes the Viku tab while `working > 0`; no answer -> reloads the tab and hands the lost prompt back
+  (`/viku/fail` kind error, "The AI Studio tab stopped answering - trying again"); `current` item id kept in
+  storage.session. Extension 0.2.3.
+- Engine aipics.fill: session-1 era cutaways with no text/need take the captions spoken under them (else the nearest
+  caption) as the sermon line. test_aipics new case.
+- Verified: engine 85 passed; typecheck + lint clean; test-queue PASS; `scripts/e2e-extension.mjs` PASS incl. a new
+  BUSYME case (queued, tries 0, paused 2.0 min; Send next lifts it).
+
 ## Session 9c (2026-11-18): "Same face" — character consistency for AI pictures
 - Faces: `app/src/main/faces.ts` FaceStore in `<userData>/faces` (face-<id>.jpg, long side <= 1024, faces.json with
   `selected`). IPC `faces:*` + `window.viku.faces`. Queue items carry `faceId`/`faceName`; `queue()` adds FACE_ASK
