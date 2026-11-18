@@ -6,6 +6,7 @@ import { toast, useApp } from '@/state/app'
 import { saveNow, useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
 import { cutawayPrompt, imagePrompt, readableName, useLibraryIndex } from './cutaways'
+import { selectedFaceId, useFaces } from './faces'
 
 /**
  * AI Studio generation for empty cutaways.
@@ -50,6 +51,8 @@ export function openAiPanel(): void {
   useApp.getState().set({ aiOpen: true, activityOpen: false })
 }
 
+const faceName = (id: string): string => useFaces.getState().faces.find((f) => f.id === id)?.name ?? 'the chosen'
+
 const extensionOn = (): boolean => Boolean(useApp.getState().gemini?.extension?.connected)
 
 /** Queue an empty cutaway's prompt for AI Studio; the picture is attached to the cutaway automatically. */
@@ -71,10 +74,11 @@ export async function generateForCutaway(reelId: string, index: number, promptOv
   const prompt = imagePrompt(promptOverride?.trim() || cutawayPrompt(c, captionTextUnder(reel, c.t0, c.t1)))
   const meta: GenMeta = { reelId, index, t0: c.t0, slug: c.need?.slug }
   try {
-    const items = await bridge.signin.queue([{ prompt, name: plannedName(reel, index), meta }])
+    const faceId = selectedFaceId()
+    const items = await bridge.signin.queue([{ prompt, name: plannedName(reel, index), meta, faceId }])
     syncQueue(items)
     openAiPanel()
-    toast('info', extensionOn() ? 'Picture queued — AI Studio makes it in your browser and it lands on the cutaway by itself.' : 'Picture queued — add the Viku extension (AI pictures panel) and it is made automatically.')
+    toast('info', extensionOn() ? `Picture queued${faceId ? ` with ${faceName(faceId)}’s face` : ''} — AI Studio makes it in your browser and it lands on the cutaway by itself.` : 'Picture queued — add the Viku extension (AI pictures panel) and it is made automatically.')
   } catch (e) {
     toast('error', `Could not queue the prompt: ${e instanceof Error ? e.message : String(e)}`)
   }
@@ -88,11 +92,12 @@ export async function queueEmptyCutaways(reels: Reel[]): Promise<number> {
   const bridge = window.viku
   if (!bridge) return 0
   const queued = useGen.getState().queued
+  const faceId = selectedFaceId()
   const batch = reels.flatMap((reel) =>
     reel.cutaways.flatMap((c, index) =>
       c.img || queued[genKey(reel.id, c.t0)]
         ? []
-        : [{ prompt: imagePrompt(cutawayPrompt(c, captionTextUnder(reel, c.t0, c.t1))), name: plannedName(reel, index), meta: { reelId: reel.id, index, t0: c.t0, slug: c.need?.slug } as GenMeta }]
+        : [{ prompt: imagePrompt(cutawayPrompt(c, captionTextUnder(reel, c.t0, c.t1))), name: plannedName(reel, index), meta: { reelId: reel.id, index, t0: c.t0, slug: c.need?.slug } as GenMeta, faceId }]
     )
   )
   if (!batch.length) return 0

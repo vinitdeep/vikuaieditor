@@ -10,9 +10,17 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
  */
 export interface ExtHandler {
   extHello(info: ExtHelloInfo): ExtHello
-  extNext(): { item: { id: string; prompt: string; name: string } | null; model: string }
+  extNext(): { item: ExtItem | null; model: string }
   extResult(id: string, buf: Buffer): { ok: boolean; file?: string; error?: string }
   extFail(id: string, error: string, kind: string): { ok: boolean; pause: boolean }
+}
+
+/** A prompt for the extension; refs = photos it attaches in AI Studio before Run ("Same face"). */
+export interface ExtItem {
+  id: string
+  prompt: string
+  name: string
+  refs?: { name: string; mime: string; b64: string }[]
 }
 
 export interface ExtHelloInfo {

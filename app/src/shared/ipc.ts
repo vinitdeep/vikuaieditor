@@ -112,7 +112,27 @@ export interface PromptItem {
   sentBy?: 'clipboard' | 'typed' | 'extension'
   /** extension attempts so far (a prompt is retried once before it is marked failed) */
   tries?: number
+  /** "Same face": the face photo sent with this prompt (FaceStore id) and its name when queued */
+  faceId?: string
+  faceName?: string
 }
+
+/** A reference photo for "Same face" (kept in <userData>/faces). */
+export interface Face {
+  id: string
+  name: string
+  /** JPEG, long side at most 1024 px */
+  file: string
+  addedAt: number
+}
+
+export interface FacesState {
+  faces: Face[]
+  /** the face sent with every new AI picture; '' = none */
+  selected: string
+}
+
+export type QueueAdd = { prompt: string; name: string; folder?: string; meta?: GenMeta; faceId?: string }
 
 export type CaptureVia = 'download' | 'network' | 'browser' | 'extension'
 
@@ -232,7 +252,7 @@ export interface VikuBridge {
     setGeminiBounds(bounds: Rect | null): Promise<void>
     geminiNav(action: 'back' | 'forward' | 'reload' | 'home'): Promise<void>
     geminiState(): Promise<GeminiViewState>
-    queue(items: { prompt: string; name: string; folder?: string; meta?: GenMeta }[]): Promise<PromptItem[]>
+    queue(items: QueueAdd[]): Promise<PromptItem[]>
     /** mark a captured prompt as attached to its cutaway (persisted) */
     markAttached(id: string): Promise<PromptItem[]>
     list(): Promise<PromptItem[]>
@@ -249,6 +269,16 @@ export interface VikuBridge {
     openBrowser(): Promise<void>
     /** show the Viku browser extension folder in Explorer (for Load unpacked) */
     revealExtension(): Promise<void>
+  }
+  faces: {
+    list(): Promise<FacesState>
+    /** copy photos in as faces; the first becomes the chosen face */
+    add(paths: string[], name?: string): Promise<FacesState>
+    remove(id: string): Promise<FacesState>
+    /** '' = no face */
+    select(id: string): Promise<FacesState>
+    rename(id: string, name: string): Promise<FacesState>
+    onChange(cb: (s: FacesState) => void): Unsubscribe
   }
 }
 
@@ -284,5 +314,11 @@ export const IPC = {
   signinFocusCardEvt: 'signin:focus-card-evt',
   signinMode: 'signin:mode',
   signinOpenBrowser: 'signin:open-browser',
-  signinRevealExtension: 'signin:reveal-extension'
+  signinRevealExtension: 'signin:reveal-extension',
+  facesList: 'faces:list',
+  facesAdd: 'faces:add',
+  facesRemove: 'faces:remove',
+  facesSelect: 'faces:select',
+  facesRename: 'faces:rename',
+  facesEvt: 'faces:evt'
 } as const

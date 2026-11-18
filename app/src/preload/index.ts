@@ -59,6 +59,14 @@ const bridge: VikuBridge = {
     setMode: (mode) => ipcRenderer.invoke(IPC.signinMode, mode),
     openBrowser: () => ipcRenderer.invoke(IPC.signinOpenBrowser),
     revealExtension: () => ipcRenderer.invoke(IPC.signinRevealExtension)
+  },
+  faces: {
+    list: () => ipcRenderer.invoke(IPC.facesList),
+    add: (paths, name) => ipcRenderer.invoke(IPC.facesAdd, paths, name),
+    remove: (id) => ipcRenderer.invoke(IPC.facesRemove, id),
+    select: (id) => ipcRenderer.invoke(IPC.facesSelect, id),
+    rename: (id, name) => ipcRenderer.invoke(IPC.facesRename, id, name),
+    onChange: (cb) => on(IPC.facesEvt, cb)
   }
 }
 

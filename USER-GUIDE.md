@@ -160,6 +160,15 @@ never touched, and Viku never sees your password. If AI Studio says you have rea
 and carries on (press **Send next** to try sooner). The extension's toolbar button shows what it is doing and can
 switch it off.
 
+**Same face in every picture.** To keep one person the same from picture to picture (the pastor, or a character
+in a story), use **Same face** — in the Cutaway inspector under *Generate in AI Studio*, and in the **AI pictures**
+panel. Click **+** and choose a clear photo of one face (or, on a cutaway that already has a picture, **Use the person
+in this picture**). The chosen face has a gold ring; it is sent with every new picture until you pick **No face** (the
+crossed-out person). The extension attaches the photo in AI Studio (like *Upload files*), sets the picture to 9:16 and
+asks Gemini to keep that exact face in the new scene. Rename a face with the pencil, remove it with the bin.
+The first time a photo is attached, AI Studio shows a one-time notice about the rights to uploaded photos: the Viku
+tab comes to the front — read it and click **Acknowledge** (only use photos you have the right to use).
+
 **By hand (without the extension):**
 
 1. Click **✦ Generate** on that clip (or **Generate all** at the top of the Cutaways track). The Sign-in window

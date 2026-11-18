@@ -3,15 +3,16 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, watch, writeFileSync, type FSWatcher } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { imageInfo } from './imageSize'
-import type { ExtHandler, ExtHello, ExtHelloInfo } from './extbridge'
+import type { ExtHandler, ExtHello, ExtHelloInfo, ExtItem } from './extbridge'
+import { withFace, type FaceStore } from './faces'
 import {
   IPC,
   type CaptureEvent,
   type CaptureVia,
-  type GenMeta,
   type GeminiMode,
   type GeminiViewState,
   type PromptItem,
+  type QueueAdd,
   type Rect,
   type SendResult,
   type SignInCard,
@@ -471,9 +472,26 @@ export class SignInManager implements ExtHandler {
 
   // ---------- prompt queue ----------
 
-  queue(add: { prompt: string; name: string; folder?: string; meta?: GenMeta }[]): PromptItem[] {
+  private faces: FaceStore | null = null
+
+  setFaces(f: FaceStore): void {
+    this.faces = f
+  }
+
+  queue(add: QueueAdd[]): PromptItem[] {
     for (const a of add) {
-      this.items.push({ id: randomUUID(), prompt: a.prompt, name: a.name, folder: a.folder, meta: a.meta, status: 'queued', queuedAt: Date.now() })
+      // "Same face": the photo goes with the prompt, and the prompt asks Gemini to keep that person
+      const face = this.faces?.get(a.faceId)
+      this.items.push({
+        id: randomUUID(),
+        prompt: face ? withFace(a.prompt) : a.prompt,
+        name: a.name,
+        folder: a.folder,
+        meta: a.meta,
+        status: 'queued',
+        queuedAt: Date.now(),
+        ...(face ? { faceId: face.id, faceName: face.name } : {})
+      })
     }
     this.emitQueue()
     return this.items
@@ -626,7 +644,7 @@ export class SignInManager implements ExtHandler {
     }
   }
 
-  extNext(): { item: { id: string; prompt: string; name: string } | null; model: string } {
+  extNext(): { item: ExtItem | null; model: string } {
     this.ext.seen = Date.now()
     if (this.modes.mode() !== 'browser' || this.ext.pausedUntil > Date.now()) return { item: null, model: EXT_MODEL }
     // one at a time: nothing new while another extension prompt is still out
@@ -634,13 +652,25 @@ export class SignInManager implements ExtHandler {
     if (this.items.some((i) => i.status === 'sent' && i.sentBy === 'extension')) return { item: null, model: EXT_MODEL }
     const item = this.items.find((i) => i.status === 'queued')
     if (!item) return { item: null, model: EXT_MODEL }
+    let ref: ExtItem['refs'] = undefined
+    if (item.faceId) {
+      const r = this.faces?.ref(item.faceId)
+      if (!r) {
+        // the face was removed after this prompt was queued: without the photo the prompt makes no sense
+        item.status = 'failed'
+        item.error = `The face “${item.faceName ?? ''}” was removed — choose a face and generate again`
+        this.emitQueue()
+        return this.extNext()
+      }
+      ref = [r]
+    }
     item.status = 'sent'
     item.sentBy = 'extension'
     item.sentAt = Date.now()
     item.tries = (item.tries ?? 0) + 1
     item.error = undefined
     this.emitQueue()
-    return { item: { id: item.id, prompt: item.prompt, name: item.name }, model: EXT_MODEL }
+    return { item: { id: item.id, prompt: item.prompt, name: item.name, ...(ref ? { refs: ref } : {}) }, model: EXT_MODEL }
   }
 
   extResult(id: string, buf: Buffer): { ok: boolean; file?: string; error?: string } {

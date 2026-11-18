@@ -2489,3 +2489,168 @@ img.img-loading {
 .schip {
   white-space: nowrap;
 }
+
+/* ---------- Same face (FacePicker) ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.faces {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--r-md);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+}
+
+.faces-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.faces-on {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+
+.faces-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.face-opt {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  background: var(--bg-input);
+  color: var(--text-3);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+
+.face-opt img,
+.face-opt .thumb-ph {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.face-opt:hover {
+  border-color: var(--text-3);
+  color: var(--text-1);
+}
+
+.face-opt:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--blue-soft);
+  border-color: var(--blue-line);
+}
+
+.face-opt[aria-checked='true'] {
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-soft);
+  color: var(--gold);
+}
+
+.face-opt.add {
+  border-style: dashed;
+}
+
+.face-tick {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: var(--gold-ink);
+  border: 2px solid var(--bg-2);
+}
+
+.faces-name {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 26px;
+}
+
+.faces-name b {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+.faces-hint {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.faces-from {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--blue);
+  cursor: pointer;
+}
+
+.faces-from:hover {
+  text-decoration: underline;
+}
+
+.aip-face {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--gold-line);
+}
+
+.aip-face img,
+.aip-face .thumb-ph {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .face-opt {
+    transition: none;
+  }
+}
+
+.aip-item-sub {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}

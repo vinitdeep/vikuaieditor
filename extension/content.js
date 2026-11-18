@@ -38,7 +38,14 @@
     document.querySelector('textarea[aria-label="Enter a prompt"]') ||
     document.querySelector('textarea[placeholder*="prompt" i]') ||
     document.querySelector('ms-prompt-box textarea, ms-chunk-input textarea')
-  const bigImages = () => [...document.querySelectorAll('img')].filter((i) => /^(blob|data):/.test(i.src) && i.naturalWidth >= 512 && i.naturalHeight >= 512)
+  // a photo attached to the prompt ("Same face") shows in the prompt box and then in the user's turn: only the
+  // model's pictures count
+  const fromUser = (i) => {
+    if (i.closest('ms-prompt-box, ms-prompt-media, ms-add-media-button')) return true
+    const turn = i.closest('ms-chat-turn')
+    return Boolean(turn && turn.querySelector('[data-turn-role="User"]'))
+  }
+  const bigImages = () => [...document.querySelectorAll('img')].filter((i) => /^(blob|data):/.test(i.src) && i.naturalWidth >= 512 && i.naturalHeight >= 512 && !fromUser(i))
   // real error messages only: AI Studio also shows adverts like "...more quota, frontier models and more", which
   // must not stop the queue
   const ERR =
@@ -60,6 +67,58 @@
       await sleep(400)
     }
     return false // run settings panel closed or renamed: the prompt itself also asks for a picture
+  }
+
+  /** Run settings -> Aspect ratio -> 9:16 (reels are vertical; with a photo attached Gemini may copy its shape). */
+  async function vertical() {
+    const sel = [...document.querySelectorAll('mat-select, [role="combobox"]')].find((e) => /aspect ratio/i.test(e.getAttribute('aria-label') || ''))
+    if (!sel) return false
+    if (/^\s*9:16\b/.test(sel.textContent || '')) return true
+    sel.click()
+    let opt = null
+    for (let i = 0; i < 10 && !opt; i++) {
+      await sleep(200)
+      opt = [...document.querySelectorAll('mat-option, [role="option"]')].find((o) => /^\s*9:16\b/.test(o.textContent || ''))
+    }
+    if (opt) opt.click()
+    else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await sleep(300)
+    return /^\s*9:16\b/.test(sel.textContent || '')
+  }
+
+  const ACK = 'ms-copyright-acknowledgement-dialog'
+  const mediaCount = () => document.querySelectorAll('ms-prompt-box ms-prompt-media, ms-prompt-media').length
+
+  /**
+   * "Same face": attach the reference photo(s) to the prompt, the way Upload files does (AI Studio's own file input).
+   * The first upload on an account shows Google's one-time notice about the rights to uploaded photos: that is for the
+   * user to accept, so the Viku tab is brought to the front and the prompt waits.
+   */
+  async function attach(refs) {
+    const input = document.querySelector('ms-add-media-button input[type="file"], input.file-input[type="file"]')
+    if (!input) return { error: 'AI Studio did not show its Upload files button', kind: 'error' }
+    const before = mediaCount()
+    const dt = new DataTransfer()
+    for (const r of refs) {
+      const bytes = Uint8Array.from(atob(r.b64), (c) => c.charCodeAt(0))
+      dt.items.add(new File([bytes], r.name || 'face.jpg', { type: r.mime || 'image/jpeg' }))
+    }
+    input.files = dt.files
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+    for (let i = 0; i < 60; i++) {
+      await sleep(500)
+      if (document.querySelector(ACK)) {
+        await send({ type: 'show-tab' }) // the user answers it; until then the prompt waits (2 minutes, then Viku pauses)
+        for (let j = 0; j < 240 && document.querySelector(ACK); j++) await sleep(500)
+        if (document.querySelector(ACK)) return { error: 'AI Studio asks you to acknowledge its rules for uploaded photos once — click Acknowledge in the Viku tab', kind: 'attention' }
+      }
+      const imgs = [...document.querySelectorAll('ms-prompt-media img')]
+      if (mediaCount() >= before + refs.length && imgs.length && imgs.every((im) => im.complete && im.naturalWidth)) {
+        await sleep(800)
+        return null
+      }
+    }
+    return { error: 'AI Studio did not take the face photo', kind: 'error' }
   }
 
   function runButton() {
@@ -127,6 +186,12 @@
     if (!box) return { error: 'AI Studio did not show its prompt box. Open the Viku tab and check AI Studio (sign-in or terms).', kind: 'attention' }
     // a page that has only just loaded shows its prompt box before Run works (first try in a new tab missed twice)
     if (performance.now() < 10000) await sleep(10000 - performance.now())
+    // 2a. "Same face": the reference photo goes in first
+    if (item.refs?.length) {
+      const bad = await attach(item.refs)
+      if (bad) return bad
+    }
+    await vertical()
     const imgsBefore = bigImages().length
     const errsBefore = errors().length
 

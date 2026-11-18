@@ -5,6 +5,8 @@ import { api } from '@/api'
 import { useApp } from '@/state/app'
 import { readableName } from '@/lib/cutaways'
 import { ExtensionSetup } from '../ExtensionSetup'
+import { FacePicker } from '../FacePicker'
+import { faceThumb, useFaces } from '@/lib/faces'
 import { Button, IconButton, Progress, Thumb } from '../ui'
 
 /** "reel3-04-carried-home" → "carried home" (falls back to the whole name) */
@@ -54,6 +56,8 @@ export function AiPicturesDrawer() {
     }
   }, [open, set])
 
+  const faces = useFaces((s) => s.faces)
+  const faceFile = (id: string): string | undefined => faces.find((f) => f.id === id)?.file
   const ext = gem?.extension
   const connected = Boolean(ext?.connected)
   const embedded = gem?.mode === 'embedded'
@@ -102,7 +106,7 @@ export function AiPicturesDrawer() {
     const b = window.viku
     if (!b) return
     await b.signin.remove(i.id)
-    await b.signin.queue([{ prompt: i.prompt, name: i.name, folder: i.folder, meta: i.meta }])
+    await b.signin.queue([{ prompt: i.prompt, name: i.name, folder: i.folder, meta: i.meta, faceId: i.faceId }])
   }
   const retryAll = async (): Promise<void> => {
     for (const i of items.filter((x) => x.status === 'failed')) await retry(i)
@@ -147,6 +151,8 @@ export function AiPicturesDrawer() {
 
         {!connected && !embedded && <ExtensionSetup port={ext?.port} />}
 
+        <FacePicker compact />
+
         {sorted.length > 0 && (
           <section className="aip-list" aria-label="Pictures">
             <div className="aip-list-head small">
@@ -171,7 +177,14 @@ export function AiPicturesDrawer() {
                     <span className="aip-item-title ellipsis" title={i.prompt}>
                       {pictureTitle(i.name)}
                     </span>
-                    <span className="small muted ellipsis">{reelLabel(i)}</span>
+                    <span className="aip-item-sub small muted">
+                      {i.faceId && (
+                        <span className="aip-face" title={`Same face: ${i.faceName ?? ''}`}>
+                          {faceFile(i.faceId) ? <Thumb src={faceThumb(faceFile(i.faceId) as string, 48)} alt={i.faceName ?? 'Face'} /> : null}
+                        </span>
+                      )}
+                      <span className="ellipsis">{reelLabel(i)}</span>
+                    </span>
                     {i.status === 'failed' && i.error && <span className="small aip-err">{i.error}</span>}
                   </span>
                   <span className={`aip-chip c-${i.status}`}>{i.status === 'sent' ? 'Making…' : i.status === 'queued' ? 'Waiting' : i.status === 'captured' ? 'Done' : 'Failed'}</span>

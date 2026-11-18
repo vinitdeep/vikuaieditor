@@ -2,6 +2,25 @@
 
 Contract: `ARCHITECTURE.md`. Update this file every session.
 
+## Session 9c (2026-11-18): "Same face" — character consistency for AI pictures
+- Faces: `app/src/main/faces.ts` FaceStore in `<userData>/faces` (face-<id>.jpg, long side <= 1024, faces.json with
+  `selected`). IPC `faces:*` + `window.viku.faces`. Queue items carry `faceId`/`faceName`; `queue()` adds FACE_ASK
+  ("Use the person in the attached photo ... same person") after "Create one picture". `extNext` sends
+  `refs:[{name,mime,b64}]`; a face removed while queued -> that item fails with a clear message.
+- Extension content.js: `attach(refs)` = DataTransfer onto AI Studio's own `ms-add-media-button input[type=file]`
+  + change event (chip = `ms-prompt-media img`); `vertical()` sets Run settings -> Aspect ratio mat-select to 9:16;
+  output images exclude `ms-prompt-box/ms-prompt-media` and turns with `[data-turn-role="User"]` (the attached photo
+  shows there as a big data: image). First upload on an account shows `ms-copyright-acknowledgement-dialog` -> tab is
+  brought to the front, waits 2 min, then fails 'attention' (user must click Acknowledge; the extension never does).
+  The user's own account: acknowledged 2026-11-18 (user said yes in chat).
+- UI: `components/FacePicker.tsx` (radiogroup of round faces + No face + Add; rename/remove; "Use the person in this
+  picture" on a cutaway with an image) in the Cutaway inspector and the AI pictures drawer; drawer rows show the face.
+  Thumbs via `faceThumb()` (viku-thumb scheme, works on the mock adapter too).
+- Tests: `scripts/e2e-extension.mjs` now has a face case (stand-in page with Upload files + Aspect ratio + user turn):
+  PASS (attached 1 jpeg, 9:16, the photo not taken as the answer). `scripts/shots-faces.mjs <face.jpg> [face2]` PASS
+  -> screenshots/faces-*.png. LIVE in real AI Studio (Claude in Chrome, same attach/vertical code): soldier face crop
+  -> "mother hugs returning son" 768x1376, same man. Note: the mother still had a small bindi despite the prompt.
+
 ## Session 9 (2026-11-18): AI Studio for OTHER churches - research + probe (NOT in the app yet)
 - Goal (user): every church signs in with its OWN Google AI Studio account and Viku makes the pictures automatically.
 - Facts checked 2026-11-18: free API keys have 0 RPM/RPD on every Nano Banana image model (user's AI Studio
@@ -68,7 +87,8 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
   shows "Automatic - Viku extension connected". That picture took 3.5 min: the adopted tab was asleep / ran an old
   script -> background reloads its tab when it is discarded or does not answer the poke (content.js now replies);
   live re-run: 14 s from queue to file. Installer rebuilt + reinstalled with the fix. The user Chrome loads the
-  extension from the REPO folder (Documents...extension), churches from <install>esourcesextension.
+  extension from the REPO folder (Documents...extension), churches from <install>
+esourcesextension.
 - NO SEPARATE WINDOW while generating (user asked): new AI pictures DRAWER in the main window
   (`components/shell/AiPicturesDrawer.tsx`, `useApp.aiOpen`), opened by the top-bar "AI pictures" chip (count badge)
   and by `lib/gemini.openAiPanel()` instead of `signin.open('gemini')` in generateForCutaway / queueEmptyCutaways /

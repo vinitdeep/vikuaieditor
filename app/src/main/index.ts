@@ -6,8 +6,9 @@ import { EngineManager } from './engine'
 import { loadPrefs, publicPrefs, savePrefs } from './prefs'
 import { SignInManager } from './signin'
 import { startExtBridge } from './extbridge'
+import { FaceStore } from './faces'
 import { handleThumbs, registerThumbScheme } from './thumbs'
-import { IPC, type AppInfo, type EngineRequest, type FileFilter, type GenMeta, type GeminiMode, type Prefs, type Rect, type SignInCard } from '../shared/ipc'
+import { IPC, type AppInfo, type EngineRequest, type FileFilter, type GeminiMode, type QueueAdd, type Prefs, type Rect, type SignInCard } from '../shared/ipc'
 
 const isDev = !app.isPackaged && Boolean(process.env.ELECTRON_RENDERER_URL)
 const PRELOAD = join(__dirname, '../preload/index.js')
@@ -54,6 +55,14 @@ const signin = new SignInManager(
     extensionFolder: () => (app.isPackaged ? join(process.resourcesPath, 'extension') : resolve(app.getAppPath(), '..', 'extension'))
   }
 )
+
+// "Same face" reference photos, attached to AI Studio prompts by the browser extension
+const faces = new FaceStore(
+  () => join(app.getPath('userData'), 'faces'),
+  (st) => broadcast(IPC.facesEvt, st)
+)
+faces.load()
+signin.setFaces(faces)
 
 function readText(p: string): string | undefined {
   try {
@@ -196,7 +205,7 @@ function registerIpc(): void {
   ipcMain.handle(IPC.signinBounds, (_e, b: Rect | null) => signin.setGeminiBounds(b))
   ipcMain.handle(IPC.signinNav, (_e, a: 'back' | 'forward' | 'reload' | 'home') => signin.nav(a))
   ipcMain.handle(IPC.signinState, () => signin.state())
-  ipcMain.handle(IPC.signinQueue, (_e, items: { prompt: string; name: string; folder?: string; meta?: GenMeta }[]) => signin.queue(items))
+  ipcMain.handle(IPC.signinQueue, (_e, items: QueueAdd[]) => signin.queue(items))
   ipcMain.handle(IPC.signinMarkAttached, (_e, id: string) => signin.markAttached(id))
   ipcMain.handle(IPC.signinList, () => signin.list())
   ipcMain.handle(IPC.signinSendNext, () => signin.sendNext())
@@ -204,6 +213,11 @@ function registerIpc(): void {
   ipcMain.handle(IPC.signinClearDone, () => signin.clearDone())
   ipcMain.handle(IPC.signinMode, (_e, m: GeminiMode) => signin.setMode(m === 'embedded' ? 'embedded' : 'browser'))
   ipcMain.handle(IPC.signinOpenBrowser, () => signin.openBrowser())
+  ipcMain.handle(IPC.facesList, () => faces.list())
+  ipcMain.handle(IPC.facesAdd, (_e, paths: string[], name?: string) => faces.add(Array.isArray(paths) ? paths.map(String) : [], name))
+  ipcMain.handle(IPC.facesRemove, (_e, id: string) => faces.remove(String(id)))
+  ipcMain.handle(IPC.facesSelect, (_e, id: string) => faces.select(String(id ?? '')))
+  ipcMain.handle(IPC.facesRename, (_e, id: string, name: string) => faces.rename(String(id), String(name ?? '')))
   ipcMain.handle(IPC.signinRevealExtension, async () => {
     const s = await signin.state()
     if (existsSync(s.extension.folder)) await shell.openPath(s.extension.folder)

@@ -7,6 +7,7 @@ import { useEditor } from '@/state/editor'
 import { usePlayback } from '@/state/playback'
 import { activeAt, reelDuration } from '@/lib/reel'
 import { generateForCutaway, genKey, useGen } from '@/lib/gemini'
+import { FacePicker } from '../FacePicker'
 import { cutawayName, cutawayPrompt, setCutawayImage } from '@/lib/cutaways'
 import { Button, Empty, IconButton, Section, Slider, TextInput, Thumb } from '../ui'
 import { Row, TimeField } from './common'
@@ -161,6 +162,7 @@ export function CutawayPanel({ reel }: { reel: Reel }) {
           aria-label="Image prompt"
         />
         {c.need && !prompt && <p className="small muted">Viku planned this prompt from the captions it covers — type to replace it.</p>}
+        <FacePicker fromImage={c.img || undefined} />
         <Button size="sm" variant={c.img ? 'default' : 'primary'} icon={Sparkles} onClick={gen} disabled={queued}>
           {queued ? 'Queued — waiting for the image' : c.img ? 'Generate a replacement' : 'Generate in AI Studio'}
         </Button>

@@ -31,15 +31,45 @@ const STAND_IN = `<!doctype html><html><head><title>Google AI Studio (stand-in)<
 <textarea aria-label="Enter a prompt" placeholder="Start typing a prompt to see what our models can do"></textarea>
 <button class="ctrl-enter-submits ms-button-primary">Run Ctrl</button>
 <div>gemini-3.1-flash-image</div>
-<button role="radio" aria-checked="false" id="imgonly" onclick="this.setAttribute('aria-checked','true')">Images only</button></main>
+<button role="radio" aria-checked="false" id="imgonly" onclick="this.setAttribute('aria-checked','true')">Images only</button>
+<mat-select aria-label="Aspect ratio" id="aspect">Auto</mat-select>
+<ms-prompt-box><ms-add-media-button><input type="file" class="file-input" multiple></ms-add-media-button><div id="media"></div></ms-prompt-box></main>
 <script>
-  window.__runs = []
+  // kept across the Viku tab's reloads (it opens a fresh chat after every picture)
+  const keep = (k) => { const a = JSON.parse(sessionStorage.getItem(k) || '[]'); a.push = function (...v) { const n = Array.prototype.push.apply(this, v); sessionStorage.setItem(k, JSON.stringify(this)); return n }; return a }
+  window.__runs = keep('runs')
+  window.__attached = keep('attached')
   const ta = document.querySelector('textarea')
+  // Run settings -> Aspect ratio: a mat-select whose options open in an overlay
+  const aspect = document.getElementById('aspect')
+  aspect.addEventListener('click', () => {
+    for (const v of ['Auto', '1:1', '9:16', '16:9']) {
+      const o = document.createElement('mat-option'); o.textContent = v
+      o.addEventListener('click', () => { aspect.textContent = v; document.querySelectorAll('mat-option').forEach((x) => x.remove()) })
+      document.body.appendChild(o)
+    }
+  })
+  // Upload files: the picked photo shows as a chip with its picture in the prompt box
+  const fileInput = document.querySelector('input[type=file]')
+  fileInput.addEventListener('change', () => {
+    for (const f of fileInput.files) {
+      window.__attached.push({ name: f.name, type: f.type, size: f.size })
+      const m = document.createElement('ms-prompt-media'); const img = new Image(); img.src = URL.createObjectURL(f); m.appendChild(img)
+      document.getElementById('media').appendChild(m)
+    }
+  })
   document.querySelector('button').addEventListener('click', () => {
     const prompt = ta.value
-    window.__runs.push(prompt)
+    const media = [...document.querySelectorAll('#media ms-prompt-media')]
+    window.__runs.push({ prompt, attached: media.length, aspect: aspect.textContent })
     ta.value = ''
     const turns = document.getElementById('turns')
+    // the attached photo moves into the user's turn (a big picture that is NOT the answer)
+    if (media.length) {
+      const turn = document.createElement('ms-chat-turn'); const role = document.createElement('div'); role.setAttribute('data-turn-role', 'User')
+      for (const m of media) role.appendChild(m.querySelector('img'))
+      turn.appendChild(role); turns.appendChild(turn); document.getElementById('media').innerHTML = ''
+    }
     setTimeout(() => {
       if (/NOIMAGE/.test(prompt)) {
         const e = document.createElement('div'); e.textContent = 'No image generated'; turns.appendChild(e); return
@@ -170,6 +200,37 @@ try {
   const imgOnly = await workerTabs[0].evaluate(() => document.getElementById('imgonly').getAttribute('aria-checked'))
   log('Images only switched on in the Viku tab:', imgOnly)
   if (imgOnly !== 'true') throw new Error('Images only was not switched on')
+
+  // "Same face": a face photo saved in Viku goes with the prompt — attached in AI Studio, asked for in the words, and
+  // the photo itself (a big picture in the user's turn) is never mistaken for the answer
+  const faceSrc = q[0].file
+  let fs = await st((p) => window.viku.faces.add([p], 'Test Pastor'), faceSrc)
+  const face = fs.faces.find((f) => f.id === fs.selected)
+  log('face saved:', face?.name, basename(face?.file ?? ''), pngSize(readFileSync(face.file)) ?? 'jpeg')
+  if (!face) throw new Error('the added face was not chosen')
+  await st(() => window.viku.signin.clearDone())
+  await st((id) => window.viku.signin.queue([{ prompt: 'Create one picture (an image, not words). VERTICAL 9:16: a pastor praying in a village church', name: 'reel1-cut05-face', faceId: id }]), face.id)
+  let fi = null
+  const untilF = Date.now() + 120000
+  while (Date.now() < untilF) {
+    await sleep(2000)
+    fi = (await st(() => window.viku.signin.list())).find((i) => i.name === 'reel1-cut05-face')
+    if (fi?.status === 'captured' || fi?.status === 'failed') break
+  }
+  const lastRun = await workerTabs[0].evaluate(() => window.__runs[window.__runs.length - 1])
+  const attached = await workerTabs[0].evaluate(() => window.__attached)
+  const fsize = fi?.file ? pngSize(readFileSync(fi.file)) : null
+  log('face prompt:', JSON.stringify({ status: fi?.status, faceName: fi?.faceName, attachedInRun: lastRun?.attached, aspect: lastRun?.aspect, file: fi?.file && basename(fi.file), size: fsize?.join('x'), error: fi?.error }))
+  log('  attached files:', JSON.stringify(attached))
+  if (fi?.status !== 'captured') throw new Error('the face prompt was not made')
+  if (fi.faceName !== 'Test Pastor' || !/same person/.test(fi.prompt) || !/same person/.test(lastRun.prompt)) throw new Error('the prompt does not ask for the same face')
+  if (lastRun.attached !== 1 || attached.length !== 1 || !/^image\/jpeg$/.test(attached[0].type)) throw new Error('the face photo was not attached in AI Studio')
+  if (lastRun.aspect !== '9:16') throw new Error('aspect ratio was not set to 9:16')
+  if (!fsize || fsize[0] !== 1080 || fsize[1] !== 1920) throw new Error('the face photo was taken for the answer')
+  // a face removed while its prompt waits: that prompt fails with a clear message instead of running without it
+  await st((id) => window.viku.faces.remove(id), face.id)
+  fs = await st(() => window.viku.faces.list())
+  if (fs.faces.length || fs.selected) throw new Error('the face was not removed')
 
   // AI Studio answers "No image generated": failed at once with a hint, not retried with the same words
   await st(() => window.viku.signin.clearDone())
