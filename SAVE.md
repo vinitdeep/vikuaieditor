@@ -77,6 +77,15 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
   Retry / remove / Clear done / Folder; "Advanced" opens the Sign-in window only when not connected. Escape closes.
   `scripts/shots-ai-drawer.mjs` PASS (plays the extension through the bridge; asserts 1 window). Installed app
   re-checked: real picture made while the drawer showed "Making picture 3 of 3", windows ever open = 1.
+- Cutaway inspector prompt "our tounge is not in our control" never made a picture: sent raw, Nano Banana 2 (output
+  "Images & text") wrote an essay; with "Images only" it says "No image generated". Fixes: renderer
+  `lib/cutaways.imagePrompt()` - every AI Studio prompt starts "Create one picture (an image, not words)." and a short
+  typed line becomes the SCENE of Viku's full look + Christian-people guard (verified live: 768x1376 picture of that
+  exact line); content.js clicks Run settings -> "Images only" (resets per chat), fresh chat = no `ms-chat-turn`, "No
+  image generated" -> kind `noimage` -> failed at once with a hint (no retry); background reloads itself when its files
+  on disk change (codeHash every alarm) so updates need no chrome://extensions visit after this one.
+  NOTE: Chrome no longer opens chrome://extensions from the command line (opens the profile picker / a New Tab);
+  don't send keystrokes to the desktop - ask the user to press reload once.
 - NEXT: Chrome Web Store listing (needs a $5 developer account); merge the branch.
 
 ## Session 6 (2026-11-17): AI Studio sign-in fix

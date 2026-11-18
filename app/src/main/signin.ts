@@ -670,13 +670,15 @@ export class SignInManager implements ExtHandler {
       this.toast({ kind: 'warn', text: 'AI Studio needs you in the browser (sign in or accept its terms) — the Viku tab is now in front.' })
     }
     if (item && item.status !== 'captured') {
-      if (pause || (kind !== 'content' && (item.tries ?? 0) < 2)) {
+      if (pause || (kind !== 'content' && kind !== 'noimage' && (item.tries ?? 0) < 2)) {
         item.status = 'queued'
         item.sentBy = undefined
         if (pause) item.tries = Math.max(0, (item.tries ?? 1) - 1)
       } else {
         item.status = 'failed'
         if (kind === 'content') this.toast({ kind: 'error', text: `AI Studio would not draw “${item.name}”: ${error}` })
+        if (kind === 'noimage')
+          this.toast({ kind: 'warn', text: `AI Studio could not picture “${item.name}”. Describe something to see — who, where, doing what — and generate it again.` })
       }
       item.error = error
       this.emitQueue()

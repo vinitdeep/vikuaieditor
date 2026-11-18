@@ -30,7 +30,8 @@ const STAND_IN = `<!doctype html><html><head><title>Google AI Studio (stand-in)<
 <main><div id="turns"></div>
 <textarea aria-label="Enter a prompt" placeholder="Start typing a prompt to see what our models can do"></textarea>
 <button class="ctrl-enter-submits ms-button-primary">Run Ctrl</button>
-<div>gemini-3.1-flash-image</div></main>
+<div>gemini-3.1-flash-image</div>
+<button role="radio" aria-checked="false" id="imgonly" onclick="this.setAttribute('aria-checked','true')">Images only</button></main>
 <script>
   window.__runs = []
   const ta = document.querySelector('textarea')
@@ -40,6 +41,9 @@ const STAND_IN = `<!doctype html><html><head><title>Google AI Studio (stand-in)<
     ta.value = ''
     const turns = document.getElementById('turns')
     setTimeout(() => {
+      if (/NOIMAGE/.test(prompt)) {
+        const e = document.createElement('div'); e.textContent = 'No image generated'; turns.appendChild(e); return
+      }
       if (/LIMITME/.test(prompt)) {
         const e = document.createElement('div'); e.textContent = 'Permission denied. Please check your account permissions and project settings.'; turns.appendChild(e); return
       }
@@ -163,6 +167,23 @@ try {
   const inUser = await tokVisible(userTab)
   log('token counter visible - Viku tab:', inViku, '| your tab:', inUser)
   if (inViku || !inUser) throw new Error('token counter should be hidden in the Viku tab only')
+  const imgOnly = await workerTabs[0].evaluate(() => document.getElementById('imgonly').getAttribute('aria-checked'))
+  log('Images only switched on in the Viku tab:', imgOnly)
+  if (imgOnly !== 'true') throw new Error('Images only was not switched on')
+
+  // AI Studio answers "No image generated": failed at once with a hint, not retried with the same words
+  await st(() => window.viku.signin.clearDone())
+  await st(() => window.viku.signin.queue([{ prompt: 'NOIMAGE our tongue is not in our control', name: 'reel1-cut09-noimage' }]))
+  let ni = null
+  const until1 = Date.now() + 90000
+  while (Date.now() < until1) {
+    await sleep(2000)
+    ni = (await st(() => window.viku.signin.list())).find((i) => i.name === 'reel1-cut09-noimage')
+    if (ni?.status === 'failed') break
+  }
+  log('no-image prompt:', JSON.stringify({ status: ni?.status, tries: ni?.tries, error: ni?.error }))
+  if (ni?.status !== 'failed' || ni.tries !== 1) throw new Error('a no-image answer should fail at once')
+  await st((id) => window.viku.signin.remove(id), ni.id)
 
   // an AI Studio limit pauses the queue and keeps the prompt
   await st(() => window.viku.signin.clearDone())

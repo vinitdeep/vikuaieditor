@@ -42,9 +42,25 @@
   // real error messages only: AI Studio also shows adverts like "...more quota, frontier models and more", which
   // must not stop the queue
   const ERR =
-    /(permission denied[^\n]*|failed to generate[^\n]*|(exceeded|reached|out of)[^\n]{0,40}quota[^\n]*|quota (exceeded|reached)[^\n]*|rate limit (exceeded|reached)[^\n]*|resource (has been )?exhausted[^\n]*|too many requests[^\n]*|internal error[^\n]*|try again later[^\n]*|blocked[^\n]*safety[^\n]*|violat[^\n]*polic[^\n]*)/gi
+    /(no image generated[^\n]*|permission denied[^\n]*|failed to generate[^\n]*|(exceeded|reached|out of)[^\n]{0,40}quota[^\n]*|quota (exceeded|reached)[^\n]*|rate limit (exceeded|reached)[^\n]*|resource (has been )?exhausted[^\n]*|too many requests[^\n]*|internal error[^\n]*|try again later[^\n]*|blocked[^\n]*safety[^\n]*|violat[^\n]*polic[^\n]*)/gi
   const errors = () => (document.body?.innerText.match(ERR) || []).map((s) => s.trim()).filter((s) => !/upgrade|frontier models|get more/i.test(s))
-  const isFresh = () => location.pathname === '/prompts/new_chat' && bigImages().length === 0 && errors().length === 0
+  // a clean chat: nothing has been asked in it yet (each prompt gets its own chat, so a retry never piles up in an old one)
+  const isFresh = () => location.pathname === '/prompts/new_chat' && document.querySelectorAll('ms-chat-turn').length === 0 && bigImages().length === 0 && errors().length === 0
+
+  /** Run settings -> Output format -> "Images only", so the image model draws instead of answering in words.
+   *  AI Studio resets it for every new chat. */
+  async function imagesOnly() {
+    for (let i = 0; i < 10; i++) {
+      const b = [...document.querySelectorAll('button[role="radio"], [role="radio"]')].find((e) => /images only/i.test(e.textContent || ''))
+      if (b) {
+        if (b.getAttribute('aria-checked') !== 'true') b.click()
+        await sleep(300)
+        return b.getAttribute('aria-checked') === 'true'
+      }
+      await sleep(400)
+    }
+    return false // run settings panel closed or renamed: the prompt itself also asks for a picture
+  }
 
   function runButton() {
     const btns = [...document.querySelectorAll('button')]
@@ -75,6 +91,7 @@
   }
 
   function classify(text) {
+    if (/no image generated/i.test(text)) return 'noimage' // AI Studio could not draw this prompt
     if (/quota|rate limit|exhausted|too many|permission denied/i.test(text)) return 'limit' // stop for now, try later
     if (/safety|polic/i.test(text)) return 'content' // this prompt will not work: skip it
     return 'error'
@@ -118,6 +135,7 @@
     box.focus()
     setter.call(box, item.prompt)
     box.dispatchEvent(new Event('input', { bubbles: true }))
+    await imagesOnly()
     // 3. press Run, and make sure AI Studio took it: the prompt shows up as a chat turn (on a page that has only just
     //    loaded, the button can exist before it works). Up to 3 presses, then give up quickly so Viku retries.
     const head = item.prompt.slice(0, 40)

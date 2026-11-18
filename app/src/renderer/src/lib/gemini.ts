@@ -5,7 +5,7 @@ import type { Cutaway, Reel } from '@/api/types'
 import { toast, useApp } from '@/state/app'
 import { saveNow, useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
-import { cutawayPrompt, readableName, useLibraryIndex } from './cutaways'
+import { cutawayPrompt, imagePrompt, readableName, useLibraryIndex } from './cutaways'
 
 /**
  * AI Studio generation for empty cutaways.
@@ -67,7 +67,8 @@ export async function generateForCutaway(reelId: string, index: number, promptOv
     openAiPanel()
     return
   }
-  const prompt = promptOverride?.trim() || cutawayPrompt(c, captionTextUnder(reel, c.t0, c.t1))
+  // a line typed in the Cutaway inspector becomes the scene of a full picture prompt (see imagePrompt)
+  const prompt = imagePrompt(promptOverride?.trim() || cutawayPrompt(c, captionTextUnder(reel, c.t0, c.t1)))
   const meta: GenMeta = { reelId, index, t0: c.t0, slug: c.need?.slug }
   try {
     const items = await bridge.signin.queue([{ prompt, name: plannedName(reel, index), meta }])
@@ -91,7 +92,7 @@ export async function queueEmptyCutaways(reels: Reel[]): Promise<number> {
     reel.cutaways.flatMap((c, index) =>
       c.img || queued[genKey(reel.id, c.t0)]
         ? []
-        : [{ prompt: cutawayPrompt(c, captionTextUnder(reel, c.t0, c.t1)), name: plannedName(reel, index), meta: { reelId: reel.id, index, t0: c.t0, slug: c.need?.slug } as GenMeta }]
+        : [{ prompt: imagePrompt(cutawayPrompt(c, captionTextUnder(reel, c.t0, c.t1))), name: plannedName(reel, index), meta: { reelId: reel.id, index, t0: c.t0, slug: c.need?.slug } as GenMeta }]
     )
   )
   if (!batch.length) return 0

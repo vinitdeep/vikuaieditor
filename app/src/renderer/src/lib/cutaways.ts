@@ -76,8 +76,24 @@ export function cutawayName(c: Cutaway, idx?: LibIndex): string {
 /** The prompt to send to AI Studio for an empty cutaway (the engine's planned prompt when there is one). */
 export function cutawayPrompt(c: Cutaway, captionText: string): string {
   if (c.need?.prompt) return c.need.prompt
-  const scene = captionText.trim() || 'a quiet hopeful scene that fits a sermon moment'
-  return `VERTICAL 9:16 portrait. Warm cinematic illustration, no text, no logos: ${scene}`
+  return imagePrompt(captionText.trim() || 'a quiet hopeful moment that fits a sermon')
+}
+
+const ASK = 'Create one picture (an image, not words).'
+const LOOK = 'VERTICAL 9:16 portrait. Photorealistic cinematic still, India, warm hopeful light, shallow depth of field, soft film grain, no text, no letters.'
+const PEOPLE =
+  'The people are Indian Christians with clean, plain, unmarked foreheads and simple everyday clothes; the setting is a home, village, field or simple church, never a temple or shrine.'
+
+/**
+ * What is sent to AI Studio for a cutaway. Gemini's image model answers a bare idea ("our tongue is not in our
+ * control") with an essay, or with "No image generated" when only images are allowed — so a short line someone types
+ * becomes the SCENE of a full picture prompt in Viku's look, and a full prompt (Viku's own plan, or one written with
+ * "9:16 / vertical") only gets the request for a picture in front.
+ */
+export function imagePrompt(text: string): string {
+  const t = text.trim()
+  if (/9:16|vertical/i.test(t)) return t.startsWith(ASK) ? t : `${ASK} ${t}`
+  return `${ASK} ${LOOK} ${PEOPLE} SCENE: one clear moment a viewer can see that shows this sermon line - "${t}". Show it with real people in a real place (faces, gestures, light), not as words or symbols.`
 }
 
 /** Put a library / file image on an existing cutaway (keeps its timing and motion). */

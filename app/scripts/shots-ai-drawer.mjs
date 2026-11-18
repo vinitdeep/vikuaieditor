@@ -1,4 +1,4 @@
-/* global window, document */
+/* global window -- page callbacks run in the renderer */
 // Screenshots of the AI pictures drawer (main window) in its states, on the mock adapter with an isolated profile:
 //   1. extension not set up (setup guide)   2. connected + working (done / making / waiting / failed rows)
 // The extension is played by this script through the real bridge (POST with an extension Origin), so no browser

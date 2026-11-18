@@ -84,7 +84,38 @@ async function workerTab(model, activate) {
   return tab
 }
 
+/** Fingerprint of the extension's own files as they are on disk now (an unpacked extension reads them from its folder). */
+async function codeHash() {
+  let text = ''
+  for (const f of ['manifest.json', 'background.js', 'content.js', 'popup.js', 'popup.html']) {
+    text += await fetch(chrome.runtime.getURL(f), { cache: 'no-store' })
+      .then((r) => r.text())
+      .catch(() => '')
+  }
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * Viku updates the extension folder when it is updated; Chrome keeps running the old code until the extension is
+ * reloaded. Compare the files on disk with the ones this copy started with and reload by itself when they changed.
+ */
+async function reloadIfUpdated() {
+  const now = await codeHash().catch(() => '')
+  if (!now) return false
+  const was = await get('codeHash', '')
+  if (!was) {
+    await chrome.storage.local.set({ codeHash: now })
+    return false
+  }
+  if (was === now) return false
+  await chrome.storage.local.set({ codeHash: now })
+  chrome.runtime.reload()
+  return true
+}
+
 async function tick(reason) {
+  if (reason === 'alarm' && (await reloadIfUpdated())) return
   if (!(await get('enabled', true))) {
     await setStatus({ state: 'off', note: 'Turned off in the Viku extension' })
     await hello().catch(() => undefined)
@@ -115,6 +146,7 @@ async function tick(reason) {
 
 chrome.runtime.onInstalled.addListener(async () => {
   chrome.alarms.create('viku', { periodInMinutes: 0.5 })
+  await chrome.storage.local.set({ codeHash: await codeHash().catch(() => '') }) // the code this copy runs
   // after a reload / update, a Viku tab left open still runs the OLD script (Chrome does not re-inject it):
   // refresh only Viku's own tabs, recognised by the image-model address they were opened with
   const mine = await get('tabId', 0)
