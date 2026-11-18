@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, watch, writeFileSync, type FSWatcher } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import { imageInfo } from './imageSize'
+import type { ExtHandler, ExtHello, ExtHelloInfo } from './extbridge'
 import {
   IPC,
   type CaptureEvent,
@@ -27,7 +28,15 @@ interface ModeOptions {
   mode: () => GeminiMode
   watchDir: () => string
   saveMode: (mode: GeminiMode) => void
+  /** folder holding the unpacked Viku browser extension */
+  extensionFolder: () => string
 }
+
+/** AI Studio image model the extension opens (`?model=` preselects it) */
+const EXT_MODEL = 'gemini-3.1-flash-image'
+/** an extension prompt with no answer after this long goes back to the queue */
+const EXT_STALE_MS = 4 * 60_000
+const EXT_ALIVE_MS = 75_000
 
 const IMAGE_FILE = /.(png|jpe?g|webp)$/i
 
@@ -36,8 +45,13 @@ const IMAGE_FILE = /.(png|jpe?g|webp)$/i
  * The user signs in to Google themselves: we never fill credentials or store passwords.
  *
  * Two modes:
- *  - browser (default): AI Studio runs in the user's own browser, where Google allows sign-in. "Send next" copies the
- *    prompt; images the user downloads land in their Downloads folder, which is watched while a prompt is waiting.
+ *  - browser (default): AI Studio runs in the user's own browser, where Google allows sign-in.
+ *    With the Viku browser extension (extension/, talks to ./extbridge on 127.0.0.1) the queue runs by itself: the
+ *    extension takes each queued prompt, runs it in an AI Studio tab of the user's own signed-in Chrome / Edge and
+ *    posts the picture back. Google refuses AI Studio in remote-controlled (CDP) browsers, so an extension is the
+ *    only automatic route that works with the user's own account.
+ *    Without the extension, "Send next" copies the prompt; images the user downloads land in their Downloads folder,
+ *    which is watched while a prompt is waiting.
  *  - embedded: AI Studio inside a view in this window. Google refuses sign-in in embedded browsers for many accounts
  *    ("This browser or app may not be secure"), so this is only a fallback for sessions that already work.
  *
@@ -46,8 +60,15 @@ const IMAGE_FILE = /.(png|jpe?g|webp)$/i
  *  2. CDP Network fallback   -> any image response >= 1024 px (googleusercontent / inline base64 in RPC JSON).
  * Captures are matched to the prompt queue in order and named after the planned name.
  */
-export class SignInManager {
+export class SignInManager implements ExtHandler {
   private win: BrowserWindow | null = null
+  private ext: { seen: number; info: ExtHelloInfo; pausedUntil: number; port: number; wasConnected: boolean } = {
+    seen: 0,
+    info: {},
+    pausedUntil: 0,
+    port: 0,
+    wasConnected: false
+  }
   private view: WebContentsView | null = null
   private viewBounds: Rect | null = null
   private items: PromptItem[] = []
@@ -70,6 +91,13 @@ export class SignInManager {
     private modes: ModeOptions
   ) {
     this.load()
+    // the extension says hello every ~30 s: notice when it goes away
+    setInterval(() => {
+      if (this.extConnected() !== this.ext.wasConnected) {
+        this.ext.wasConnected = this.extConnected()
+        this.pushState()
+      }
+    }, 10_000).unref()
   }
 
   // ---------- persistence ----------
@@ -207,7 +235,7 @@ export class SignInManager {
   private onDownloadChange(p: string): void {
     // the browser writes *.crdownload / *.part first and renames to the final name when done
     if (!IMAGE_FILE.test(p)) return
-    if (!this.items.some((i) => i.status === 'sent')) return
+    if (!this.items.some((i) => i.status === 'sent' && i.sentBy !== 'extension')) return
     const t = this.settle.get(p)
     if (t) clearTimeout(t)
     this.settle.set(
@@ -221,7 +249,7 @@ export class SignInManager {
 
   private ingestDownload(p: string): void {
     try {
-      const sent = this.items.filter((i) => i.status === 'sent')
+      const sent = this.items.filter((i) => i.status === 'sent' && i.sentBy !== 'extension')
       if (!sent.length || !existsSync(p)) return
       // only files that appeared after the oldest waiting prompt was sent (not old downloads being touched)
       const since = Math.min(...sent.map((i) => i.sentAt ?? i.queuedAt ?? 0))
@@ -323,7 +351,17 @@ export class SignInManager {
       signedIn,
       mode: this.modes.mode(),
       watchDir: this.modes.watchDir(),
-      watching: Boolean(this.watcher)
+      watching: Boolean(this.watcher),
+      extension: {
+        connected: this.extConnected(),
+        port: this.ext.port,
+        version: this.ext.info.version,
+        page: this.ext.info.page,
+        state: this.ext.info.state,
+        note: this.ext.info.note,
+        pausedUntil: this.ext.pausedUntil > Date.now() ? this.ext.pausedUntil : 0,
+        folder: this.modes.extensionFolder()
+      }
     }
   }
 
@@ -406,12 +444,15 @@ export class SignInManager {
     return p
   }
 
-  /** Dedupe, match to the oldest waiting prompt, write under its planned name. */
-  private file(buf: Buffer, ext: string, via: CaptureVia, width: number, height: number): string | null {
+  /** Dedupe, match to the given prompt (or the oldest waiting one), write under its planned name. */
+  private file(buf: Buffer, ext: string, via: CaptureVia, width: number, height: number, targetId?: string): string | null {
     const hash = createHash('sha1').update(buf).digest('hex')
     if (this.seen.has(hash)) return null
     this.seen.add(hash)
-    const target = this.items.find((i) => i.status === 'sent') ?? this.items.find((i) => i.status === 'queued')
+    // prompts the extension is running are only ever filled by the extension's own answer
+    const target = targetId
+      ? this.items.find((i) => i.id === targetId && i.status !== 'captured')
+      : (this.items.find((i) => i.status === 'sent' && i.sentBy !== 'extension') ?? this.items.find((i) => i.status === 'queued'))
     const dir = this.ensureDir(target?.folder ?? this.capturesDir())
     const stem = target ? safeName(target.name) : `capture-${new Date().toISOString().replace(/[:.]/g, '-')}`
     const path = this.uniquePath(dir, stem, ext)
@@ -466,9 +507,17 @@ export class SignInManager {
   async sendNext(): Promise<SendResult> {
     const item = this.items.find((i) => i.status === 'queued')
     if (!item) return { ok: false, method: 'none' }
+    if (this.modes.mode() === 'browser' && this.extConnected()) {
+      // the extension takes queued prompts by itself; "Send next" just lifts a pause after an AI Studio limit
+      this.ext.pausedUntil = 0
+      this.pushState()
+      this.toast({ kind: 'info', text: 'The Viku extension is making these in your browser, one at a time — nothing to paste.' })
+      return { ok: true, method: 'extension', item }
+    }
     if (this.modes.mode() === 'browser') {
       clipboard.writeText(item.prompt)
       item.status = 'sent'
+      item.sentBy = 'clipboard'
       item.sentAt = Date.now()
       this.emitQueue()
       this.syncWatcher()
@@ -480,12 +529,14 @@ export class SignInManager {
     const typed = wc ? await this.typePrompt(wc, item.prompt) : false
     if (typed) {
       item.status = 'sent'
+      item.sentBy = 'typed'
       item.sentAt = Date.now()
       this.emitQueue()
       return { ok: true, method: 'typed', item }
     }
     clipboard.writeText(item.prompt)
     item.status = 'sent'
+    item.sentBy = 'clipboard'
     item.sentAt = Date.now()
     this.emitQueue()
     this.toast({ kind: 'warn', text: 'Prompt copied — click the AI Studio prompt box, paste (Ctrl+V) and send' })
@@ -527,6 +578,111 @@ export class SignInManager {
     } catch {
       return false
     }
+  }
+
+  // ---------- Viku browser extension (called by ./extbridge) ----------
+
+  setExtensionPort(port: number): void {
+    this.ext.port = port
+    this.pushState()
+  }
+
+  private extConnected(): boolean {
+    return Date.now() - this.ext.seen < EXT_ALIVE_MS
+  }
+
+  /** extension prompts that never came back (tab closed, browser quit) return to the queue */
+  private requeueStale(): void {
+    let changed = false
+    for (const i of this.items) {
+      if (i.status === 'sent' && i.sentBy === 'extension' && Date.now() - (i.sentAt ?? 0) > EXT_STALE_MS) {
+        i.status = 'queued'
+        i.sentBy = undefined
+        changed = true
+      }
+    }
+    if (changed) this.emitQueue()
+  }
+
+  extHello(info: ExtHelloInfo): ExtHello {
+    const first = !this.extConnected()
+    this.ext.seen = Date.now()
+    this.ext.info = { version: info.version, enabled: info.enabled, page: info.page, state: info.state, note: info.note }
+    this.requeueStale()
+    if (first) {
+      this.ext.wasConnected = true
+      if (this.modes.mode() === 'browser') this.toast({ kind: 'success', text: 'Viku extension connected — AI Studio pictures are made automatically in your browser' })
+    }
+    this.pushState()
+    const enabled = this.modes.mode() === 'browser'
+    const paused = this.ext.pausedUntil > Date.now()
+    return {
+      app: 'viku',
+      version: '1',
+      enabled,
+      waiting: enabled && !paused ? this.items.filter((i) => i.status === 'queued').length : 0,
+      model: EXT_MODEL,
+      paused
+    }
+  }
+
+  extNext(): { item: { id: string; prompt: string; name: string } | null; model: string } {
+    this.ext.seen = Date.now()
+    if (this.modes.mode() !== 'browser' || this.ext.pausedUntil > Date.now()) return { item: null, model: EXT_MODEL }
+    // one at a time: nothing new while another extension prompt is still out
+    this.requeueStale()
+    if (this.items.some((i) => i.status === 'sent' && i.sentBy === 'extension')) return { item: null, model: EXT_MODEL }
+    const item = this.items.find((i) => i.status === 'queued')
+    if (!item) return { item: null, model: EXT_MODEL }
+    item.status = 'sent'
+    item.sentBy = 'extension'
+    item.sentAt = Date.now()
+    item.tries = (item.tries ?? 0) + 1
+    item.error = undefined
+    this.emitQueue()
+    return { item: { id: item.id, prompt: item.prompt, name: item.name }, model: EXT_MODEL }
+  }
+
+  extResult(id: string, buf: Buffer): { ok: boolean; file?: string; error?: string } {
+    this.ext.seen = Date.now()
+    const info = imageInfo(buf)
+    if (!info) return { ok: false, error: 'not an image' }
+    if (Math.max(info.width, info.height) < MIN_SIDE) {
+      this.extFail(id, `picture too small (${info.width}×${info.height})`, 'error')
+      return { ok: false, error: 'too small' }
+    }
+    const file = this.file(buf, info.ext, 'extension', info.width, info.height, id)
+    return file ? { ok: true, file } : { ok: false, error: 'duplicate picture' }
+  }
+
+  extFail(id: string, error: string, kind: string): { ok: boolean; pause: boolean } {
+    this.ext.seen = Date.now()
+    const item = this.items.find((i) => i.id === id)
+    let pause = false
+    if (kind === 'limit') {
+      // AI Studio's own limit for this account: wait, then carry on with the same prompt
+      pause = true
+      this.ext.pausedUntil = Date.now() + 10 * 60_000
+      this.toast({ kind: 'warn', text: `${error} — Viku waits 10 minutes, then carries on. Press Send next to try sooner.` })
+    } else if (kind === 'attention') {
+      pause = true
+      this.ext.pausedUntil = Date.now() + 2 * 60_000
+      this.toast({ kind: 'warn', text: 'AI Studio needs you in the browser (sign in or accept its terms) — the Viku tab is now in front.' })
+    }
+    if (item && item.status !== 'captured') {
+      if (pause || (kind !== 'content' && (item.tries ?? 0) < 2)) {
+        item.status = 'queued'
+        item.sentBy = undefined
+        if (pause) item.tries = Math.max(0, (item.tries ?? 1) - 1)
+      } else {
+        item.status = 'failed'
+        if (kind === 'content') this.toast({ kind: 'error', text: `AI Studio would not draw “${item.name}”: ${error}` })
+      }
+      item.error = error
+      this.emitQueue()
+    }
+    this.pushState()
+    return { ok: true, pause }
   }
 
   private emitQueue(): void {

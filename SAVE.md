@@ -2,6 +2,69 @@
 
 Contract: `ARCHITECTURE.md`. Update this file every session.
 
+## Session 9 (2026-11-18): AI Studio for OTHER churches - research + probe (NOT in the app yet)
+- Goal (user): every church signs in with its OWN Google AI Studio account and Viku makes the pictures automatically.
+- Facts checked 2026-11-18: free API keys have 0 RPM/RPD on every Nano Banana image model (user's AI Studio
+  rate-limit page; pricing page Free Tier = "Not available") -> an API-key route is paid only. The AI Studio
+  Playground UI DID make a 768x1376 image on the user's account without billing (account shows a PRO badge, so a plain
+  free account is still to be confirmed). `https://aistudio.google.com/prompts/new_chat?model=gemini-3.1-flash-image`
+  preselects the model; prompt box = `textarea[aria-label="Enter a prompt"]`; Ctrl+Enter runs; result = `img.loaded-image`
+  with a blob: src (fetch it in-page -> base64).
+- Design: Viku launches the user's REAL Chrome/Edge with its own profile (`%LOCALAPPDATA%\Viku\google-browser`) +
+  `--remote-debugging-port=0` (no --enable-automation, so Google should allow sign-in; Chrome 136+ allows CDP only on a
+  non-default profile, which is what we want), user signs in once, Viku drives AI Studio over CDP and attaches via
+  `POST /reels/{id}/cutaways/{i}/image`. Becomes a third Sign-in mode "AI Studio - automatic (Viku browser)"; manual
+  browser mode stays as the fallback, Cloudflare stays the default. Caveats: Google ToS on automated access is a grey
+  area (keep it one-at-a-time, label it "uses your own AI Studio account"); page changes can break it.
+- Probe: `node scripts/aistudio-browser-probe.mjs ["prompt" ...]` (zero-dep, Node 22+ WebSocket; re-uses the open
+  browser; saves to %TEMP%\viku-aistudio-probe).
+- RESULT: the CDP route is BLOCKED by Google. (1) Sign-in in the debug-port Chrome -> /v3/signin/rejected "This
+  browser or app may not be secure". (2) Signing in in the SAME profile opened plainly (no port), closing, then
+  re-opening with the port keeps the login, but navigator.webdriver = true and every Run (Nano Banana 2, grounding on
+  or off) -> "Permission denied. Please check your account permissions and project settings." The same account and
+  model generated fine in the user's normal Chrome driven by an extension (Claude in Chrome). Do NOT try stealth flags
+  (hiding webdriver / AutomationControlled) - that is evading Google's bot detection.
+- Options left for other churches: Cloudflare Workers AI (default, works); a Viku Chrome extension in the church's
+  NORMAL Chrome that runs the queued prompt on "Send next" and posts the image back to Viku (no CDP; ToS grey area;
+  needs Chrome Web Store listing or developer-mode install); or an optional paid Gemini API key (official, reliable).
+- BUILT (user: "fix it"): the extension route. DOM-only driving (native setter + input event + Run click, no CDP)
+  verified on the user's real AI Studio: 768x1376 JPEG. `extension/` (MV3: background.js, content.js, popup) +
+  `app/src/main/extbridge.ts` + SignInManager ext* methods (`sentBy`, `tries`, `extension` state, pause) + Sign-in
+  window "Automatic: add the Viku extension" guide (Open extension folder / Copy chrome://extensions) + extraResources
+  `extension`. Contract in ARCHITECTURE.md (Online). `npm run typecheck`, `npm run lint` clean; test-queue PASS;
+  `node scripts/e2e-extension.mjs` PASS (2 prompts filed 1080x1920 under planned names, user's own AI Studio tab
+  untouched, "Permission denied" -> paused 10 min + requeued). The CDP probe profile (%LOCALAPPDATA%\Viku\
+  google-browser) was deleted.
+- LIVE PASS (user loaded the extension in their own Chrome): `node scripts/e2e-extension-live.mjs` -> 2/2 real AI
+  Studio pictures (768x1376 JPEG, ~840 KB) filed by the extension. First try stalled 3 min (Run pressed before the
+  freshly loaded page was ready) -> content.js now checks the prompt became a chat turn and presses Run up to 3x,
+  failing fast otherwise. The mother picture had a bindi + prayer beads -> `need_request` prompt (engine
+  brain/cutaways.py) now spells out "Christian context: no bindi, tilak, sindoor or forehead marks, no prayer beads,
+  temples, idols..." (AI Studio has no negative prompt). Engine 85 passed.
+- e2e-extension.mjs runs a private COPY of the extension on port 47941 (VIKU_EXT_PORT) - otherwise the extension in
+  the user's own Chrome joins the test (it did once, making the test prompts in real AI Studio).
+- Errors the user saw on chrome://extensions = "Extension context invalidated" from the OLD content script left in
+  an open tab after a reload -> content.js stops quietly when `chrome.runtime.id` is gone; background refreshes its own
+  `new_chat?model=...image` tabs on install/update; Viku re-scan throttled to once a minute (popup forces one).
+- False limit: an AI Studio advert "...quota, frontier models and more" matched bare /quota/ -> ERR now only real
+  error phrasings, adverts filtered, and a picture arriving within 6 s wins over an error banner.
+- Prompt guard reworded positively (Gemini ignores "no bindi"): "Indian Christians with clean, plain, unmarked
+  foreheads... never a temple or shrine". Live: crosses / village church appear; one faint forehead dot remained.
+- First Run in a brand-new tab missed twice -> content.js waits until the page is 10 s old before the first Run.
+- Live run 2 PASS (2/2). Reloading the user's unpacked extension from here: scratchpad PowerShell UI Automation
+  presses "Update" on chrome://extensions (Claude in Chrome cannot open chrome:// pages).
+- ONE AI Studio tab (user asked): background `workerTab()` keeps `tabId` + `ownTabs` in storage.LOCAL (survives
+  extension reloads), adopts an open Viku tab (stored id, or a `new_chat?...model=...image` tab) before ever opening
+  one, and closes extra tabs it opened itself; a stale id after a browser restart is ignored unless it is an
+  aistudio/accounts tab. e2e asserts exactly 1 Viku tab.
+- Token counter hidden in the Viku tab only (user asked why it shows "tokens" + "Cost Estimation": that is AI
+  Studio's own estimate of the PAID API price; "Usage on AI Studio is free when no API key is selected").
+  content.js `hideTokenCounter()` (debounced MutationObserver, text /^[\d,.]+ tokens$/); e2e asserts hidden in the
+  Viku tab, visible in the user's own tab.
+- Installer rebuilt 2026-11-18: app/release/Viku-Setup-0.1.0.exe (183.8 MB) with resources/extension. Committed on
+  branch `aistudio-extension` (not merged, not pushed); the other session's engine aipics changes left uncommitted.
+- NEXT: Chrome Web Store listing (needs a $5 developer account); merge the branch.
+
 ## Session 6 (2026-11-17): AI Studio sign-in fix
 - Google refused sign-in in the embedded view ("Couldn't sign you in - This browser or app may not be secure", URL /v3/signin/rejected) even with the plain-Chrome UA. Embedded Google sign-in is not supported by Google, so disguising the view further is NOT the fix.
 - New default **browser mode** (`prefs.geminiMode = 'browser'`, `prefs.downloadsDir` = OS Downloads): AI Studio opens in the user's own browser; *Send next* copies the prompt (+ opens AI Studio once per session); a `fs.watch` on the Downloads folder files any image (>= 1024 px, png/jpg/webp, settled 1.2 s, mtime after the oldest waiting prompt's `sentAt`) into the planned name, via `browser`. Only while a prompt is in `sent`; the original download is left in place (copied). Embedded mode kept as *Inside Viku* with a warning banner.

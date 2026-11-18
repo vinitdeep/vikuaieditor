@@ -5,6 +5,7 @@ import { bundlePaths } from './bundle'
 import { EngineManager } from './engine'
 import { loadPrefs, publicPrefs, savePrefs } from './prefs'
 import { SignInManager } from './signin'
+import { startExtBridge } from './extbridge'
 import { handleThumbs, registerThumbScheme } from './thumbs'
 import { IPC, type AppInfo, type EngineRequest, type FileFilter, type GenMeta, type GeminiMode, type Prefs, type Rect, type SignInCard } from '../shared/ipc'
 
@@ -48,7 +49,9 @@ const signin = new SignInManager(
   {
     mode: () => publicPrefs().geminiMode,
     watchDir: () => publicPrefs().downloadsDir,
-    saveMode: (geminiMode) => void savePrefs({ geminiMode })
+    saveMode: (geminiMode) => void savePrefs({ geminiMode }),
+    // the unpacked browser extension: <resources>/extension when installed, <repo>/extension in dev
+    extensionFolder: () => (app.isPackaged ? join(process.resourcesPath, 'extension') : resolve(app.getAppPath(), '..', 'extension'))
   }
 )
 
@@ -201,6 +204,10 @@ function registerIpc(): void {
   ipcMain.handle(IPC.signinClearDone, () => signin.clearDone())
   ipcMain.handle(IPC.signinMode, (_e, m: GeminiMode) => signin.setMode(m === 'embedded' ? 'embedded' : 'browser'))
   ipcMain.handle(IPC.signinOpenBrowser, () => signin.openBrowser())
+  ipcMain.handle(IPC.signinRevealExtension, async () => {
+    const s = await signin.state()
+    if (existsSync(s.extension.folder)) await shell.openPath(s.extension.folder)
+  })
 }
 
 engine.on('status', (s) => broadcast(IPC.engineStatusEvt, s))
@@ -220,6 +227,8 @@ if (!gotLock) {
     handleThumbs(() => join(app.getPath('userData'), 'thumbs'))
     registerIpc()
     signin.syncWatcher()
+    // local bridge for the Viku browser extension (127.0.0.1 only, extension origins only)
+    void startExtBridge(signin).then((port) => signin.setExtensionPort(port ?? 0))
     createMainWindow()
     if (process.env.VIKU_OPEN_SIGNIN) signin.open()
     // VIKU_NO_ENGINE=1: never spawn the engine (still connects to one that is already running)

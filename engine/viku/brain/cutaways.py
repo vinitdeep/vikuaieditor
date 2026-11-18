@@ -221,8 +221,11 @@ def need_request(text: str, lang: str, idx: int, tags: list[str]) -> dict:
     what = (", ".join(tags[:5]) + " - ") if tags else ""
     scene = (f"{what}a respectful scene that a viewer can picture for this {LANG_NAME.get(lang, lang)} sermon line: "
              f"“{text.strip()}”. Indian people and places, no gore.")
+    # AI Studio / Gemini has no negative prompt and tends to ignore "no X": describe the people positively
     prompt = (f"VERTICAL 9:16 portrait. Photorealistic cinematic still, India, {grade}, shallow depth of field, "
-              f"soft film grain, no text, no readable words. SCENE: {scene}")
+              f"soft film grain, no text, no readable words. The people are Indian Christians with clean, plain, "
+              f"unmarked foreheads and simple everyday clothes; the setting is a home, village, field or simple "
+              f"church, never a temple or shrine; nothing from other religions. SCENE: {scene}")
     slug = f"{idx + 1:02d}-" + ("-".join(re.sub(r"[^a-z0-9]+", "", t.lower()) for t in tags[:2]) if tags else "scene")
     return {"prompt": prompt, "slug": slug, "scene": scene, "text": text.strip(), "tags": tags[:6], "grade": grade}
 

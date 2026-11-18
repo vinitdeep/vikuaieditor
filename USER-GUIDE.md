@@ -144,6 +144,22 @@ Common jobs:
 
 When the library has no fitting picture, the cutaway shows a dashed gold **Needs image** clip.
 
+**Automatic (recommended): the Viku extension.** Google does not let other apps use AI Studio, so Viku makes the
+pictures in your own Chrome or Edge with a small extension. Set it up once:
+
+1. Sign-in window → **Google AI Studio** → **Open extension folder**.
+2. In Chrome open `chrome://extensions` (Edge: `edge://extensions`) and switch on **Developer mode**.
+3. Click **Load unpacked** and choose that folder. The Viku icon appears in the toolbar.
+4. In the same browser, open aistudio.google.com once and sign in with your own Google account.
+
+From then on, every prompt Viku queues is made one at a time in an AI Studio tab the extension opens, and the
+picture lands on its cutaway by itself — keep the browser open and carry on working. Your other AI Studio tabs are
+never touched, and Viku never sees your password. If AI Studio says you have reached a limit, Viku waits 10 minutes
+and carries on (press **Send next** to try sooner). The extension's toolbar button shows what it is doing and can
+switch it off.
+
+**By hand (without the extension):**
+
 1. Click **✦ Generate** on that clip (or **Generate all** at the top of the Cutaways track). The Sign-in window
    opens with Google **AI Studio** inside it.
 2. The first time, **sign in to Google** inside that window (your own account — Viku never sees your password).

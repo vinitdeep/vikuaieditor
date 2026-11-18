@@ -574,3 +574,42 @@
 .gem-watch.warn .dot {
   background: var(--warn, #e0a526);
 }
+
+/* Viku browser extension (automatic AI Studio) */
+.gem-ext {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+}
+
+.gem-ext.on {
+  border-color: color-mix(in srgb, var(--ok, #3ccf7a) 45%, var(--line));
+}
+
+.gem-ext h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+}
+
+.gem-manual {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gem-manual > summary {
+  cursor: pointer;
+  color: var(--text-2);
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.gem-manual[open] > * + * {
+  margin-top: 12px;
+}

@@ -34,6 +34,12 @@ extraResources:
     filter:
       - "**/*.jpg"
       - index.json
+  # the Viku browser extension (Chrome / Edge, Load unpacked): runs AI Studio prompts in the church's own browser
+  - from: ../extension
+    to: extension
+    filter:
+      - "**/*"
+      - "!**/*.zip"
   - from: vendor/uv
     to: uv
     filter:

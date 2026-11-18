@@ -172,6 +172,23 @@ Long work runs as **jobs**; progress over `GET /events` (Server-Sent Events: `{"
 
 ## Online (Sign-in window, all optional)
 - **Gemini / AI Studio (free, web)**: Electron `BrowserView` with a persistent partition; user signs in to Google themselves. Robust capture that does not depend on Google's page layout: (1) `session.on('will-download')` saves every downloaded image into the reel's folder; (2) a CDP `Network` listener on that view captures any image response ≥ 1024 px from `*.googleusercontent.com` / blob data as a fallback; (3) prompt injection uses a generic heuristic (largest visible textarea/contenteditable, `insertText`, then Ctrl+Enter) and, if that fails, the prompt is copied to the clipboard with a toast "paste & send". Each captured image is matched to the pending prompt in order and filed under its planned name.
+- **AI Studio via the Viku browser extension (automatic, default route in "Your browser" mode)**: Google refuses
+  sign-in in embedded views AND refuses AI Studio in a remote-controlled (CDP / `--remote-debugging-port`) browser
+  ("Permission denied", tested 2026-11-18), so the church's own signed-in Chrome / Edge runs the prompts through the
+  MV3 extension in `extension/` (shipped as `resources/extension`, installed with Load unpacked). Never add
+  anti-detection flags to get around Google's checks.
+  - Bridge `app/src/main/extbridge.ts`: HTTP on `127.0.0.1:47917`-`47921` (env `VIKU_EXT_PORT` forces one), POST only,
+    `Origin` must be `chrome-extension://<32 a-p>`. `/viku/hello` (heartbeat every 30 s -> `{enabled, waiting, model,
+    paused}`), `/viku/next` (claims ONE queued prompt, `sentBy:'extension'`, one at a time; stale after 4 min ->
+    requeued), `/viku/result {id, b64}` (filed under the item's planned name, via `extension`), `/viku/fail {id, error,
+    kind}` (`limit` -> pause 10 min + requeue, `attention` -> pause 2 min + show the tab, `content` -> failed,
+    `error` -> one retry).
+  - Extension: background worker proxies to the bridge and owns ONE "Viku tab"
+    (`aistudio.google.com/prompts/new_chat?model=gemini-3.1-flash-image`); the content script only acts in that tab:
+    fresh chat -> textarea `aria-label="Enter a prompt"` (native value setter + input event) -> Run button
+    (`.ctrl-enter-submits`) -> waits for a new `blob:` img >= 512 px -> base64 back. The user's own AI Studio tabs
+    are never touched. Tests: `app/scripts/e2e-extension.mjs` (stand-in page, Google blocked by host rules),
+    `app/scripts/e2e-extension-live.mjs` (real AI Studio in the user's browser).
 - **HeyGen music**: device-code login through `npx hyperframes auth login --device`; music via `npx hyperframes media-use resolve --type bgm --intent ...`.
 - **eBible**: no login; one-time download of USFM zips (`ory`, `hin2017`, `eng-web`), parsed into `data/bible/<code>.sqlite`.
 

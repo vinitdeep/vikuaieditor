@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Viku</title>
+<style>
+  :root { --bg: #161719; --fg: #e8e9ec; --muted: #9a9ca3; --line: #2a2c31; --ok: #3ecf8e; --warn: #f0b429; --off: #6b6e76; --accent: #7c8cff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 300px; background: var(--bg); color: var(--fg); font: 13px/1.45 system-ui, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  header img { width: 20px; height: 20px; }
+  header b { font-size: 14px; }
+  main { padding: 12px 14px; display: grid; gap: 10px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--off); flex: none; }
+  .ok .dot { background: var(--ok); } .warn .dot { background: var(--warn); }
+  .muted { color: var(--muted); font-size: 12px; }
+  label.switch { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; }
+  button { background: #24262b; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+</style>
+</head>
+<body>
+<header><img src="icons/icon48.png" alt=""><b>Viku</b><span class="muted">AI Studio pictures</span></header>
+<main>
+  <div id="viku" class="row"><span class="dot"></span><span id="vikuText">Checking…</span></div>
+  <div id="work" class="row"><span class="dot"></span><span id="workText"></span></div>
+  <label class="switch"><span>Make Viku's pictures automatically</span><input type="checkbox" id="enabled"></label>
+  <div class="row"><button id="show" type="button">Show the Viku tab</button><span class="muted" id="done"></span></div>
+  <div class="muted">Pictures are made with your own Google account in AI Studio, one at a time, in a tab this extension opens. Your other AI Studio tabs are never touched. Viku never sees your password.</div>
+</main>
+<script src="popup.js"></script>
+</body>
+</html>

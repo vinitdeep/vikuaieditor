@@ -108,9 +108,13 @@ export interface PromptItem {
   queuedAt?: number
   /** ms since epoch, when the prompt was typed / copied */
   sentAt?: number
+  /** how it was sent: copied for the user, typed into the embedded view, or run by the Viku browser extension */
+  sentBy?: 'clipboard' | 'typed' | 'extension'
+  /** extension attempts so far (a prompt is retried once before it is marked failed) */
+  tries?: number
 }
 
-export type CaptureVia = 'download' | 'network' | 'browser'
+export type CaptureVia = 'download' | 'network' | 'browser' | 'extension'
 
 export interface CaptureEvent {
   promptId?: string
@@ -129,7 +133,7 @@ export interface ToastMsg {
 export interface SendResult {
   ok: boolean
   /** 'typed' = inserted + Ctrl+Enter sent; 'clipboard' = copied, user pastes */
-  method: 'typed' | 'clipboard' | 'none'
+  method: 'typed' | 'clipboard' | 'extension' | 'none'
   item?: PromptItem
 }
 
@@ -145,6 +149,25 @@ export interface GeminiViewState {
   watchDir: string
   /** the downloads watcher is running */
   watching: boolean
+  /** the Viku browser extension (runs prompts in the user's own signed-in AI Studio) */
+  extension: ExtensionState
+}
+
+export interface ExtensionState {
+  /** heard from in the last ~75 s */
+  connected: boolean
+  /** local bridge port, 0 when it could not start */
+  port: number
+  version?: string
+  /** what the extension's AI Studio tab shows: aistudio | signin | other | none */
+  page?: string
+  /** idle | working | signin | paused | off */
+  state?: string
+  note?: string
+  /** ms since epoch; prompts wait until then after an AI Studio limit */
+  pausedUntil?: number
+  /** folder holding the unpacked extension (Load unpacked in chrome://extensions) */
+  folder: string
 }
 
 export type SignInCard = 'gemini' | 'heygen' | 'ebible'
@@ -224,6 +247,8 @@ export interface VikuBridge {
     setMode(mode: GeminiMode): Promise<GeminiViewState>
     /** open AI Studio in the user's default browser */
     openBrowser(): Promise<void>
+    /** show the Viku browser extension folder in Explorer (for Load unpacked) */
+    revealExtension(): Promise<void>
   }
 }
 
@@ -258,5 +283,6 @@ export const IPC = {
   signinStateEvt: 'signin:state-evt',
   signinFocusCardEvt: 'signin:focus-card-evt',
   signinMode: 'signin:mode',
-  signinOpenBrowser: 'signin:open-browser'
+  signinOpenBrowser: 'signin:open-browser',
+  signinRevealExtension: 'signin:reveal-extension'
 } as const

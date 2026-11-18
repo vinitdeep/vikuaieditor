@@ -57,7 +57,8 @@ const bridge: VikuBridge = {
     onGeminiState: (cb) => on(IPC.signinStateEvt, cb),
     onFocusCard: (cb) => on(IPC.signinFocusCardEvt, cb),
     setMode: (mode) => ipcRenderer.invoke(IPC.signinMode, mode),
-    openBrowser: () => ipcRenderer.invoke(IPC.signinOpenBrowser)
+    openBrowser: () => ipcRenderer.invoke(IPC.signinOpenBrowser),
+    revealExtension: () => ipcRenderer.invoke(IPC.signinRevealExtension)
   }
 }
 

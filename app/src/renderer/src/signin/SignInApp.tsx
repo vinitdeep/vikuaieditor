@@ -109,8 +109,8 @@ export function SignInApp() {
             icon={Sparkles}
             title="Google AI Studio"
             sub="Free illustrations with Gemini, in your own browser session"
-            status={gem?.mode === 'browser' ? (gem.watching ? 'Uses your browser' : 'Downloads not watched') : gem?.signedIn ? 'Signed in' : 'Not signed in'}
-            tone={gem?.mode === 'browser' ? (gem.watching ? 'on' : 'warn') : gem?.signedIn ? 'on' : 'off'}
+            status={gem?.mode === 'browser' ? (gem.extension?.connected ? 'Automatic (extension)' : gem.watching ? 'Uses your browser' : 'Downloads not watched') : gem?.signedIn ? 'Signed in' : 'Not signed in'}
+            tone={gem?.mode === 'browser' ? (gem.extension?.connected || gem.watching ? 'on' : 'warn') : gem?.signedIn ? 'on' : 'off'}
           />
           <Card id="heygen" active={card === 'heygen'} onClick={setCard} icon={Music2} title="HeyGen" sub="Royalty-free music beds for reels" status={auth?.heygen ? 'Connected' : 'Not connected'} tone={auth?.heygen ? 'on' : 'off'} />
           <Card
@@ -163,7 +163,9 @@ function BrowserGuide({ gem }: { gem: GeminiViewState | null }) {
   return (
     <div className="gem-guide">
       <div className="gem-guide-in">
-        <h2>Use AI Studio in your own browser</h2>
+        <ExtensionGuide gem={gem} />
+        <details className="gem-manual">
+          <summary>Or do it by hand (copy, paste, download)</summary>
         <p className="muted">Google only allows sign-in from a normal browser like Chrome or Edge, so AI Studio opens there. Viku never sees your password.</p>
         <ol className="gem-steps">
           {steps.map((st, i) => (
@@ -194,6 +196,83 @@ function BrowserGuide({ gem }: { gem: GeminiViewState | null }) {
         <div className="small muted">
           Only images that arrive while a prompt is waiting are picked up (at least 1024 px). They are copied; your Downloads folder is left as it is.
         </div>
+        </details>
+      </div>
+    </div>
+  )
+}
+
+const EXT_STATE: Record<string, string> = {
+  idle: 'Ready — it takes prompts as soon as they are queued',
+  working: 'Making a picture',
+  signin: 'Sign in to Google in the AI Studio tab it opened',
+  paused: 'Paused after an AI Studio limit',
+  off: 'Turned off in the extension'
+}
+
+/** Automatic route: the Viku extension in the user's own Chrome / Edge runs the queue in AI Studio. */
+function ExtensionGuide({ gem }: { gem: GeminiViewState | null }) {
+  const ext = gem?.extension
+  const copyAddress = (): void => {
+    void navigator.clipboard.writeText('chrome://extensions').then(() => toast('success', 'Copied — paste it in the address bar of Chrome (Edge: edge://extensions)'))
+  }
+  if (ext?.connected) {
+    const paused = ext.pausedUntil ? Math.max(1, Math.ceil((ext.pausedUntil - Date.now()) / 60000)) : 0
+    return (
+      <div className="gem-ext on">
+        <h2>
+          <Sparkles size={16} aria-hidden /> Automatic — Viku extension connected
+        </h2>
+        <p className="muted">
+          Queued prompts are made one at a time in an AI Studio tab of your browser, with your own Google account, and come back here by themselves. Keep the browser open; you can keep working.
+        </p>
+        <div className={`gem-watch small ${ext.state === 'signin' || paused ? 'warn' : 'ok'}`}>
+          <span className="dot" aria-hidden />
+          <span className="grow">
+            {paused ? `Paused after an AI Studio limit — carries on in about ${paused} min (Send next tries now)` : (EXT_STATE[ext.state ?? 'idle'] ?? EXT_STATE.idle)}
+            {ext.note && ext.state === 'working' ? `: ${ext.note}` : ''}
+          </span>
+          <span className="muted">v{ext.version}</span>
+        </div>
+      </div>
+    )
+  }
+  const steps: { title: string; body: string }[] = [
+    { title: 'Open the extension folder', body: 'The Viku extension comes with Viku. Keep this folder where it is.' },
+    { title: 'Open your browser’s extensions page', body: 'In Chrome go to chrome://extensions (Edge: edge://extensions) and switch on Developer mode (top right).' },
+    { title: 'Load unpacked', body: 'Click “Load unpacked” and choose the folder from step 1. Viku’s icon appears in the toolbar.' },
+    { title: 'Sign in to Google in that browser', body: 'Open aistudio.google.com once and sign in with your own account. That is all — Viku connects by itself.' }
+  ]
+  return (
+    <div className="gem-ext">
+      <h2>
+        <Sparkles size={16} aria-hidden /> Automatic: add the Viku extension
+      </h2>
+      <p className="muted">
+        Google blocks AI Studio inside other apps, so Viku makes the pictures in your own Chrome or Edge with a small extension. You sign in to Google there yourself; Viku never sees your password. Set up once.
+      </p>
+      <ol className="gem-steps">
+        {steps.map((st, i) => (
+          <li key={st.title}>
+            <span className="gem-step-n num">{i + 1}</span>
+            <span className="grow">
+              <span className="gem-step-title">{st.title}</span>
+              <span className="small muted">{st.body}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="row gap">
+        <Button variant="primary" icon={FolderOpen} onClick={() => void bridge?.signin.revealExtension()}>
+          Open extension folder
+        </Button>
+        <Button icon={Copy} onClick={copyAddress}>
+          Copy chrome://extensions
+        </Button>
+      </div>
+      <div className="gem-watch small warn">
+        <span className="dot" aria-hidden />
+        <span className="grow">{ext?.port ? 'Waiting for the extension…' : 'The extension link could not start (another program uses its port)'}</span>
       </div>
     </div>
   )
@@ -255,9 +334,9 @@ function GeminiPane({ gem, queue, captures }: { gem: GeminiViewState | null; que
         {mode === 'browser' ? (
           <>
             <span className="grow" />
-            <span className={`si-status s-${gem?.watching ? 'on' : 'warn'}`}>
+            <span className={`si-status s-${gem?.extension?.connected || gem?.watching ? 'on' : 'warn'}`}>
               <span className="dot" aria-hidden />
-              {gem?.watching ? 'Watching Downloads' : 'Downloads folder not found'}
+              {gem?.extension?.connected ? 'Extension connected — automatic' : gem?.watching ? 'Watching Downloads' : 'Downloads folder not found'}
             </span>
           </>
         ) : (
@@ -337,7 +416,9 @@ function GeminiPane({ gem, queue, captures }: { gem: GeminiViewState | null; que
           )}
           <div className="gq-help small muted">
             {mode === 'browser'
-              ? 'Images you download while a prompt is waiting (≥ 1024 px) are copied here under the planned name, in order.'
+              ? gem?.extension?.connected
+                ? 'The Viku extension makes each queued prompt in your browser and files the picture here under the planned name.'
+                : 'Images you download while a prompt is waiting (≥ 1024 px) are copied here under the planned name, in order.'
               : 'Images are captured from downloads or from the page’s own network responses (≥ 1024 px) and filed under the planned name, in order.'}
             <button type="button" className="linkish" onClick={async () => void bridge?.shell.reveal((await bridge.prefs.get()).capturesDir)}>
               <FolderOpen size={11} aria-hidden /> Captures folder
