@@ -63,6 +63,12 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
   Viku tab, visible in the user's own tab.
 - Installer rebuilt 2026-11-18: app/release/Viku-Setup-0.1.0.exe (183.8 MB) with resources/extension. Committed on
   branch `aistudio-extension` (not merged, not pushed); the other session's engine aipics changes left uncommitted.
+- INSTALLED on the user PC 2026-11-18 (silent /S /currentuser -> %LOCALAPPDATA%ProgramsViku, Desktop shortcut; uses the
+  real %APPDATA%Viku data). Installed-app check: extension connected, 1 real picture made + filed, Sign-in window
+  shows "Automatic - Viku extension connected". That picture took 3.5 min: the adopted tab was asleep / ran an old
+  script -> background reloads its tab when it is discarded or does not answer the poke (content.js now replies);
+  live re-run: 14 s from queue to file. Installer rebuilt + reinstalled with the fix. The user Chrome loads the
+  extension from the REPO folder (Documents...extension), churches from <install>esourcesextension.
 - NEXT: Chrome Web Store listing (needs a $5 developer account); merge the branch.
 
 ## Session 6 (2026-11-17): AI Studio sign-in fix

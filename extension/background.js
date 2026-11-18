@@ -102,8 +102,14 @@ async function tick(reason) {
   if (h.body.waiting > 0) {
     const tab = await workerTab(h.body.model, h.page === 'signin')
     if (h.page === 'signin') await setStatus({ state: 'signin', note: 'Sign in to Google in the AI Studio tab' })
-    // wake the content script (background tabs throttle its timers)
-    chrome.tabs.sendMessage(tab.id, { type: 'poke', reason }).catch(() => undefined)
+    // wake the content script (background tabs throttle its timers). A tab Chrome put to sleep to save memory, or one
+    // still running an old copy of the script, does not answer: load it again so the script runs.
+    if (tab.discarded) await chrome.tabs.reload(tab.id).catch(() => undefined)
+    else
+      await chrome.tabs.sendMessage(tab.id, { type: 'poke', reason }).catch(async () => {
+        const t = await chrome.tabs.get(tab.id).catch(() => null)
+        if (t && t.status === 'complete' && /^https:\/\/aistudio\.google\.com\//.test(t.url || '')) await chrome.tabs.reload(tab.id).catch(() => undefined)
+      })
   }
 }
 

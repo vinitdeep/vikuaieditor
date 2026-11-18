@@ -197,8 +197,11 @@
     if (!alive()) return clearInterval(timer)
     claimAndRun().catch(() => undefined)
   }
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg?.type === 'poke') safeRun()
+  chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+    if (msg?.type !== 'poke') return
+    // answer, so the background knows this script is alive (no answer = it reloads the tab)
+    reply({ ok: true, busy })
+    safeRun()
   })
   setTimeout(safeRun, 2500)
   timer = setInterval(safeRun, 20000)
