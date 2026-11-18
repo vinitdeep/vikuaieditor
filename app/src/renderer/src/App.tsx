@@ -16,6 +16,7 @@ import { Inspector } from '@/components/inspector/Inspector'
 import { Timeline } from '@/components/timeline/Timeline'
 import { AutomateView, useAuto } from '@/components/automate/AutomateView'
 import { ActivityDrawer, ExportDialog, Splitter, Toasts } from '@/components/shell/Shell'
+import { AiPicturesDrawer } from '@/components/shell/AiPicturesDrawer'
 import { SettingsDialog } from '@/components/shell/SettingsDialog'
 import { ShortcutsSheet } from '@/components/shell/ShortcutsSheet'
 import { Onboarding } from '@/components/shell/Onboarding'
@@ -151,6 +152,7 @@ export function App() {
         <AutomateView />
       )}
       <ActivityDrawer />
+      <AiPicturesDrawer />
       <SettingsDialog />
       <ExportDialog />
       <ShortcutsSheet />

@@ -152,7 +152,9 @@ pictures in your own Chrome or Edge with a small extension. Set it up once:
 3. Click **Load unpacked** and choose that folder. The Viku icon appears in the toolbar.
 4. In the same browser, open aistudio.google.com once and sign in with your own Google account.
 
-From then on, every prompt Viku queues is made one at a time in an AI Studio tab the extension opens, and the
+Click **AI pictures** in the top bar to see what is happening — progress, each picture as it is made, and Retry for
+any that failed; it opens there by itself when reels need new pictures, inside Viku’s window. From then on, every
+prompt Viku queues is made one at a time in an AI Studio tab the extension opens, and the
 picture lands on its cutaway by itself — keep the browser open and carry on working. Your other AI Studio tabs are
 never touched, and Viku never sees your password. If AI Studio says you have reached a limit, Viku waits 10 minutes
 and carries on (press **Send next** to try sooner). The extension's toolbar button shows what it is doing and can

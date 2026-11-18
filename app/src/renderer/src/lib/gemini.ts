@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { CaptureEvent, GenMeta, PromptItem } from '@shared/ipc'
 import { api } from '@/api'
 import type { Cutaway, Reel } from '@/api/types'
-import { toast } from '@/state/app'
+import { toast, useApp } from '@/state/app'
 import { saveNow, useEditor } from '@/state/editor'
 import { useJobs } from '@/state/jobs'
 import { cutawayPrompt, readableName, useLibraryIndex } from './cutaways'
@@ -45,7 +45,14 @@ function plannedName(reel: Reel, index: number): string {
   return `reel${n}-${slug}`.replace(/[^\w.-]+/g, '-')
 }
 
-/** Queue an empty cutaway's prompt in the Sign-in window (AI Studio); the capture is attached automatically. */
+/** Show the AI pictures drawer in the main window (never a separate window while pictures are being made). */
+export function openAiPanel(): void {
+  useApp.getState().set({ aiOpen: true, activityOpen: false })
+}
+
+const extensionOn = (): boolean => Boolean(useApp.getState().gemini?.extension?.connected)
+
+/** Queue an empty cutaway's prompt for AI Studio; the picture is attached to the cutaway automatically. */
 export async function generateForCutaway(reelId: string, index: number, promptOverride?: string): Promise<void> {
   const bridge = window.viku
   if (!bridge) {
@@ -57,7 +64,7 @@ export async function generateForCutaway(reelId: string, index: number, promptOv
   if (!reel || !c) return
   const key = genKey(reelId, c.t0)
   if (useGen.getState().queued[key]) {
-    await bridge.signin.open('gemini')
+    openAiPanel()
     return
   }
   const prompt = promptOverride?.trim() || cutawayPrompt(c, captionTextUnder(reel, c.t0, c.t1))
@@ -65,8 +72,8 @@ export async function generateForCutaway(reelId: string, index: number, promptOv
   try {
     const items = await bridge.signin.queue([{ prompt, name: plannedName(reel, index), meta }])
     syncQueue(items)
-    await bridge.signin.open('gemini')
-    toast('info', 'Prompt queued in AI Studio — press “Send next” in the Sign-in window. The image lands on the cutaway by itself.')
+    openAiPanel()
+    toast('info', extensionOn() ? 'Picture queued — AI Studio makes it in your browser and it lands on the cutaway by itself.' : 'Picture queued — add the Viku extension (AI pictures panel) and it is made automatically.')
   } catch (e) {
     toast('error', `Could not queue the prompt: ${e instanceof Error ? e.message : String(e)}`)
   }
@@ -74,7 +81,7 @@ export async function generateForCutaway(reelId: string, index: number, promptOv
 
 /**
  * Queue a new AI picture for every empty cutaway of these reels (any project — Automate's reels need not be open), in
- * one batch, then open the Sign-in window once. Used by Automate with "Illustrations: Gemini".
+ * one batch, then show the AI pictures drawer. Used by Automate with "Illustrations: Gemini".
  */
 export async function queueEmptyCutaways(reels: Reel[]): Promise<number> {
   const bridge = window.viku
@@ -90,10 +97,13 @@ export async function queueEmptyCutaways(reels: Reel[]): Promise<number> {
   if (!batch.length) return 0
   try {
     syncQueue(await bridge.signin.queue(batch))
-    await bridge.signin.open('gemini')
+    openAiPanel()
+    const what = `${batch.length} new picture${batch.length === 1 ? '' : 's'}`
     toast(
       'info',
-      `${batch.length} new picture${batch.length === 1 ? '' : 's'} queued in AI Studio — press “Send next” in the Sign-in window for each. Each image lands on its cutaway, and the reel re-renders when its last picture is in.`
+      extensionOn()
+        ? `${what} queued — AI Studio makes them one at a time in your browser. Each lands on its cutaway, and the reel re-renders when its last picture is in.`
+        : `${what} queued — add the Viku extension (AI pictures panel) and they are made automatically.`
     )
   } catch (e) {
     toast('error', `Could not queue the AI pictures: ${e instanceof Error ? e.message : String(e)}`)
@@ -188,7 +198,8 @@ export async function resumeQueue(): Promise<void> {
   const waiting = items.filter((i) => i.status === 'captured' && i.file && i.meta && !i.meta.attached)
   for (const i of waiting) await handleCapture({ promptId: i.id, meta: i.meta, file: i.file as string, via: i.via ?? 'download', width: 0, height: 0 })
   const open = items.filter((i) => i.meta && (i.status === 'queued' || i.status === 'sent')).length
-  if (open) toast('info', `${open} AI Studio prompt${open === 1 ? ' is' : 's are'} still waiting for an image — open the Sign-in window to continue.`)
+  if (open)
+    toast('info', `${open} AI picture${open === 1 ? ' is' : 's are'} still waiting${extensionOn() ? ' — AI Studio carries on in your browser' : ''}.`, { label: 'Show', run: openAiPanel })
 }
 
 function cutawayIndex(cutaways: Cutaway[], meta: GenMeta): number {

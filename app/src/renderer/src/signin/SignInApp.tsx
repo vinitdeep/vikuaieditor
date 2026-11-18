@@ -32,6 +32,7 @@ import { useJobs } from '@/state/jobs'
 import { Logo } from '@/components/TopBar'
 import { Button, IconButton, Progress } from '@/components/ui'
 import { Toasts } from '@/components/shell/Shell'
+import { ExtensionSetup } from '@/components/ExtensionSetup'
 
 const bridge = window.viku
 
@@ -213,9 +214,6 @@ const EXT_STATE: Record<string, string> = {
 /** Automatic route: the Viku extension in the user's own Chrome / Edge runs the queue in AI Studio. */
 function ExtensionGuide({ gem }: { gem: GeminiViewState | null }) {
   const ext = gem?.extension
-  const copyAddress = (): void => {
-    void navigator.clipboard.writeText('chrome://extensions').then(() => toast('success', 'Copied — paste it in the address bar of Chrome (Edge: edge://extensions)'))
-  }
   if (ext?.connected) {
     const paused = ext.pausedUntil ? Math.max(1, Math.ceil((ext.pausedUntil - Date.now()) / 60000)) : 0
     return (
@@ -237,12 +235,6 @@ function ExtensionGuide({ gem }: { gem: GeminiViewState | null }) {
       </div>
     )
   }
-  const steps: { title: string; body: string }[] = [
-    { title: 'Open the extension folder', body: 'The Viku extension comes with Viku. Keep this folder where it is.' },
-    { title: 'Open your browser’s extensions page', body: 'In Chrome go to chrome://extensions (Edge: edge://extensions) and switch on Developer mode (top right).' },
-    { title: 'Load unpacked', body: 'Click “Load unpacked” and choose the folder from step 1. Viku’s icon appears in the toolbar.' },
-    { title: 'Sign in to Google in that browser', body: 'Open aistudio.google.com once and sign in with your own account. That is all — Viku connects by itself.' }
-  ]
   return (
     <div className="gem-ext">
       <h2>
@@ -251,29 +243,7 @@ function ExtensionGuide({ gem }: { gem: GeminiViewState | null }) {
       <p className="muted">
         Google blocks AI Studio inside other apps, so Viku makes the pictures in your own Chrome or Edge with a small extension. You sign in to Google there yourself; Viku never sees your password. Set up once.
       </p>
-      <ol className="gem-steps">
-        {steps.map((st, i) => (
-          <li key={st.title}>
-            <span className="gem-step-n num">{i + 1}</span>
-            <span className="grow">
-              <span className="gem-step-title">{st.title}</span>
-              <span className="small muted">{st.body}</span>
-            </span>
-          </li>
-        ))}
-      </ol>
-      <div className="row gap">
-        <Button variant="primary" icon={FolderOpen} onClick={() => void bridge?.signin.revealExtension()}>
-          Open extension folder
-        </Button>
-        <Button icon={Copy} onClick={copyAddress}>
-          Copy chrome://extensions
-        </Button>
-      </div>
-      <div className="gem-watch small warn">
-        <span className="dot" aria-hidden />
-        <span className="grow">{ext?.port ? 'Waiting for the extension…' : 'The extension link could not start (another program uses its port)'}</span>
-      </div>
+      <ExtensionSetup port={ext?.port} />
     </div>
   )
 }

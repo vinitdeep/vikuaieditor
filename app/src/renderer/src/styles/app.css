@@ -2125,3 +2125,367 @@ img.img-loading {
     animation: none;
   }
 }
+
+/* ---------- AI pictures drawer (AI Studio queue + Viku extension status, in the main window) ---------- */
+.schip.active {
+  border-color: var(--gold-line);
+  color: var(--text-1);
+  background: var(--gold-soft);
+}
+
+.schip .tb-count {
+  position: static;
+  margin-left: 2px;
+}
+
+.schip.busy .dot {
+  animation: aip-pulse 1.6s var(--ease) infinite;
+}
+
+@keyframes aip-pulse {
+  50% {
+    box-shadow: 0 0 0 5px rgba(73, 201, 141, 0.05);
+  }
+}
+
+.drawer.aip {
+  width: 380px;
+}
+
+.aip-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 11px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-2);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+}
+
+.aip-pill .dot,
+.ext-wait .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-4);
+  flex: 0 0 auto;
+}
+
+.aip-pill.p-on .dot {
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(73, 201, 141, 0.16);
+}
+
+.aip-pill.p-warn .dot {
+  background: var(--amber);
+}
+
+.aip-body {
+  gap: 10px;
+  padding: 10px;
+}
+
+.aip-status {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  align-items: start;
+  padding: 12px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+}
+
+.aip-status.t-ok {
+  border-color: rgba(73, 201, 141, 0.35);
+}
+
+.aip-status.t-work {
+  border-color: rgba(73, 201, 141, 0.55);
+  background: linear-gradient(180deg, rgba(73, 201, 141, 0.07), var(--bg-2) 70%);
+}
+
+.aip-status.t-warn {
+  border-color: var(--gold-line);
+  background: linear-gradient(180deg, var(--gold-soft), var(--bg-2) 70%);
+}
+
+.aip-status-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--bg-3);
+  color: var(--text-2);
+  grid-row: span 2;
+}
+
+.aip-status.t-ok .aip-status-icon,
+.aip-status.t-work .aip-status-icon {
+  color: var(--green);
+  background: rgba(73, 201, 141, 0.12);
+}
+
+.aip-status.t-warn .aip-status-icon {
+  color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.aip-status-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.aip-headline {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--text-1);
+  line-height: 1.3;
+}
+
+.aip-progress {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.aip-progress .progress {
+  flex: 1;
+}
+
+.aip-status > .btn {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: 6px;
+}
+
+.aip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.aip-list-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 2px 0;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.aip-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.aip-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 4px 6px 6px;
+  border-radius: var(--r-md);
+  background: var(--bg-2);
+  border: 1px solid transparent;
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+}
+
+.aip-item:hover {
+  background: var(--bg-3);
+}
+
+.aip-item.s-sent {
+  border-color: rgba(73, 201, 141, 0.45);
+}
+
+.aip-item.s-failed {
+  border-color: rgba(255, 99, 99, 0.4);
+}
+
+.aip-thumb {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 53px; /* 9:16, like the reel */
+  border-radius: 4px;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  background: var(--bg-input);
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.aip-thumb.ph {
+  cursor: default;
+}
+
+.aip-item.s-sent .aip-thumb {
+  color: var(--green);
+}
+
+.aip-item.s-failed .aip-thumb {
+  color: var(--red);
+}
+
+.aip-thumb img,
+.aip-thumb .thumb-ph {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.aip-item-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.aip-item-title {
+  font-weight: 500;
+  color: var(--text-1);
+  text-transform: capitalize;
+}
+
+.aip-err {
+  color: var(--red);
+  line-height: 1.35;
+}
+
+.aip-chip {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 9px;
+  color: var(--text-3);
+  background: var(--bg-3);
+}
+
+.aip-chip.c-sent {
+  color: var(--green);
+  background: rgba(73, 201, 141, 0.12);
+}
+
+.aip-chip.c-captured {
+  color: var(--green);
+}
+
+.aip-chip.c-failed {
+  color: var(--red);
+  background: rgba(255, 99, 99, 0.12);
+}
+
+.aip-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-top: 1px solid var(--line);
+}
+
+/* one-time setup of the Viku browser extension (shared by the drawer and the Sign-in window) */
+.ext-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ext-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ext-steps li {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+}
+
+.ext-step-n {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.ext-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ext-step-title {
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.ext-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ext-wait {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--bg-1);
+  color: var(--text-2);
+}
+
+.ext-wait .dot {
+  background: var(--amber);
+  animation: aip-pulse 1.6s var(--ease) infinite;
+}
+
+.ext-wait.bad .dot {
+  background: var(--red);
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .schip.busy .dot,
+  .ext-wait .dot {
+    animation: none;
+  }
+}
+
+.schip {
+  white-space: nowrap;
+}

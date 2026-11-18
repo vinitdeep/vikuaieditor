@@ -69,6 +69,14 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
   script -> background reloads its tab when it is discarded or does not answer the poke (content.js now replies);
   live re-run: 14 s from queue to file. Installer rebuilt + reinstalled with the fix. The user Chrome loads the
   extension from the REPO folder (Documents...extension), churches from <install>esourcesextension.
+- NO SEPARATE WINDOW while generating (user asked): new AI pictures DRAWER in the main window
+  (`components/shell/AiPicturesDrawer.tsx`, `useApp.aiOpen`), opened by the top-bar "AI pictures" chip (count badge)
+  and by `lib/gemini.openAiPanel()` instead of `signin.open('gemini')` in generateForCutaway / queueEmptyCutaways /
+  resume toast. Status card (role=status headline "Making picture n of m", progress only when connected, pause + Try
+  now), shared `components/ExtensionSetup.tsx` (also used by the Sign-in window), queue rows with 9:16 thumbnails,
+  Retry / remove / Clear done / Folder; "Advanced" opens the Sign-in window only when not connected. Escape closes.
+  `scripts/shots-ai-drawer.mjs` PASS (plays the extension through the bridge; asserts 1 window). Installed app
+  re-checked: real picture made while the drawer showed "Making picture 3 of 3", windows ever open = 1.
 - NEXT: Chrome Web Store listing (needs a $5 developer account); merge the branch.
 
 ## Session 6 (2026-11-17): AI Studio sign-in fix

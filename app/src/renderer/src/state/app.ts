@@ -49,6 +49,8 @@ interface AppState {
   libraryTab: LibraryTab
   inspectorTab: InspectorTab
   activityOpen: boolean
+  /** the AI pictures drawer (AI Studio queue + extension status) */
+  aiOpen: boolean
   settingsOpen: boolean
   exportOpen: boolean
   shortcutsOpen: boolean
@@ -83,6 +85,7 @@ export const useApp = create<AppState>((set, get) => ({
   libraryTab: 'illustrations',
   inspectorTab: 'reel',
   activityOpen: false,
+  aiOpen: false,
   settingsOpen: false,
   exportOpen: false,
   shortcutsOpen: false,

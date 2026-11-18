@@ -3,6 +3,7 @@ import { Logo } from './Logo'
 import { useApp } from '@/state/app'
 import { runningCount, useJobs } from '@/state/jobs'
 import { useEditor, useReel } from '@/state/editor'
+import { useGen } from '@/lib/gemini'
 import { IconButton, Segmented } from './ui'
 import type { SignInCard } from '@shared/ipc'
 
@@ -34,7 +35,10 @@ export function TopBar() {
     void window.viku?.signin.open(card)
   }
 
-  const geminiOn = Boolean(gemini?.signedIn || (gemini?.mode === 'browser' && gemini.watching) || auth?.gemini_web)
+  const geminiOn = Boolean(gemini?.extension?.connected || gemini?.signedIn || auth?.gemini_web)
+  const aiOpen = useApp((s) => s.aiOpen)
+  const aiWaiting = useGen((s) => Object.keys(s.queued).length)
+  const toggleAi = (): void => set({ aiOpen: !aiOpen, activityOpen: false })
   const engState: 'on' | 'warn' | 'off' =
     apiKind === 'mock' ? 'warn' : engine?.state === 'running' || (!engine && health) ? 'on' : engine?.state === 'starting' || engine?.state === 'checking' ? 'warn' : 'off'
   const engTitle =
@@ -75,7 +79,21 @@ export function TopBar() {
 
       <div className="tb-right">
         <div className="tb-chips">
-          <StatusChip label="Gemini" state={geminiOn ? 'on' : 'off'} onClick={() => openSignin('gemini')} title={geminiOn ? 'Google AI Studio: signed in' : 'Google AI Studio: not signed in — click to open Sign-in'} />
+          <button
+            type="button"
+            className={`schip s-${geminiOn ? 'on' : 'off'}${aiOpen ? ' active' : ''}${aiWaiting ? ' busy' : ''}`}
+            onClick={toggleAi}
+            aria-expanded={aiOpen}
+            title={geminiOn ? 'AI pictures — Google AI Studio connected' : 'AI pictures — set up Google AI Studio'}
+          >
+            <span className="dot" aria-hidden />
+            AI pictures
+            {aiWaiting > 0 && (
+              <span className="tb-count num" aria-label={`${aiWaiting} pictures waiting`}>
+                {aiWaiting}
+              </span>
+            )}
+          </button>
           <StatusChip label="HeyGen" state={auth?.heygen ? 'on' : 'off'} onClick={() => openSignin('heygen')} title={auth?.heygen ? 'HeyGen music: signed in' : 'HeyGen music: not signed in'} />
           <StatusChip
             label="eBible"
@@ -88,7 +106,7 @@ export function TopBar() {
           <span aria-hidden />
           {apiKind === 'mock' ? 'Mock' : 'Engine'}
         </button>
-        <button type="button" className={`tb-activity${running ? ' busy' : ''}`} onClick={() => set({ activityOpen: !useApp.getState().activityOpen })} title="Activity">
+        <button type="button" className={`tb-activity${running ? ' busy' : ''}`} onClick={() => set({ activityOpen: !useApp.getState().activityOpen, aiOpen: false })} title="Activity">
           <Activity size={14} aria-hidden />
           {running > 0 && <span className="tb-count num">{running}</span>}
         </button>
