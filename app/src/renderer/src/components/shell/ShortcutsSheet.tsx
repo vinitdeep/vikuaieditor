@@ -28,6 +28,10 @@ const GROUPS: { title: string; rows: Row[] }[] = [
       [[['Del']], 'Ripple delete the selection'],
       [[['Ctrl', 'Z']], 'Undo'],
       [[['Ctrl', 'Y'], ['Ctrl', 'Shift', 'Z']], 'Redo'],
+      [[['Ctrl', 'Shift', 'A']], 'Deselect all'],
+      [[['Ctrl', 'N']], 'New project from a sermon video'],
+      [[['Ctrl', 'O']], 'Open project (project list)'],
+      [[['Ctrl', 'Shift', 'W']], 'Close project'],
       [[['Ctrl', 'S']], 'Save now (autosave is on)'],
       [[['Ctrl', 'E']], 'Export…']
     ]
@@ -50,6 +54,9 @@ const GROUPS: { title: string; rows: Row[] }[] = [
       [[['S']], 'Skimming on / off'],
       [[['Shift', 'S']], 'Safe zones on / off'],
       [[['Ctrl', ',']], 'Settings'],
+      [[['Alt', 'F']], 'Menus: Alt + F E C S M G V W H'],
+      [[['F11']], 'Full screen'],
+      [[['Ctrl', 'Q']], 'Exit'],
       [[['?']], 'This sheet']
     ]
   }

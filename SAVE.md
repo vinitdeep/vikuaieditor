@@ -2,6 +2,21 @@
 
 Contract: `ARCHITECTURE.md`. Update this file every session.
 
+## Session 10 (2026-11-19): Premiere-style menu bar
+- Top bar now has File / Edit / Clip / Sequence / Markers / Graphics and Titles / View / Window / Help (user asked for
+  Premiere's layout, from their Premiere screenshots). `components/MenuBar.tsx` (custom-drawn: the window is frameless),
+  one level of sub-menus, items greyed out when there is nothing to act on. Every item runs real code: shared
+  `lib/commands.ts` (hotkeys.ts now calls the same functions). New IPC `win.edit` (cut/copy/paste/selectAll on the
+  focused text field via webContents), `win.toggleFullScreen`, `shell.openPath`; `useApp.settingsTab` opens Settings
+  on a chosen tab (Edit > Preferences). New keys: Ctrl+N new project, Ctrl+O project list, Ctrl+Shift+W close
+  project, Ctrl+Shift+A deselect, Ctrl+Q exit, F11 full screen, Alt+F/E/C/S/M/G/V/W/H opens a menu.
+- Top bar grid is now `max-content | 1fr | max-content` (logo+menus | project name + centred mode switch | status);
+  under 1500 px wide the status chips and the "Viku" word hide (chips are in Help > Connections).
+- Verified: `node scripts/e2e-menus.mjs` (mock adapter) clicks EVERY enabled item incl. sub-menus and checks each
+  changed state / started a job / opened a dialog / window / full screen; Cut/Copy/Paste/Select All on a real text
+  field; keyboard navigation; Close Project; Exit closes the app -> 108/108 PASS. Screenshots: screenshots/menu-*.png.
+  Typecheck + lint clean. Installer NOT rebuilt yet (the installed copy has no menu bar).
+
 ## Session 9d (2026-11-18): AI Studio "busy", live progress, stalled-tab recovery, old reels
 - AI Studio "service unavailable / overloaded / try again later / internal error" -> content.js kind `busy` ->
   SignInManager pauses 2 min (not 10), prompt back in the queue, the try is NOT used up; drawer headline says

@@ -38,7 +38,12 @@ const bridge: VikuBridge = {
   },
   shell: {
     reveal: (path) => ipcRenderer.invoke(IPC.reveal, path),
-    openExternal: (url) => ipcRenderer.invoke(IPC.openExternal, url)
+    openExternal: (url) => ipcRenderer.invoke(IPC.openExternal, url),
+    openPath: (path) => ipcRenderer.invoke(IPC.openPath, path)
+  },
+  win: {
+    edit: (cmd) => ipcRenderer.invoke(IPC.winEdit, cmd),
+    toggleFullScreen: () => ipcRenderer.invoke(IPC.winFullScreen)
   },
   signin: {
     open: (card) => ipcRenderer.invoke(IPC.signinOpen, card),

@@ -1,5 +1,6 @@
 import { Activity, Clapperboard, Download, Keyboard, Settings2, Sparkles, Wand2 } from 'lucide-react'
 import { Logo } from './Logo'
+import { MenuBar } from './MenuBar'
 import { useApp } from '@/state/app'
 import { runningCount, useJobs } from '@/state/jobs'
 import { useEditor, useReel } from '@/state/editor'
@@ -51,6 +52,10 @@ export function TopBar() {
       <div className="tb-left">
         <Logo size={26} />
         <span className="tb-app">Viku</span>
+        <MenuBar />
+      </div>
+
+      <div className="tb-center">
         <span className="tb-sep" aria-hidden />
         <span className="tb-project" title={project?.video_path}>
           {project ? project.name : 'No project'}
@@ -62,9 +67,7 @@ export function TopBar() {
           )}
           {dirty && <span className="tb-dirty" title="Saving…" />}
         </span>
-      </div>
-
-      <div className="tb-center">
+        <span className="tb-grow" />
         <Segmented
           size="lg"
           ariaLabel="Mode"
@@ -75,6 +78,7 @@ export function TopBar() {
             { id: 'manual', label: 'Manual', icon: Clapperboard, title: 'Edit reels on the timeline' }
           ]}
         />
+        <span className="tb-grow" />
       </div>
 
       <div className="tb-right">

@@ -7,6 +7,7 @@ export type BrowserTab = 'media' | 'transcript' | 'suggestions' | 'library' | 'b
 export type LibraryTab = 'illustrations' | 'music' | 'sfx'
 export type InspectorTab = 'reel' | 'clip' | 'caption' | 'verse' | 'cutaway' | 'audio' | 'thumbnail'
 export type Tool = 'select' | 'blade' | 'trim'
+export type SettingsTab = 'general' | 'pictures' | 'folders' | 'export' | 'models' | 'engine'
 
 export interface Toast {
   id: number
@@ -22,17 +23,19 @@ interface Layout {
 }
 
 const LAYOUT_KEY = 'viku.layout.v1'
+export const DEFAULT_LAYOUT: Layout = { left: 340, right: 330, bottom: 330 }
+
 function loadLayout(): Layout {
   try {
     const raw = localStorage.getItem(LAYOUT_KEY)
     if (raw) {
       const p = JSON.parse(raw) as Partial<Layout>
-      return { left: p.left ?? 340, right: p.right ?? 330, bottom: p.bottom ?? 330 }
+      return { left: p.left ?? DEFAULT_LAYOUT.left, right: p.right ?? DEFAULT_LAYOUT.right, bottom: p.bottom ?? DEFAULT_LAYOUT.bottom }
     }
   } catch {
     /* ignore */
   }
-  return { left: 340, right: 330, bottom: 330 }
+  return { ...DEFAULT_LAYOUT }
 }
 
 interface AppState {
@@ -52,6 +55,8 @@ interface AppState {
   /** the AI pictures drawer (AI Studio queue + extension status) */
   aiOpen: boolean
   settingsOpen: boolean
+  /** the tab Settings opens on (the menu bar's Preferences items set it) */
+  settingsTab: SettingsTab
   exportOpen: boolean
   shortcutsOpen: boolean
   onboardingOpen: boolean
@@ -87,6 +92,7 @@ export const useApp = create<AppState>((set, get) => ({
   activityOpen: false,
   aiOpen: false,
   settingsOpen: false,
+  settingsTab: 'general',
   exportOpen: false,
   shortcutsOpen: false,
   onboardingOpen: false,

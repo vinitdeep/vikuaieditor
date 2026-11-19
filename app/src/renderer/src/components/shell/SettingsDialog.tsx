@@ -3,14 +3,14 @@ import { Compass, Cpu, FolderOpen, Images, Info, Keyboard, Plus, RefreshCw, Tras
 import type { Prefs } from '@shared/ipc'
 import { api } from '@/api'
 import type { ExportPreset, Settings } from '@/api/types'
-import { toast, useApp } from '@/state/app'
+import { toast, useApp, type SettingsTab } from '@/state/app'
 import { useJobs } from '@/state/jobs'
 import { Button, IconButton, Segmented, Tabs, Toggle } from '../ui'
 import { Modal } from './Shell'
 import { ModelsPanel } from './ModelsPanel'
 import { StarterSummary } from './AboutDialog'
 
-type Tab = 'general' | 'pictures' | 'folders' | 'export' | 'models' | 'engine'
+type Tab = SettingsTab
 
 function FolderRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
@@ -109,6 +109,11 @@ export function SettingsDialog() {
   const [prefs, setPrefs] = useState<Prefs | null>(null)
   const [prefsDirty, setPrefsDirty] = useState(false)
 
+  const startTab = useApp((s) => s.settingsTab)
+  useEffect(() => {
+    if (open) setTab(startTab)
+  }, [open, startTab])
+
   useEffect(() => {
     if (!open) return
     setDraft(settings ? structuredClone(settings) : null)
@@ -117,7 +122,7 @@ export function SettingsDialog() {
   }, [open, settings])
 
   if (!open) return null
-  const close = (): void => set({ settingsOpen: false })
+  const close = (): void => set({ settingsOpen: false, settingsTab: 'general' })
   const patch = (p: Partial<Settings>): void => setDraft((d) => (d ? { ...d, ...p } : d))
   const patchPreset = (i: number, p: Partial<ExportPreset>): void => setDraft((d) => (d ? { ...d, export_presets: d.export_presets.map((x, k) => (k === i ? { ...x, ...p } : x)) } : d))
   const patchPrefs = (p: Partial<Prefs>): void => {

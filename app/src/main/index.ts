@@ -8,7 +8,7 @@ import { SignInManager } from './signin'
 import { startExtBridge } from './extbridge'
 import { FaceStore } from './faces'
 import { handleThumbs, registerThumbScheme } from './thumbs'
-import { IPC, type AppInfo, type EngineRequest, type FileFilter, type GeminiMode, type QueueAdd, type Prefs, type Rect, type SignInCard } from '../shared/ipc'
+import { IPC, type AppInfo, type EngineRequest, type FileFilter, type GeminiMode, type QueueAdd, type Prefs, type Rect, type SignInCard, type WinEditCmd } from '../shared/ipc'
 
 const isDev = !app.isPackaged && Boolean(process.env.ELECTRON_RENDERER_URL)
 const PRELOAD = join(__dirname, '../preload/index.js')
@@ -197,6 +197,23 @@ function registerIpc(): void {
   })
   ipcMain.handle(IPC.reveal, (_e, p: string) => {
     if (typeof p === 'string' && p) shell.showItemInFolder(p)
+  })
+  ipcMain.handle(IPC.openPath, async (_e, p: string) => {
+    if (typeof p === 'string' && p) await shell.openPath(p)
+  })
+  ipcMain.handle(IPC.winEdit, (e, cmd: WinEditCmd) => {
+    const wc = e.sender
+    if (cmd === 'cut') wc.cut()
+    else if (cmd === 'copy') wc.copy()
+    else if (cmd === 'paste') wc.paste()
+    else if (cmd === 'selectAll') wc.selectAll()
+    else if (cmd === 'delete') wc.delete()
+  })
+  ipcMain.handle(IPC.winFullScreen, (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    if (!win) return false
+    win.setFullScreen(!win.isFullScreen())
+    return win.isFullScreen()
   })
   ipcMain.handle(IPC.openExternal, async (_e, url: string) => {
     if (typeof url === 'string' && /^https?:\/\//.test(url)) await shell.openExternal(url)

@@ -246,6 +246,13 @@ export interface VikuBridge {
   shell: {
     reveal(path: string): Promise<void>
     openExternal(url: string): Promise<void>
+    /** open a folder (or file) with its default app */
+    openPath(path: string): Promise<void>
+  }
+  win: {
+    /** Cut / Copy / Paste / Select all / Delete on the focused text field (the menu bar's Edit items) */
+    edit(cmd: WinEditCmd): Promise<void>
+    toggleFullScreen(): Promise<boolean>
   }
   signin: {
     open(card?: SignInCard): Promise<void>
@@ -282,7 +289,12 @@ export interface VikuBridge {
   }
 }
 
+export type WinEditCmd = 'cut' | 'copy' | 'paste' | 'selectAll' | 'delete'
+
 export const IPC = {
+  openPath: 'shell:open-path',
+  winEdit: 'win:edit',
+  winFullScreen: 'win:fullscreen',
   appInfo: 'app:info',
   engineSetupRetry: 'engine:setup-retry',
   signinMarkAttached: 'signin:mark-attached',
