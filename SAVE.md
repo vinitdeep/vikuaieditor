@@ -15,7 +15,8 @@ Contract: `ARCHITECTURE.md`. Update this file every session.
 - Verified: `node scripts/e2e-menus.mjs` (mock adapter) clicks EVERY enabled item incl. sub-menus and checks each
   changed state / started a job / opened a dialog / window / full screen; Cut/Copy/Paste/Select All on a real text
   field; keyboard navigation; Close Project; Exit closes the app -> 108/108 PASS. Screenshots: screenshots/menu-*.png.
-  Typecheck + lint clean. Installer NOT rebuilt yet (the installed copy has no menu bar).
+  Typecheck + lint clean. Installer rebuilt 15:17 (183.8 MB); old Viku silently uninstalled (data in %APPDATA%Viku
+  kept), new one silently installed + launched (engine-env re-bootstraps on first run).
 
 ## Session 9d (2026-11-18): AI Studio "busy", live progress, stalled-tab recovery, old reels
 - AI Studio "service unavailable / overloaded / try again later / internal error" -> content.js kind `busy` ->
